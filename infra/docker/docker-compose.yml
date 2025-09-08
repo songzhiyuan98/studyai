@@ -1,0 +1,134 @@
+# Docker Compose 开发环境配置
+# 包含所有必需的服务：数据库、缓存、文件存储等
+
+version: '3.8'
+
+services:
+  # PostgreSQL 数据库 + pgvector 扩展
+  database:
+    image: pgvector/pgvector:pg16
+    container_name: study-assistant-db
+    environment:
+      # 数据库配置
+      POSTGRES_DB: study_assistant
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      # 性能优化配置
+      POSTGRES_SHARED_PRELOAD_LIBRARIES: vector
+    ports:
+      - "5432:5432"
+    volumes:
+      # 持久化数据存储
+      - postgres_data:/var/lib/postgresql/data
+      # 初始化脚本
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d study_assistant"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - study-assistant-network
+
+  # Redis 缓存和队列存储
+  redis:
+    image: redis:7-alpine
+    container_name: study-assistant-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      # 持久化Redis数据
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - study-assistant-network
+
+  # MinIO 对象存储 (S3兼容)
+  minio:
+    image: minio/minio:latest
+    container_name: study-assistant-storage
+    environment:
+      # MinIO访问凭据
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"  # API端口
+      - "9001:9001"  # Web控制台端口
+    volumes:
+      # 文件存储目录
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - study-assistant-network
+
+  # Python OCR 处理服务 (可选)
+  ocr-service:
+    build:
+      context: ../../app/sidecar
+      dockerfile: Dockerfile
+    container_name: study-assistant-ocr
+    environment:
+      # 连接其他服务
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://postgres:postgres123@database:5432/study_assistant
+    volumes:
+      # 临时文件存储
+      - ocr_temp:/app/temp
+      # 日志输出
+      - ../../logs/ocr:/app/logs
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - study-assistant-network
+    # 仅在需要时启动
+    profiles:
+      - ocr
+
+  # BullMQ Dashboard (开发调试用)
+  bull-dashboard:
+    image: deadly0/bull-board
+    container_name: study-assistant-bull-dashboard
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+    ports:
+      - "3001:3000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - study-assistant-network
+    # 仅开发环境启动
+    profiles:
+      - dev
+
+# 数据卷定义
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  ocr_temp:
+    driver: local
+
+# 网络定义
+networks:
+  study-assistant-network:
+    driver: bridge
+    name: study-assistant-network

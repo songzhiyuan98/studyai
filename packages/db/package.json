@@ -1,0 +1,22 @@
+{
+  "name": "@study-assistant/db",
+  "version": "0.1.0",
+  "description": "数据库层 - Prisma ORM 配置和迁移",
+  "main": "./src/index.ts",
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "studio": "prisma studio",
+    "push": "prisma db push",
+    "seed": "tsx src/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.0.0",
+    "prisma": "^5.0.0",
+    "pgvector": "^0.1.8"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

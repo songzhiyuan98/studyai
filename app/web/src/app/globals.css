@@ -1,0 +1,207 @@
+/* 全局样式文件 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 基础样式重置 */
+@layer base {
+  html {
+    @apply h-full;
+  }
+  
+  body {
+    @apply h-full font-sans antialiased;
+  }
+  
+  * {
+    @apply border-gray-200;
+  }
+}
+
+/* 极简风格组件样式 */
+@layer components {
+  /* 极简按钮样式 */
+  .btn-primary {
+    @apply bg-black text-white px-6 py-3 text-sm font-medium hover:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-gray-900 px-6 py-3 text-sm font-medium border border-gray-200 hover:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-200;
+  }
+  
+  .btn-accent {
+    @apply bg-green-500 text-white px-6 py-3 text-sm font-medium hover:bg-green-600 focus:outline-none focus:ring-1 focus:ring-green-400 transition-colors duration-200;
+  }
+  
+  /* 极简卡片样式 */
+  .card {
+    @apply bg-white border border-gray-200 p-8;
+  }
+  
+  .card-hover {
+    @apply bg-white border border-gray-200 p-8 hover:border-green-500 transition-all duration-300;
+  }
+  
+  /* 极简输入框样式 */
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-200 bg-white placeholder-gray-400 focus:outline-none focus:border-green-500 transition-colors duration-200;
+  }
+  
+  /* 极简导航链接样式 */
+  .nav-link {
+    @apply text-gray-900 hover:text-green-500 text-sm font-medium transition-colors duration-200;
+  }
+  
+  .nav-link.active {
+    @apply text-green-500;
+  }
+  
+  /* 几何图形元素 */
+  .geometric-square {
+    @apply w-8 h-8 bg-black flex items-center justify-center;
+  }
+  
+  .geometric-line {
+    @apply w-px h-16 bg-gray-200;
+  }
+}
+
+/* 工具类样式 */
+@layer utilities {
+  /* 渐变背景 */
+  .bg-gradient-blue {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  
+  /* 文本渐变 */
+  .text-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* 阴影效果 */
+  .shadow-card {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+  
+  .shadow-card-hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 640px) {
+  .container {
+    @apply px-4;
+  }
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #1a1a1a;
+    --text-primary: #ffffff;
+    --border-color: #333333;
+  }
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-400 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-600;
+}
+
+/* 加载动画 */
+.loading-spinner {
+  @apply animate-spin rounded-full h-6 w-6 border-2 border-gray-300 border-t-blue-600;
+}
+
+/* 淡入动画 */
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 文件拖放区域 */
+.drop-zone {
+  @apply border-2 border-dashed border-gray-300 rounded-lg p-8 text-center transition-colors duration-200;
+}
+
+.drop-zone.drag-over {
+  @apply border-blue-400 bg-blue-50;
+}
+
+/* 进度条 */
+.progress-bar {
+  @apply w-full bg-gray-200 rounded-full h-2;
+}
+
+.progress-bar-fill {
+  @apply bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out;
+}
+
+/* 通知样式 */
+.notification {
+  @apply fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 transform transition-all duration-300;
+}
+
+.notification.success {
+  @apply bg-green-100 text-green-800 border border-green-200;
+}
+
+.notification.error {
+  @apply bg-red-100 text-red-800 border border-red-200;
+}
+
+.notification.warning {
+  @apply bg-yellow-100 text-yellow-800 border border-yellow-200;
+}
+
+/* 标签样式 */
+.tag {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.tag.primary {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.tag.success {
+  @apply bg-green-100 text-green-800;
+}
+
+.tag.warning {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+/* 代码块样式 */
+pre {
+  @apply bg-gray-100 rounded-md p-4 overflow-x-auto text-sm;
+}
+
+code {
+  @apply bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono;
+}

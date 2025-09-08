@@ -1,0 +1,307 @@
+// Prisma数据库模式配置
+// 定义学习助手系统的完整数据模型
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+// ================================
+// 用户和认证模型
+// ================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  password      String?   // 可选密码字段，支持凭证认证
+  role          UserRole  @default(STUDENT)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  // 关联关系
+  accounts      Account[]
+  sessions      Session[]
+  folders       Folder[]
+  lectures      Lecture[]
+  selections    Selection[]
+  examAttempts  ExamAttempt[]
+  
+  @@map("users")
+}
+
+enum UserRole {
+  STUDENT     // 学生用户
+  INSTRUCTOR  // 教师用户
+  ADMIN       // 管理员
+}
+
+// NextAuth.js 必需的表
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("sessions")
+}
+
+// ================================
+// 文件夹组织模型
+// ================================
+
+model Folder {
+  id          String   @id @default(cuid())
+  name        String   // 文件夹名称
+  description String?  // 可选描述
+  userId      String   @map("user_id")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // 关联关系
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lectures Lecture[]
+  
+  @@unique([userId, name]) // 用户内文件夹名称唯一
+  @@map("folders")
+}
+
+// ================================
+// 课程和讲义模型
+// ================================
+
+model Lecture {
+  id           String      @id @default(cuid())
+  courseId     String?     @map("course_id")        // 课程标识符(可选)
+  folderId     String      @map("folder_id")        // 必须属于一个文件夹
+  userId       String      @map("user_id")          // 所属用户
+  type         LectureType                          // 文档类型
+  title        String                               // 讲义标题
+  originalName String      @map("original_name")    // 原始文件名
+  fileName     String?     @map("file_name")        // 处理后文件名
+  fileUrl      String      @map("file_url")         // 文件存储URL
+  fileKey      String      @map("file_key")         // 存储系统中的文件键
+  fileSize     Int         @map("file_size")        // 文件大小(字节)
+  
+  // 处理状态和元数据
+  status      ProcessingStatus @default(PENDING)
+  meta        Json?                              // 文档元数据(页数、格式等)
+  processedAt DateTime?        @map("processed_at")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // 关联关系
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder     Folder      @relation(fields: [folderId], references: [id], onDelete: Restrict)
+  segments   Segment[]
+  selections Selection[]
+  
+  @@index([folderId])
+  @@index([userId])
+  @@map("lectures")
+}
+
+enum LectureType {
+  PDF   // PDF文档
+  PPTX  // PowerPoint演示文稿
+  TXT   // 纯文本文档
+}
+
+enum ProcessingStatus {
+  PENDING    // 等待处理
+  PROCESSING // 处理中
+  PROCESSED  // 处理完成
+  FAILED     // 处理失败
+}
+
+// ================================
+// 文档片段模型(核心数据结构)
+// ================================
+
+model Segment {
+  id          String  @id @default(cuid())
+  lectureId   String  @map("lecture_id")
+  
+  // 文本内容
+  text        String  @db.Text                    // 分段文本内容
+  tokenCount  Int     @map("token_count")         // 词元数量
+  
+  // 位置锚点信息
+  page        Int?                                // PDF页码
+  slide       Int?                                // 幻灯片编号
+  charStart   Int?    @map("char_start")          // 字符开始位置
+  charEnd     Int?    @map("char_end")            // 字符结束位置
+  bbox        Json?                               // 边界框坐标[x,y,w,h]
+  
+  // 语义搜索
+  hash        String  @unique                     // 内容哈希(去重)
+  embedding   Unsupported("vector(1536)")?        // 向量嵌入
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // 关联关系
+  lecture Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  
+  @@index([lectureId])
+  @@index([hash])
+  @@map("segments")
+}
+
+// ================================
+// 用户选择和生成内容
+// ================================
+
+model Selection {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  lectureId  String   @map("lecture_id")
+  segmentIds String[] @map("segment_ids")          // 选中的片段ID列表
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // 关联关系
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lecture Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  items   Item[]
+  exams   Exam[]
+  
+  @@map("selections")
+}
+
+// 生成的内容项目
+model Item {
+  id          String   @id @default(cuid())
+  selectionId String   @map("selection_id")
+  type        ItemType                             // 内容类型
+  
+  // 内容和引用
+  payloadJson Json     @map("payload_json")        // 生成的内容数据
+  sourceRefs  Json     @map("source_refs")         // 来源引用信息
+  relatedRefs Json?    @map("related_refs")        // 相关内容引用
+  
+  // AI生成参数
+  model       String?                              // 使用的AI模型
+  tokenUsed   Int?     @map("token_used")          // 消耗的词元数
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // 关联关系
+  selection Selection @relation(fields: [selectionId], references: [id], onDelete: Cascade)
+  
+  @@map("items")
+}
+
+enum ItemType {
+  TRANSLATION // 翻译内容
+  SUMMARY     // 摘要总结
+  GLOSSARY    // 术语表
+  FLASHCARDS  // 闪卡
+  QUIZ        // 测验题目
+}
+
+// ================================
+// 考试和评估模型
+// ================================
+
+model Exam {
+  id            String @id @default(cuid())
+  selectionId   String @map("selection_id")
+  
+  // 考试配置
+  title         String
+  blueprintJson Json   @map("blueprint_json")      // 考试蓝图(题型、难度等)
+  itemIds       String[] @map("item_ids")          // 关联的题目ID
+  
+  // 考试设置
+  timeLimit     Int?   @map("time_limit")          // 时间限制(分钟)
+  shuffleQuestions Boolean @default(true) @map("shuffle_questions")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // 关联关系
+  selection Selection     @relation(fields: [selectionId], references: [id], onDelete: Cascade)
+  attempts  ExamAttempt[]
+  
+  @@map("exams")
+}
+
+model ExamAttempt {
+  id            String @id @default(cuid())
+  examId        String @map("exam_id")
+  userId        String @map("user_id")
+  
+  // 答题数据
+  answers       Json                                // 用户答案
+  score         Decimal? @db.Decimal(5, 2)         // 总分
+  breakdown     Json?                              // 详细评分信息
+  
+  // 时间记录
+  startedAt     DateTime  @default(now()) @map("started_at")
+  submittedAt   DateTime? @map("submitted_at")
+  timeSpent     Int?      @map("time_spent")       // 耗时(秒)
+  
+  // 关联关系
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("exam_attempts")
+}
+
+// ================================
+// 系统作业队列
+// ================================
+
+model Job {
+  id        String    @id @default(cuid())
+  type      String                                 // 作业类型
+  status    JobStatus @default(PENDING)
+  data      Json                                   // 作业数据
+  result    Json?                                  // 执行结果
+  error     String?                                // 错误信息
+  
+  // 时间记录
+  createdAt   DateTime  @default(now()) @map("created_at")
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  
+  @@map("jobs")
+}
+
+enum JobStatus {
+  PENDING    // 待处理
+  RUNNING    // 执行中
+  COMPLETED  // 已完成
+  FAILED     // 失败
+  CANCELLED  // 已取消
+}

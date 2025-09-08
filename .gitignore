@@ -1,0 +1,144 @@
+# Dependencies
+node_modules/
+*.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.lcov
+
+# Next.js
+.next/
+out/
+
+# Production builds
+build/
+dist/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Databases
+*.sqlite
+*.sqlite3
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Turbo
+.turbo/
+
+# Prisma
+packages/db/migrations/
+packages/db/dev.db
+
+# Docker
+.docker/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Uploads and temp files
+uploads/
+temp/
+*.tmp
+
+# Personal/User files that should not be in repository
+# Documents and downloads
+../../Downloads/
+../../Documents/
+../../Desktop/
+../../Applications/
+../../Academic File/
+../../Applications (Parallels)/
+
+# User-specific configuration files
+../../.DS_Store
+../../.Rhistory
+../../.cache/
+../../.claude.json
+../../.claude.json.backup
+../../.claude/
+../../.config/
+../../.cursor-tutor/
+../../.cursor/
+../../.docker/
+../../.fontconfig/
+../../.gitconfig
+../../.gitkraken/
+../../.idlerc/
+../../.ipython/
+../../.jupyter/
+../../.keras/
+../../.lesshst
+../../.local/
+../../.matplotlib/
+../../.mongodb/
+../../.netrc
+../../.npm/
+../../.ssh/
+../../.swiftpm/
+../../.viminfo
+../../.vscode/
+../../.wdm/
+../../.wns/
+../../.wsalock
+../../.zprofile
+../../.zsh_history
+../../.zsh_sessions/
+../../.zshenv
+
+# Media and document files
+*.pdf
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.mp4
+*.mov
+*.webm
+*.dmg
+*.zip
+*.tar.gz
+*.pptx
+*.docx
+*.avif
+*.webp

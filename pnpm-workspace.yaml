@@ -1,0 +1,7 @@
+# PNPM工作区配置文件
+# 定义monorepo中的各个包位置
+packages:
+  # 应用程序包
+  - 'app/*'
+  # 共享包
+  - 'packages/*'
