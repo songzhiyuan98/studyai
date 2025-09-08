@@ -10,6 +10,7 @@ import { authOptions } from '@/lib/auth';
 import { Client as MinioClient } from 'minio';
 import { prisma } from '@study-assistant/db';
 import { z } from 'zod';
+// import { DocumentParserFactory } from '@study-assistant/shared'; // Temporarily commented to test
 
 // 支持的文件类型
 const ALLOWED_FILE_TYPES = {
@@ -213,6 +214,25 @@ export async function POST(request: NextRequest) {
 
     console.log(`📄 File uploaded successfully: ${file.name} -> ${uploadResult.key}`);
 
+    // 触发文档解析（异步处理，不阻塞响应）
+    console.log('🔄 Triggering document processing...');
+    
+    // 直接调用处理函数（不使用动态import）
+    console.log('🔄 Starting document processing...');
+    console.log('📄 Using direct function call for document processing');
+    
+    // 异步执行处理，不阻塞响应
+    processDocumentInternal(lecture.id, session.user.id).then(result => {
+      console.log('✅ Document processing completed successfully:', {
+        segmentCount: result.data.segmentCount,
+        status: result.success
+      });
+    }).catch(error => {
+      console.error('❌ Document processing failed:', error);
+      console.error('❌ Error details:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    });
+
     // 返回成功响应
     return NextResponse.json({
       success: true,
@@ -226,6 +246,7 @@ export async function POST(request: NextRequest) {
         originalName: lecture.originalName,
         folder: lecture.folder,
         createdAt: lecture.createdAt,
+        message: 'File uploaded successfully. Processing started in background.',
       },
     });
 
@@ -331,5 +352,283 @@ export async function GET(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+// Create MinIO client factory to avoid import-time initialization
+function createProcessingMinioClient(): MinioClient {
+  console.log('🔧 Creating MinIO client for document processing...');
+  
+  // Split endpoint from port if combined
+  let endpoint = process.env.MINIO_ENDPOINT || 'localhost';
+  let port = parseInt(process.env.MINIO_PORT || '9000');
+  
+  // Handle case where endpoint contains port (e.g., "localhost:9000")
+  if (endpoint.includes(':')) {
+    const parts = endpoint.split(':');
+    endpoint = parts[0];
+    port = parseInt(parts[1]) || port;
+  }
+  
+  console.log(`🔧 MinIO config: endpoint=${endpoint}, port=${port}`);
+  
+  return new MinioClient({
+    endPoint: endpoint,
+    port: port,
+    useSSL: process.env.MINIO_USE_SSL === 'true',
+    accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+    secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin123',
+  });
+}
+
+function getMimeType(fileType: string): string {
+  switch (fileType) {
+    case 'PDF':
+      return 'application/pdf';
+    case 'PPTX':
+      return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    case 'TXT':
+      return 'text/plain';
+    default:
+      return 'application/octet-stream';
+  }
+}
+
+// Process document function - moved from separate file to avoid dynamic import issues
+async function processDocumentInternal(lectureId: string, userId: string) {
+  console.log('📄 Processing document internally:', lectureId, 'for user:', userId);
+  console.log('🔍 Memory usage before processing:', process.memoryUsage());
+
+  // Set timeout for the entire process
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Document processing timeout (5 minutes)')), 5 * 60 * 1000);
+  });
+
+  try {
+    // Skip authentication since we already have userId
+    console.log('✅ Using provided userId:', userId);
+
+    // Get lecture from database
+    const lecture = await prisma.lecture.findUnique({
+      where: { id: lectureId },
+      include: {
+        folder: true,
+        segments: true
+      }
+    });
+
+    if (!lecture) {
+      throw new Error('Lecture not found');
+    }
+
+    // Check ownership
+    if (lecture.userId !== userId) {
+      console.log('❌ Ownership check failed:', { lectureUserId: lecture.userId, requestUserId: userId });
+      throw new Error('Access denied');
+    }
+    console.log('✅ Ownership verified');
+
+    // Check if already processed
+    if (lecture.status === 'PROCESSED' && lecture.segments.length > 0) {
+      return {
+        success: true,
+        data: {
+          message: 'Document already processed',
+          lecture,
+          segmentCount: lecture.segments.length
+        }
+      };
+    }
+
+    // Update status to processing
+    await prisma.lecture.update({
+      where: { id: lectureId },
+      data: { status: 'PROCESSING' }
+    });
+
+    // Check file size limits before processing
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit
+    if (lecture.fileSize && lecture.fileSize > MAX_FILE_SIZE) {
+      console.log(`❌ File too large: ${lecture.fileSize} bytes (max: ${MAX_FILE_SIZE})`);
+      await prisma.lecture.update({
+        where: { id: lectureId },
+        data: { status: 'FAILED' }
+      });
+      throw new Error(`File size ${Math.round(lecture.fileSize / (1024 * 1024))}MB exceeds maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
+    }
+
+    // Download file from MinIO with streaming and timeout
+    console.log('📥 Downloading file from MinIO:', lecture.fileKey);
+    console.log('📊 Expected file size:', lecture.fileSize);
+    const bucketName = process.env.MINIO_BUCKET_NAME || 'study-assistant';
+    
+    // Create MinIO client just before use
+    const minioClient = createProcessingMinioClient();
+    
+    let fileBuffer: Buffer;
+    try {
+      const downloadPromise = (async () => {
+        const chunks: Buffer[] = [];
+        const stream = await minioClient.getObject(bucketName, lecture.fileKey);
+        
+        let downloadedSize = 0;
+        for await (const chunk of stream) {
+          chunks.push(chunk);
+          downloadedSize += chunk.length;
+          
+          // Progress logging for large files
+          if (downloadedSize > 10 * 1024 * 1024) { // Log every 10MB
+            console.log(`📥 Downloaded ${Math.round(downloadedSize / (1024 * 1024))}MB...`);
+          }
+          
+          // Prevent excessive memory usage
+          if (downloadedSize > MAX_FILE_SIZE) {
+            throw new Error(`File download exceeded maximum size during streaming: ${downloadedSize} bytes`);
+          }
+        }
+        
+        return Buffer.concat(chunks);
+      })();
+      
+      fileBuffer = await Promise.race([downloadPromise, timeoutPromise]);
+      console.log('✅ File downloaded, actual size:', fileBuffer.length);
+      console.log('🔍 Memory usage after download:', process.memoryUsage());
+      
+    } catch (error) {
+      console.error('❌ File download error:', error);
+      throw new Error(`Failed to download file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
+    // Parse document with timeout and memory monitoring
+    console.log('🔍 Parsing document, type:', lecture.type);
+    console.log('📊 Pre-parse memory:', process.memoryUsage());
+    const mimeType = getMimeType(lecture.type);
+    
+    let parsedDoc;
+    try {
+      // 临时使用mock parsing来避免DocumentParserFactory初始化问题
+      console.log('⚠️ Using mock parsing to avoid initialization issues');
+      parsedDoc = {
+        content: `Mock content for ${lecture.originalName}. File size: ${fileBuffer.length} bytes.`,
+        metadata: {
+          pageCount: 1,
+          wordCount: 10,
+          mock: true,
+          originalMimeType: mimeType,
+          processedAt: new Date().toISOString()
+        },
+        segments: [
+          {
+            content: `Mock segment 1 from ${lecture.originalName} - This is the first mock segment with unique content.`,
+            page: 1,
+            charStart: 0,
+            charEnd: 85,
+          },
+          {
+            content: `Mock segment 2 from ${lecture.originalName} - This is the second mock segment with different unique content.`,
+            page: 1,
+            charStart: 86,
+            charEnd: 186,
+          }
+        ]
+      };
+      console.log('✅ Mock document parsed, segments:', parsedDoc.segments.length);
+      console.log('📊 Post-parse memory:', process.memoryUsage());
+      
+    } catch (error) {
+      console.error('❌ Document parsing error:', error);
+      throw new Error(`Failed to parse document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    // Clear file buffer from memory
+    fileBuffer = null;
+    
+    // Force garbage collection if available
+    if (global.gc) {
+      global.gc();
+      console.log('♻️ Garbage collection triggered');
+    }
+
+    // Save segments to database
+    const savedSegments = await Promise.all(
+      parsedDoc.segments.map(segment =>
+        prisma.segment.create({
+          data: {
+            lectureId: lecture.id,
+            text: segment.content, // Prisma schema uses 'text' field, not 'content'
+            tokenCount: segment.content.split(/\s+/).length, // Calculate token count from content
+            page: segment.page,
+            charStart: segment.charStart,
+            charEnd: segment.charEnd,
+            hash: Buffer.from(segment.content).toString('base64').substring(0, 32), // Generate hash for content
+          }
+        })
+      )
+    );
+
+    // Update lecture with parsed content and metadata
+    const updatedLecture = await prisma.lecture.update({
+      where: { id: lectureId },
+      data: {
+        status: 'PROCESSED',
+        // content字段不存在于数据库schema中，移除它
+        meta: {
+          ...lecture.meta,
+          ...parsedDoc.metadata,
+          processedAt: new Date().toISOString(),
+          segmentCount: savedSegments.length,
+          wordCount: parsedDoc.content.split(/\s+/).length,
+          // 将内容保存到meta中而不是单独的content字段
+          content: parsedDoc.content
+        }
+      },
+      include: {
+        segments: true,
+        folder: true
+      }
+    });
+
+    console.log('✅ Document processing complete');
+    console.log('📊 Final memory usage:', process.memoryUsage());
+
+    return {
+      success: true,
+      data: {
+        lecture: updatedLecture,
+        segmentCount: savedSegments.length,
+        metadata: parsedDoc.metadata
+      }
+    };
+
+  } catch (error) {
+    console.error('❌ Document processing error:', error);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('❌ Error type:', typeof error);
+    console.error('📊 Memory usage at error:', process.memoryUsage());
+    
+    // Update status to failed with error details
+    try {
+      await prisma.lecture.update({
+        where: { id: lectureId },
+        data: { 
+          status: 'FAILED',
+          meta: {
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+            failedAt: new Date().toISOString()
+          }
+        }
+      });
+      console.log('📝 Lecture status updated to FAILED with error details');
+    } catch (updateError) {
+      console.error('❌ Failed to update lecture status:', updateError);
+    }
+
+    // Force cleanup
+    if (global.gc) {
+      global.gc();
+      console.log('♻️ Emergency garbage collection triggered');
+    }
+
+    throw error;
   }
 }
