@@ -6,7 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import { createStorageService } from '@study-assistant/shared';
+// import { createStorageService } from '@study-assistant/shared';
+import { Client as MinioClient } from 'minio';
 import { prisma } from '@study-assistant/db';
 import { z } from 'zod';
 
@@ -22,7 +23,7 @@ const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
 // 请求验证schema
 const uploadSchema = z.object({
-  folderId: z.string().uuid('Invalid folder ID'),
+  folderId: z.string().min(1, 'Folder ID is required'),
   title: z.string().optional(),
 });
 
@@ -33,10 +34,15 @@ interface UploadRequest {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('📥 收到文件上传请求');
+  
   try {
     // 验证用户认证
     const session = await getServerSession(authOptions);
+    console.log('👤 用户认证状态:', !!session?.user, session?.user?.id);
+    
     if (!session?.user) {
+      console.log('❌ 用户未认证');
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -44,10 +50,19 @@ export async function POST(request: NextRequest) {
     }
 
     // 解析FormData
+    console.log('📋 解析FormData...');
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const folderId = formData.get('folderId') as string;
     const title = formData.get('title') as string | null;
+    
+    console.log('📄 文件信息:', {
+      name: file?.name,
+      size: file?.size,
+      type: file?.type,
+      folderId,
+      title
+    });
 
     // 验证文件存在
     if (!file) {
@@ -59,8 +74,14 @@ export async function POST(request: NextRequest) {
 
     // 验证请求参数
     try {
+      console.log('🔍 验证参数:', { folderId, title: title || undefined });
       uploadSchema.parse({ folderId, title: title || undefined });
+      console.log('✅ 参数验证通过');
     } catch (error) {
+      console.error('❌ 参数验证失败:', error);
+      if (error instanceof z.ZodError) {
+        console.error('   详细错误:', error.errors);
+      }
       return NextResponse.json(
         { success: false, error: 'Invalid request parameters' },
         { status: 400 }
@@ -104,26 +125,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 创建存储服务
-    const storage = createStorageService();
-    await storage.initialize();
+    // 创建MinIO客户端
+    console.log('🔧 创建MinIO客户端...');
+    const minioClient = new MinioClient({
+      endPoint: 'localhost',
+      port: 9000,
+      useSSL: false,
+      accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+      secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin123',
+    });
+
+    const bucketName = process.env.MINIO_BUCKET_NAME || 'study-assistant';
+    
+    // 检查bucket是否存在
+    console.log('🔄 检查bucket存在性...');
+    const bucketExists = await minioClient.bucketExists(bucketName);
+    if (!bucketExists) {
+      console.log('❌ Bucket不存在:', bucketName);
+      throw new Error(`Storage bucket '${bucketName}' does not exist`);
+    }
+    console.log('✅ MinIO客户端和bucket检查完成');
 
     // 转换文件为Buffer
     const buffer = Buffer.from(await file.arrayBuffer());
 
     // 生成唯一文件名
-    const fileKey = storage.generateUniqueKey(file.name, session.user.id);
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2);
+    const extension = file.name.split('.').pop();
+    const fileKey = `uploads/${session.user.id}/${timestamp}-${random}.${extension}`;
+    
+    console.log('📤 上传文件到MinIO:', fileKey);
 
     // 上传到MinIO
-    const uploadResult = await storage.uploadFile(fileKey, buffer, {
-      contentType: file.type,
-      metadata: {
+    const uploadInfo = await minioClient.putObject(
+      bucketName,
+      fileKey,
+      buffer,
+      buffer.length,
+      {
+        'Content-Type': file.type,
         'original-name': file.name,
         'user-id': session.user.id,
         'folder-id': folderId,
         'upload-date': new Date().toISOString(),
-      },
-    });
+      }
+    );
+
+    // 生成访问URL
+    const fileUrl = await minioClient.presignedGetObject(bucketName, fileKey, 7 * 24 * 60 * 60); // 7天有效期
+
+    const uploadResult = {
+      url: fileUrl,
+      key: fileKey,
+      size: buffer.length,
+    };
+    
+    console.log('✅ 文件上传成功:', uploadResult);
 
     // 确定文件类型
     const fileType = file.type === 'application/pdf' ? 'PDF' :
@@ -173,11 +231,15 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ File upload error:', error);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'Unknown error');
+    console.error('❌ Error type:', typeof error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
     return NextResponse.json(
       { 
         success: false, 
-        error: 'File upload failed. Please try again.' 
+        error: `File upload failed: ${errorMessage}. Please try again.` 
       },
       { status: 500 }
     );

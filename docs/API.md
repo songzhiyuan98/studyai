@@ -5,12 +5,19 @@
 Study Assistant 提供 RESTful API 用于所有前后端通信。
 
 ### 🔗 Base URL
-- **开发环境**: `http://localhost:4000/api`
+- **开发环境**: `http://localhost:3000/api` 
 - **生产环境**: `https://api.study-assistant.com`
 
 ### 🔐 认证方式
-所有接口（除认证接口外）需要在请求头中包含 JWT Token：
+接口使用 NextAuth.js 会话认证，支持：
+- **Cookie认证**: 浏览器自动处理会话cookie
+- **JWT Token**: 可选择性使用Bearer token
+
 ```http
+# Cookie会话认证（推荐）
+Cookie: next-auth.session-token=<session-token>
+
+# 或者JWT Token认证
 Authorization: Bearer <jwt_token>
 ```
 
@@ -69,7 +76,7 @@ Authorization: Bearer <token>
 ### 获取文件夹列表
 ```http
 GET /folders
-Authorization: Bearer <token>
+Cookie: next-auth.session-token=<session-token>
 ```
 
 **响应**:
@@ -78,11 +85,14 @@ Authorization: Bearer <token>
   "success": true,
   "data": [
     {
-      "id": "folder_123",
+      "id": "cmfb03tqk00032oz4h02jjbx6",
       "name": "计算机网络",
       "description": "网络相关课程材料",
-      "lectureCount": 5,
-      "createdAt": "2025-09-08T10:00:00Z"
+      "_count": {
+        "lectures": 5
+      },
+      "createdAt": "2025-09-08T10:00:00Z",
+      "updatedAt": "2025-09-08T12:00:00Z"
     }
   ]
 }
@@ -91,7 +101,8 @@ Authorization: Bearer <token>
 ### 创建文件夹
 ```http
 POST /folders
-Authorization: Bearer <token>
+Cookie: next-auth.session-token=<session-token>
+Content-Type: application/json
 ```
 
 **请求体**:
@@ -102,65 +113,114 @@ Authorization: Bearer <token>
 }
 ```
 
+**响应**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "cmfb03tqk00072oz4h02jjbx7",
+    "name": "数据库系统",
+    "description": "数据库课程资料",
+    "userId": "cmfarp89g0003q2ynzbb653ob",
+    "createdAt": "2025-09-08T13:00:00Z",
+    "updatedAt": "2025-09-08T13:00:00Z"
+  }
+}
+```
+
 ## 📄 文档管理接口
 
 ### 上传文档
 ```http
 POST /lectures
-Authorization: Bearer <token>
 Content-Type: multipart/form-data
+Cookie: next-auth.session-token=<session-token>
 ```
 
 **表单数据**:
-- `file`: 上传的文件 (PDF/PPTX/TXT)
-- `folderId`: 目标文件夹ID
-- `title`: 文档标题 (可选)
+- `file`: 上传的文件 (PDF/PPTX/TXT，最大100MB)
+- `folderId`: 目标文件夹ID (CUID格式，如: cmfb03tqk00032oz4h02jjbx6)
+- `title`: 文档标题 (可选，未提供时使用文件名)
 
-**响应**:
+**文件类型支持**:
+- **PDF**: `application/pdf`
+- **PPTX**: `application/vnd.openxmlformats-officedocument.presentationml.presentation`
+- **TXT**: `text/plain`
+
+**响应** (成功):
 ```json
 {
   "success": true,
   "data": {
-    "id": "lecture_456",
-    "title": "第一章：网络基础",
+    "id": "cmfb03tqk00042oz4h02jjbx8",
+    "title": "第一章：网络基础.pdf",
+    "originalName": "第一章：网络基础.pdf",
     "type": "PDF",
-    "status": "PROCESSING",
-    "fileUrl": "https://storage.example.com/lecture_456.pdf",
-    "folderId": "folder_123"
+    "status": "UPLOADED",
+    "fileKey": "lectures/2025/09/08/cmfb03tqk00042oz4h02jjbx8.pdf",
+    "size": 2048576,
+    "folderId": "cmfb03tqk00032oz4h02jjbx6",
+    "createdAt": "2025-09-08T12:30:00Z"
   }
 }
 ```
 
+**错误响应**:
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "请求参数验证失败",
+    "details": {
+      "field": "folderId",
+      "issue": "Folder ID is required"
+    }
+  }
+}
+```
+
+**常见错误**:
+- `VALIDATION_ERROR`: 文件类型不支持、文件过大、文件夹ID无效
+- `AUTHORIZATION_ERROR`: 无权限访问指定文件夹
+- `STORAGE_ERROR`: MinIO存储服务错误
+- `INTERNAL_ERROR`: 服务器处理文件时出错
+
 ### 获取文档列表
 ```http
-GET /lectures?folderId=folder_123&status=PROCESSED&type=PDF
-Authorization: Bearer <token>
+GET /lectures?folderId=cmfb03tqk00032oz4h02jjbx6&status=UPLOADED&type=PDF
+Cookie: next-auth.session-token=<session-token>
 ```
 
 **查询参数**:
-- `folderId` (可选): 文件夹ID过滤
-- `status` (可选): 处理状态过滤 (`PROCESSING`, `PROCESSED`, `FAILED`)
+- `folderId` (可选): 文件夹ID过滤 (CUID格式)
+- `status` (可选): 处理状态过滤 (`UPLOADED`, `PROCESSING`, `PROCESSED`, `FAILED`)
 - `type` (可选): 文件类型过滤 (`PDF`, `PPTX`, `TXT`)
 
 ### 获取文档详情
 ```http
 GET /lectures/{lectureId}
-Authorization: Bearer <token>
+Cookie: next-auth.session-token=<session-token>
 ```
+
+**参数**:
+- `lectureId`: 文档ID (CUID格式)
 
 **响应**:
 ```json
 {
   "success": true,
   "data": {
-    "id": "lecture_456",
-    "title": "第一章：网络基础",
+    "id": "cmfb03tqk00042oz4h02jjbx8",
+    "title": "第一章：网络基础.pdf",
+    "originalName": "第一章：网络基础.pdf",
     "type": "PDF",
-    "status": "PROCESSED",
-    "fileUrl": "https://storage.example.com/lecture_456.pdf",
+    "status": "UPLOADED",
+    "fileKey": "lectures/2025/09/08/cmfb03tqk00042oz4h02jjbx8.pdf",
+    "size": 2048576,
     "segments": [
       {
-        "id": "segment_789",
+        "id": "cmfb03tqk00052oz4h02jjbx9",
         "content": "网络协议是计算机网络中的基础概念...",
         "page": 1,
         "charStart": 0,
@@ -168,9 +228,11 @@ Authorization: Bearer <token>
       }
     ],
     "folder": {
-      "id": "folder_123",
+      "id": "cmfb03tqk00032oz4h02jjbx6",
       "name": "计算机网络"
-    }
+    },
+    "createdAt": "2025-09-08T12:30:00Z",
+    "updatedAt": "2025-09-08T12:30:00Z"
   }
 }
 ```
@@ -376,4 +438,28 @@ GET /lectures?page=1&limit=10&sort=createdAt&order=desc
 
 ---
 
-**📝 更新说明**: API文档随接口开发进度更新，重要变更会在 CHANGELOG 中记录。
+## 🔧 技术说明
+
+### MinIO 存储配置
+项目使用 MinIO 对象存储服务：
+- **API端点**: `http://localhost:9000`
+- **管理控制台**: `http://localhost:9001` (minioadmin/minioadmin123)
+- **存储桶**: `study-assistant`
+- **文件路径格式**: `lectures/{year}/{month}/{day}/{lectureId}.{ext}`
+
+### 开发环境要求
+- MinIO 服务必须运行且已创建 `study-assistant` 存储桶
+- PostgreSQL 数据库正常运行
+- NextAuth.js 会话配置正确
+
+## 🐛 已知修复的问题
+
+### 文件上传验证错误 (2025-09-08修复)
+**问题**: 文件上传时出现 `VALIDATION_ERROR` - 参数验证失败
+**原因**: Zod验证schema期望UUID格式，但数据库使用CUID格式ID
+**解决**: 修改验证从 `z.string().uuid()` 改为 `z.string().min(1)`
+**影响接口**: `POST /lectures`
+
+---
+
+**📝 更新说明**: API文档随接口开发进度更新，重要变更会在 CHANGELOG 中记录。文档同步更新于 2025-09-08，反映文件上传系统bug修复后的准确状态。

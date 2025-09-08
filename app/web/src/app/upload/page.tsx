@@ -106,6 +106,8 @@ export default function UploadPage() {
 
   // 上传文件
   const uploadFile = async (file: File) => {
+    console.log('🚀 开始上传文件:', file.name, 'size:', file.size, 'type:', file.type);
+    
     if (!selectedFolderId) {
       alert('请先选择文件夹');
       return;
@@ -113,6 +115,7 @@ export default function UploadPage() {
 
     const validation = validateFile(file);
     if (validation) {
+      console.log('❌ 文件验证失败:', validation);
       setUploadProgress(prev => [...prev, {
         fileName: file.name,
         progress: 0,
@@ -130,16 +133,22 @@ export default function UploadPage() {
     }]);
 
     try {
+      console.log('📤 构建FormData，选择的文件夹ID:', selectedFolderId);
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folderId', selectedFolderId);
 
+      console.log('🌐 发送请求到 /api/lectures...');
       const response = await fetch('/api/lectures', {
         method: 'POST',
         body: formData,
       });
 
+      console.log('📡 服务器响应状态:', response.status, response.statusText);
+
       if (response.ok) {
+        const result = await response.json();
+        console.log('✅ 上传成功:', result);
         setUploadProgress(prev => 
           prev.map(item => 
             item.fileName === file.name 
@@ -148,20 +157,35 @@ export default function UploadPage() {
           )
         );
       } else {
-        const error = await response.json();
+        const errorText = await response.text();
+        console.log('❌ 服务器响应错误:', response.status, errorText);
+        
+        let errorMessage = '上传失败';
+        try {
+          const error = JSON.parse(errorText);
+          errorMessage = error.error || error.message || '上传失败';
+        } catch {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        
         setUploadProgress(prev => 
           prev.map(item => 
             item.fileName === file.name 
-              ? { ...item, status: 'error', error: error.error || '上传失败' }
+              ? { ...item, status: 'error', error: errorMessage }
               : item
           )
         );
       }
     } catch (error) {
+      console.log('❌ 网络错误或异常:', error);
+      const errorMessage = error instanceof Error 
+        ? `网络错误: ${error.message}` 
+        : '网络连接失败，请检查服务器状态';
+        
       setUploadProgress(prev => 
         prev.map(item => 
           item.fileName === file.name 
-            ? { ...item, status: 'error', error: '网络错误，请重试' }
+            ? { ...item, status: 'error', error: errorMessage }
             : item
         )
       );
