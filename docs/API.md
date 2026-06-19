@@ -180,44 +180,36 @@ Response shape:
 }
 ```
 
-## Planned Study APIs
-
-The frontend is being aligned around these future APIs:
-
-### Resolve Study Scope
-
-```http
-POST /api/study/scopes
-```
-
-Creates or resolves a scope from selected segment ids, lecture ids, folder ids, or current reader context.
+## Study APIs
 
 ### Run Micro Action
 
 ```http
 POST /api/study/actions
+Cookie: next-auth session
+Content-Type: application/json
 ```
+
+Creates a source-backed study artifact from selected source segments. Current behavior is deterministic placeholder generation: the endpoint creates a `Selection`, creates an `Item`, stores source refs, and returns a short artifact for the reader UI. Later RAG and LLM generation should replace only the placeholder content step, not the request/response contract.
 
 Request:
 
 ```json
 {
-  "scope": {
-    "type": "segments",
-    "segmentIds": ["seg_1", "seg_2"]
-  },
+  "lectureId": "lec_...",
+  "segmentIds": ["seg_1", "seg_2"],
   "action": "explain",
   "instructions": "Use concise bilingual explanation."
 }
 ```
 
-Planned actions:
+Supported actions:
 
 - `explain`
 - `summarize`
-- `translate`
 - `key_terms`
 - `mini_quiz`
+- `cheat_sheet`
 
 Response:
 
@@ -225,19 +217,36 @@ Response:
 {
   "success": true,
   "data": {
-    "artifactId": "item_...",
-    "type": "explain",
-    "content": "...",
-    "sourceRefs": [
-      {
-        "lectureId": "lec_...",
-        "segmentId": "seg_...",
-        "page": 12
-      }
-    ]
+    "artifact": {
+      "id": "item_...",
+      "type": "explain",
+      "itemType": "SUMMARY",
+      "title": "Explain 2 source segments",
+      "content": "Explanation draft grounded in the selected source: ...",
+      "sourceRefs": [
+        {
+          "lectureId": "lec_...",
+          "segmentId": "seg_...",
+          "page": 12,
+          "slide": null,
+          "charStart": 120,
+          "charEnd": 360,
+          "label": "page 12 · seg_..."
+        }
+      ],
+      "createdAt": "2026-06-19T19:02:00.000Z"
+    }
   }
 }
 ```
+
+### Planned: Resolve Study Scope
+
+```http
+POST /api/study/scopes
+```
+
+Creates or resolves a scope from selected segment ids, lecture ids, folder ids, or current reader context.
 
 ### RAG Retrieval
 

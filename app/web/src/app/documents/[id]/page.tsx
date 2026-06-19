@@ -7,8 +7,7 @@ import {
   ReaderLecture,
   mapLectureDetailToReader,
 } from '@/lib/reader-format';
-
-const microActions = ['Explain', 'Summarize', 'Key terms', 'Mini quiz', 'Cheat sheet'];
+import { StudyActionId, StudyArtifact, studyActions } from '@/lib/study-actions';
 
 type LectureDetailResponse = {
   success: boolean;
@@ -18,9 +17,20 @@ type LectureDetailResponse = {
   error?: string;
 };
 
+type StudyActionResponse = {
+  success: boolean;
+  data?: {
+    artifact: StudyArtifact;
+  };
+  error?: string;
+};
+
 export default function DocumentReaderPage({ params }: { params: { id: string } }) {
   const [lecture, setLecture] = useState<ReaderLecture | null>(null);
   const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
+  const [artifacts, setArtifacts] = useState<StudyArtifact[]>([]);
+  const [submittingAction, setSubmittingAction] = useState<StudyActionId | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,6 +83,42 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
         ? current.filter((id) => id !== segmentId)
         : [...current, segmentId],
     );
+  };
+
+  const runStudyAction = async (action: StudyActionId) => {
+    if (!lecture || selectedSegments.length === 0 || submittingAction) return;
+
+    setSubmittingAction(action);
+    setActionError(null);
+
+    try {
+      const response = await fetch('/api/study/actions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lectureId: lecture.id,
+          segmentIds: selectedSegments,
+          action,
+        }),
+      });
+      const result = (await response.json()) as StudyActionResponse;
+
+      if (!response.ok || !result.success || !result.data?.artifact) {
+        throw new Error(result.error || 'Study action could not be created.');
+      }
+
+      setArtifacts((current) => [result.data!.artifact, ...current]);
+    } catch (actionRequestError) {
+      setActionError(
+        actionRequestError instanceof Error
+          ? actionRequestError.message
+          : 'Study action could not be created.',
+      );
+    } finally {
+      setSubmittingAction(null);
+    }
   };
 
   if (loading) {
@@ -148,13 +194,21 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                {microActions.map((action) => (
-                  <button key={action} className="btn-secondary px-3 py-1.5">
-                    {action}
+                {studyActions.map((action) => (
+                  <button
+                    key={action.id}
+                    className="btn-secondary px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={selectedSegments.length === 0 || submittingAction !== null}
+                    onClick={() => runStudyAction(action.id)}
+                  >
+                    {submittingAction === action.id ? 'Working...' : action.label}
                   </button>
                 ))}
               </div>
             </div>
+            {actionError ? (
+              <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{actionError}</p>
+            ) : null}
           </div>
 
           {lecture.segments.length === 0 ? (
@@ -216,11 +270,31 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
 
           <div className="card">
             <h2 className="section-title">Study output</h2>
-            <div className="mt-3 rounded-md border border-dashed border-gray-200 p-4">
-              <p className="text-sm leading-6 text-gray-600">
-                Generated explanations, summaries, quizzes, and cheat sheets will appear here with source references.
-              </p>
-            </div>
+            {artifacts.length === 0 ? (
+              <div className="mt-3 rounded-md border border-dashed border-gray-200 p-4">
+                <p className="text-sm leading-6 text-gray-600">
+                  Generated explanations, summaries, quizzes, and cheat sheets will appear here with source references.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-3 space-y-3">
+                {artifacts.map((artifact) => (
+                  <article key={artifact.id || `${artifact.type}-${artifact.title}`} className="rounded-md border border-gray-200 p-3">
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      <span className="chip-blue">{artifact.title}</span>
+                    </div>
+                    <p className="text-sm leading-6 text-gray-700">{artifact.content}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {artifact.sourceRefs.map((ref) => (
+                        <span key={`${artifact.id}-${ref.segmentId}`} className="chip">
+                          {ref.label}
+                        </span>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
         </aside>
       </div>
