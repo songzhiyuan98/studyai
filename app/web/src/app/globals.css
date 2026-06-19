@@ -1034,6 +1034,11 @@
     @apply text-xs font-medium text-[#737373] underline decoration-[#737373]/20 underline-offset-4 transition-colors hover:text-[#000000] hover:decoration-[#000000]/50 disabled:text-[#a3a3a3] disabled:no-underline;
   }
 
+  .chat-typing-cursor {
+    @apply ml-0.5 inline-block h-4 w-px translate-y-0.5 bg-[#000000];
+    animation: landing-cursor-blink 1s steps(2, start) infinite;
+  }
+
   .chat-composer-dock {
     @apply absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-white via-white via-80% to-white/0 px-4 pb-5 pt-20 sm:px-6;
   }

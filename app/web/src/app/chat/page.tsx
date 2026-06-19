@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 
 type ActionMode = 'free' | 'explain' | 'summarize' | 'key_terms' | 'mini_quiz' | 'cheat_sheet';
@@ -37,6 +37,7 @@ type ChatMessage = {
   };
   mode?: ActionMode;
   savedId?: string;
+  isStreaming?: boolean;
 };
 
 const actionModes: Array<{ id: ActionMode; label: string; hint: string }> = [
@@ -58,6 +59,8 @@ function formatAssistantContent(content: string) {
 }
 
 export default function ChatPage() {
+  const chatScrollRef = useRef<HTMLElement>(null);
+  const typingTimersRef = useRef<number[]>([]);
   const [mode, setMode] = useState<ActionMode>('free');
   const [message, setMessage] = useState('');
   const [sources, setSources] = useState<ChatSource[]>([]);
@@ -116,6 +119,20 @@ export default function ChatPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const scrollElement = chatScrollRef.current;
+    if (!scrollElement) return;
+
+    scrollElement.scrollTo({
+      top: scrollElement.scrollHeight,
+      behavior: 'smooth',
+    });
+  }, [messages, sending]);
+
+  useEffect(() => () => {
+    typingTimersRef.current.forEach((timer) => window.clearInterval(timer));
+  }, []);
+
   const toggleSource = (sourceId: string) => {
     setConfirmedSources((current) => (
       current.includes(sourceId)
@@ -162,14 +179,39 @@ export default function ChatPage() {
         throw new Error(payload.error || 'Failed to generate a grounded response.');
       }
 
+      const assistantId = `assistant-${Date.now()}`;
+      const fullContent = payload.data.message.content as string;
+
       setMessages((current) => [
         ...current,
         {
-          id: `assistant-${Date.now()}`,
           ...payload.data.message,
+          id: assistantId,
+          content: '',
           mode,
+          isStreaming: true,
         },
       ]);
+
+      let visibleChars = 0;
+      const timer = window.setInterval(() => {
+        visibleChars = Math.min(fullContent.length, visibleChars + 8);
+        setMessages((current) => current.map((item) => (
+          item.id === assistantId
+            ? {
+                ...item,
+                content: fullContent.slice(0, visibleChars),
+                isStreaming: visibleChars < fullContent.length,
+              }
+            : item
+        )));
+
+        if (visibleChars >= fullContent.length) {
+          window.clearInterval(timer);
+          typingTimersRef.current = typingTimersRef.current.filter((item) => item !== timer);
+        }
+      }, 20);
+      typingTimersRef.current.push(timer);
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : 'Failed to generate a grounded response.');
       setMessages((current) => [
@@ -231,7 +273,7 @@ export default function ChatPage() {
   return (
     <div className="chat-app-shell">
       <main className="chat-main">
-        <section className="chat-scroll">
+        <section ref={chatScrollRef} className="chat-scroll">
           <div className="chat-welcome">
             <div className="mb-5 flex justify-center">
               <span className="ai-pill">
@@ -334,7 +376,10 @@ export default function ChatPage() {
                 {chatMessage.title ? (
                   <p className="mb-2 text-sm font-medium text-[#000000]">{chatMessage.title}</p>
                 ) : null}
-                <p>{formatAssistantContent(chatMessage.content)}</p>
+                <p>
+                  {formatAssistantContent(chatMessage.content)}
+                  {chatMessage.isStreaming ? <span className="chat-typing-cursor" aria-hidden="true" /> : null}
+                </p>
 
                 {chatMessage.retrieval ? (
                   <div className="mt-4 ai-terminal">
@@ -359,13 +404,15 @@ export default function ChatPage() {
                     <button
                       type="button"
                       onClick={() => saveAssistantMessage(chatMessage)}
-                      disabled={Boolean(chatMessage.savedId) || savingMessageId === chatMessage.id}
+                      disabled={Boolean(chatMessage.savedId) || savingMessageId === chatMessage.id || chatMessage.isStreaming}
                       className="chat-message-action"
                     >
                       {chatMessage.savedId
                         ? 'Saved'
                         : savingMessageId === chatMessage.id
                           ? 'Saving...'
+                          : chatMessage.isStreaming
+                            ? 'Writing...'
                           : 'Save output'}
                     </button>
                     <Link href="/saved" className="chat-message-action">
