@@ -1,9 +1,11 @@
 export type StudyActionId = 'explain' | 'summarize' | 'key_terms' | 'mini_quiz' | 'cheat_sheet';
+export type StudyArtifactType = StudyActionId | 'translate';
+export type StudyItemType = 'TRANSLATION' | 'SUMMARY' | 'GLOSSARY' | 'FLASHCARDS' | 'QUIZ';
 
 export type StudyAction = {
   id: StudyActionId;
   label: string;
-  itemType: 'SUMMARY' | 'GLOSSARY' | 'QUIZ' | 'FLASHCARDS';
+  itemType: Exclude<StudyItemType, 'TRANSLATION'>;
 };
 
 export type StudySourceRef = {
@@ -18,12 +20,20 @@ export type StudySourceRef = {
 
 export type StudyArtifact = {
   id?: string;
-  type: StudyActionId;
-  itemType: StudyAction['itemType'];
+  type: StudyArtifactType;
+  itemType: StudyItemType;
   title: string;
   content: string;
   sourceRefs: StudySourceRef[];
   createdAt?: string | Date;
+};
+
+export type StoredStudyItemRow = {
+  id: string;
+  type: StudyItemType;
+  payloadJson: unknown;
+  sourceRefs: unknown;
+  createdAt: string | Date;
 };
 
 export const studyActions = [
@@ -49,6 +59,49 @@ const placeholderIntros: Record<StudyActionId, string> = {
   mini_quiz: 'Mini-quiz draft grounded in the selected source:',
   cheat_sheet: 'Cheat-sheet draft grounded in the selected source:',
 };
+
+const itemTypeFallbackAction: Record<StudyItemType, StudyArtifactType> = {
+  TRANSLATION: 'translate',
+  SUMMARY: 'summarize',
+  GLOSSARY: 'key_terms',
+  QUIZ: 'mini_quiz',
+  FLASHCARDS: 'cheat_sheet',
+};
+
+function isStudyActionId(value: unknown): value is StudyActionId {
+  return typeof value === 'string' && studyActions.some((action) => action.id === value);
+}
+
+function isStudyArtifactType(value: unknown): value is StudyArtifactType {
+  return value === 'translate' || isStudyActionId(value);
+}
+
+function getPayloadValue(payload: unknown, key: 'action' | 'title' | 'content'): unknown {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return undefined;
+  }
+
+  return (payload as Record<string, unknown>)[key];
+}
+
+function parseSourceRefs(sourceRefs: unknown): StudySourceRef[] {
+  if (!Array.isArray(sourceRefs)) {
+    return [];
+  }
+
+  return sourceRefs
+    .filter((ref): ref is Record<string, unknown> => Boolean(ref) && typeof ref === 'object' && !Array.isArray(ref))
+    .map((ref) => ({
+      lectureId: typeof ref.lectureId === 'string' ? ref.lectureId : '',
+      segmentId: typeof ref.segmentId === 'string' ? ref.segmentId : '',
+      page: typeof ref.page === 'number' ? ref.page : null,
+      slide: typeof ref.slide === 'number' ? ref.slide : null,
+      charStart: typeof ref.charStart === 'number' ? ref.charStart : null,
+      charEnd: typeof ref.charEnd === 'number' ? ref.charEnd : null,
+      label: typeof ref.label === 'string' ? ref.label : 'source',
+    }))
+    .filter((ref) => ref.lectureId && ref.segmentId);
+}
 
 export function getStudyAction(actionId: StudyActionId): StudyAction {
   return studyActions.find((action) => action.id === actionId)!;
@@ -80,5 +133,31 @@ export function buildPlaceholderArtifact({
     title: formatStudyActionTitle(action, sourceRefs.length),
     content: `${placeholderIntros[action]} ${preview}`,
     sourceRefs,
+  };
+}
+
+export function mapStoredItemToArtifact(item: StoredStudyItemRow): StudyArtifact {
+  const payloadAction = getPayloadValue(item.payloadJson, 'action');
+  const action = isStudyArtifactType(payloadAction)
+    ? payloadAction
+    : itemTypeFallbackAction[item.type];
+  const sourceRefs = parseSourceRefs(item.sourceRefs);
+  const payloadTitle = getPayloadValue(item.payloadJson, 'title');
+  const payloadContent = getPayloadValue(item.payloadJson, 'content');
+
+  return {
+    id: item.id,
+    type: action,
+    itemType: item.type,
+    title: typeof payloadTitle === 'string'
+      ? payloadTitle
+      : action === 'translate'
+        ? `Translation from ${sourceRefs.length} source ${sourceRefs.length === 1 ? 'segment' : 'segments'}`
+        : formatStudyActionTitle(action, sourceRefs.length),
+    content: typeof payloadContent === 'string'
+      ? payloadContent
+      : 'Saved study artifact.',
+    sourceRefs,
+    createdAt: item.createdAt,
   };
 }

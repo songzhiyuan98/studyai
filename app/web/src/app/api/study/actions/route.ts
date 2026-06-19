@@ -8,6 +8,7 @@ import {
   buildPlaceholderArtifact,
   formatStudyActionTitle,
   getStudyAction,
+  mapStoredItemToArtifact,
 } from '@/lib/study-actions';
 import { formatSourceRef } from '@/lib/reader-format';
 
@@ -17,6 +18,48 @@ const actionSchema = z.object({
   action: z.enum(['explain', 'summarize', 'key_terms', 'mini_quiz', 'cheat_sheet']),
   instructions: z.string().max(1000).optional(),
 });
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 },
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
+
+    const items = await prisma.item.findMany({
+      where: {
+        selection: {
+          userId: session.user.id,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: Number.isNaN(limit) ? 50 : limit,
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        artifacts: items.map(mapStoredItemToArtifact),
+      },
+    });
+  } catch (error) {
+    console.error('Failed to fetch study artifacts:', error);
+
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch study artifacts' },
+      { status: 500 },
+    );
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {

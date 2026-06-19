@@ -35,7 +35,7 @@ export default function LoginPage() {
     });
 
     if (result?.error) {
-      setError('邮箱或密码不正确');
+      setError('Email or password is incorrect.');
       setLoading(false);
       return;
     }
@@ -45,79 +45,88 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <p className="eyebrow mb-3">Sign in</p>
-          <h1 className="page-title">Open your StudyFlow workspace</h1>
-          <p className="mt-3 text-sm leading-6 text-gray-600">
-            Continue studying with your saved course context and source-backed artifacts.
-          </p>
+    <div className="auth-shell">
+      <section className="auth-copy">
+        <p className="eyebrow">Sign in</p>
+        <h1 className="mt-4 text-4xl font-normal leading-tight text-[#17171c] sm:text-5xl">
+          Return to your source-backed study desk.
+        </h1>
+        <p className="mt-5 max-w-xl text-base leading-7 text-[#616161]">
+          Continue from saved lecture context, generated artifacts, and the exact sources behind your study notes.
+        </p>
+        <div className="mt-8 border-y border-[#d9d9dd] py-4">
+          {['Library', 'Reader', 'Review'].map((item) => (
+            <div key={item} className="flex items-center justify-between py-2 text-sm">
+              <span className="text-[#616161]">{item}</span>
+              <span className="text-[#93939f]">source-aware</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="auth-panel">
+        <div className="mb-6">
+          <p className="text-xs uppercase tracking-normal text-[#75758a]">Workspace access</p>
+          <h2 className="mt-2 text-2xl font-normal text-[#17171c]">Sign in to StudyFlow</h2>
         </div>
 
-        <div className="card">
-          {error && (
-            <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </div>
-          )}
+        {error ? (
+          <div className="mb-4 border-l-2 border-red-700 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        ) : null}
 
-          <form onSubmit={handleSubmit} className="space-y-4" method="post">
-            <div>
-              <label htmlFor="email" className="mb-2 block text-sm font-medium text-gray-900">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className="input-field"
-                placeholder="you@example.com"
-                disabled={loading}
-                autoComplete="email"
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4" method="post">
+          <div>
+            <label htmlFor="email" className="form-label">Email</label>
+            <input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="input-field"
+              placeholder="you@example.com"
+              disabled={loading}
+              autoComplete="email"
+            />
+          </div>
 
-            <div>
-              <label htmlFor="password" className="mb-2 block text-sm font-medium text-gray-900">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="input-field"
-                placeholder="Enter your password"
-                disabled={loading}
-                autoComplete="current-password"
-              />
-            </div>
+          <div>
+            <label htmlFor="password" className="form-label">Password</label>
+            <input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="input-field"
+              placeholder="Enter your password"
+              disabled={loading}
+              autoComplete="current-password"
+            />
+          </div>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full">
-              {loading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </form>
-
-          <button
-            type="button"
-            onClick={() => signIn('google', { callbackUrl })}
-            className="btn-secondary mt-3 w-full"
-          >
-            Continue with Google
+          <button type="submit" disabled={loading} className="btn-primary h-11 w-full">
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
+        </form>
 
-          <p className="mt-6 text-center text-sm text-gray-600">
-            New to StudyFlow?{' '}
-            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-700">
-              Create a workspace
-            </Link>
-          </p>
-        </div>
-      </div>
+        <button
+          type="button"
+          onClick={() => signIn('google', { callbackUrl })}
+          className="btn-secondary mt-3 h-11 w-full"
+        >
+          Continue with Google
+        </button>
+
+        <p className="mt-6 text-center text-sm text-[#616161]">
+          New to StudyFlow?{' '}
+          <Link href="/register" className="text-link">
+            Create a workspace
+          </Link>
+        </p>
+      </section>
     </div>
   );
 }

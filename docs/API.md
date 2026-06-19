@@ -185,6 +185,24 @@ Response shape:
 ### Run Micro Action
 
 ```http
+GET /api/study/actions?limit=50
+Cookie: next-auth session
+```
+
+Lists saved study artifacts for the current user, newest first. The Review page uses this endpoint.
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "artifacts": []
+  }
+}
+```
+
+```http
 POST /api/study/actions
 Cookie: next-auth session
 Content-Type: application/json

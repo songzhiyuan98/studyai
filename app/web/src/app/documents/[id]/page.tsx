@@ -123,23 +123,22 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
 
   if (loading) {
     return (
-      <div className="page-shell">
-        <div className="page-header">
-          <p className="eyebrow">Source reader</p>
-          <div className="mt-4 h-10 w-80 max-w-full rounded-md bg-gray-100" />
-          <div className="mt-3 h-5 w-96 max-w-full rounded-md bg-gray-100" />
+      <div className="reader-shell">
+        <div className="reader-topbar">
+          <div className="h-5 w-40 rounded bg-[#eeece7]" />
+          <div className="h-9 w-28 rounded-full bg-[#eeece7]" />
         </div>
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-3">
-            {[0, 1, 2].map((item) => (
-              <div key={item} className="rounded-lg border border-gray-200 bg-white p-4">
-                <div className="h-5 w-32 rounded bg-gray-100" />
-                <div className="mt-4 h-4 w-full rounded bg-gray-100" />
-                <div className="mt-2 h-4 w-4/5 rounded bg-gray-100" />
-              </div>
-            ))}
+        <div className="reader-grid">
+          <div className="space-y-3 border-r border-[#d9d9dd] p-4">
+            {[0, 1, 2].map((item) => <div key={item} className="h-16 rounded bg-[#eeece7]" />)}
           </div>
-          <div className="card h-64" />
+          <div className="space-y-4 p-8">
+            <div className="h-8 w-72 rounded bg-[#eeece7]" />
+            <div className="h-32 rounded bg-[#eeece7]" />
+          </div>
+          <div className="border-l border-[#d9d9dd] p-4">
+            <div className="h-56 rounded bg-[#eeece7]" />
+          </div>
         </div>
       </div>
     );
@@ -147,13 +146,13 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
 
   if (error || !lecture) {
     return (
-      <div className="page-shell">
+      <div className="tool-shell">
         <div className="page-header">
           <p className="eyebrow">Source reader</p>
           <h1 className="page-title">Lecture unavailable</h1>
           <p className="page-description">{error || 'This lecture does not exist or you do not have access to it.'}</p>
         </div>
-        <div className="desktop-panel p-5">
+        <div className="border-y border-[#d9d9dd] py-6">
           <p className="text-sm leading-6 text-gray-600">
             Return to the library and open a lecture from your own workspace.
           </p>
@@ -166,61 +165,69 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
   }
 
   return (
-    <div className="page-shell">
-      <div className="page-header">
-        <p className="eyebrow">Source reader</p>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h1 className="page-title">{lecture.title}</h1>
-            <p className="page-description">{lecture.metaLine}</p>
+    <div className="reader-shell">
+      <header className="reader-topbar">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-xs text-[#75758a]">
+            <Link href="/library" className="hover:text-[#17171c]">Library</Link>
+            <span>/</span>
+            <span>Reader</span>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/library" className="btn-secondary">
-              Library
-            </Link>
-            <button className="btn-primary">Save scope</button>
-          </div>
+          <h1 className="mt-2 truncate text-2xl font-normal text-[#17171c]">{lecture.title}</h1>
+          <p className="mt-1 truncate text-sm text-[#75758a]">{lecture.metaLine}</p>
         </div>
-      </div>
+        <div className="flex items-center gap-3">
+          <span className="status-pill">{selectedSegments.length} selected</span>
+          <button className="btn-primary">Save scope</button>
+        </div>
+      </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="space-y-4">
-          <div className="desktop-panel px-4 py-3">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div>
-                <div className="text-sm font-medium text-gray-950">Current study scope</div>
-                <div className="text-sm text-gray-500">
-                  {selectedSegments.length} selected source segments
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {studyActions.map((action) => (
-                  <button
-                    key={action.id}
-                    className="btn-secondary px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={selectedSegments.length === 0 || submittingAction !== null}
-                    onClick={() => runStudyAction(action.id)}
-                  >
-                    {submittingAction === action.id ? 'Working...' : action.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {actionError ? (
-              <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{actionError}</p>
-            ) : null}
+      <div className="reader-frame">
+        <div className="reader-grid">
+        <aside className="segment-rail">
+          <div className="mb-4">
+            <p className="text-xs text-[#75758a]">Source map</p>
+            <p className="mt-1 text-sm font-medium text-[#17171c]">{lecture.segments.length} segments</p>
           </div>
 
           {lecture.segments.length === 0 ? (
-            <div className="desktop-panel p-6">
-              <h2 className="section-title">No readable segments yet</h2>
-              <p className="mt-2 text-sm leading-6 text-gray-600">
-                This lecture is still processing or did not produce text segments. Once source segments are available,
-                this page becomes the workspace for small, source-backed study actions.
-              </p>
+            <p className="text-sm leading-6 text-[#616161]">No readable source segments yet.</p>
+          ) : (
+            <div className="space-y-1">
+              {lecture.segments.map((segment, index) => {
+                const selected = selectedSegments.includes(segment.id);
+
+                return (
+                  <button
+                    key={segment.id}
+                    type="button"
+                    onClick={() => toggleSegment(segment.id)}
+                    className={`source-map-row ${selected ? 'source-map-row-active' : ''}`}
+                  >
+                    <span className="text-xs text-[#93939f]">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="min-w-0 flex-1 truncate">{segment.sourceRef}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </aside>
+
+        <main className="reading-canvas">
+          <div className="mb-8 max-w-3xl border-b border-[#d9d9dd] pb-6">
+            <p className="eyebrow">Active scope</p>
+            <h2 className="mt-2 text-3xl font-normal leading-tight text-[#17171c] sm:text-4xl">
+              Read, select, and generate from exact source fragments.
+            </h2>
+          </div>
+
+          {lecture.segments.length === 0 ? (
+            <div className="empty-state border-y border-[#d9d9dd]">
+              <h3>No readable segments yet</h3>
+              <p>This lecture is still processing or did not produce text segments.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="reader-document">
               {lecture.segments.map((segment) => {
                 const selected = selectedSegments.includes(segment.id);
 
@@ -229,64 +236,83 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
                     key={segment.id}
                     type="button"
                     onClick={() => toggleSegment(segment.id)}
-                    className={`w-full rounded-lg border p-4 text-left transition-colors ${
-                      selected
-                        ? 'border-blue-300 bg-blue-50/50'
-                        : 'border-gray-200 bg-white hover:bg-gray-50'
-                    }`}
+                    className={`reader-paragraph ${selected ? 'reader-paragraph-selected' : ''}`}
                   >
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <span className="chip">{segment.sourceRef}</span>
-                      <span className={selected ? 'text-sm font-medium text-blue-700' : 'text-sm text-gray-400'}>
-                        {selected ? 'Selected' : 'Select'}
-                      </span>
-                    </div>
-                    <p className="text-sm leading-6 text-gray-800">{segment.text}</p>
+                    <span className="reader-source-label">{segment.sourceRef}</span>
+                    <span className="block text-left text-base leading-8 text-[#212121]">{segment.text}</span>
                   </button>
                 );
               })}
             </div>
           )}
-        </section>
+        </main>
 
-        <aside className="space-y-4">
-          <div className="card">
-            <h2 className="section-title">Selected context</h2>
-            <div className="mt-3 space-y-2">
+        <aside className="study-panel">
+          <section className="study-panel-section">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs text-[#75758a]">Next action</p>
+                <h2 className="mt-1 text-base font-medium text-[#17171c]">Ask from selection</h2>
+              </div>
+              <span className="status-pill">{selectedSegments.length} refs</span>
+            </div>
+            <button
+              className="btn-primary mt-4 w-full"
+              disabled={selectedSegments.length === 0 || submittingAction !== null}
+              onClick={() => runStudyAction('explain')}
+            >
+              {submittingAction === 'explain' ? 'Working...' : 'Explain selected context'}
+            </button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {studyActions.filter((action) => action.id !== 'explain').map((action) => (
+                <button
+                  key={action.id}
+                  className="scope-preset"
+                  disabled={selectedSegments.length === 0 || submittingAction !== null}
+                  onClick={() => runStudyAction(action.id)}
+                >
+                  {submittingAction === action.id ? 'Working...' : action.label}
+                </button>
+              ))}
+            </div>
+            {actionError ? (
+              <p className="mt-3 border-l-2 border-red-700 bg-red-50 px-3 py-2 text-sm text-red-700">{actionError}</p>
+            ) : null}
+          </section>
+
+          <section className="study-panel-section">
+            <p className="text-xs text-[#75758a]">Selected context</p>
+            <div className="mt-3 space-y-3">
               {selectedText.length === 0 ? (
-                <p className="rounded-md bg-gray-50 p-3 text-sm leading-6 text-gray-500">
-                  Select one or more source segments to build a study scope.
+                <p className="text-sm leading-6 text-[#616161]">
+                  Select one or more segments from the source map or document canvas.
                 </p>
               ) : (
                 selectedText.map((segment) => (
-                  <div key={segment.id} className="rounded-md bg-gray-50 p-3">
-                    <div className="mb-1 text-xs text-gray-500">{segment.sourceRef}</div>
-                    <p className="line-clamp-3 text-sm leading-6 text-gray-700">{segment.text}</p>
+                  <div key={segment.id} className="context-snippet">
+                    <div className="mb-1 text-xs text-[#75758a]">{segment.sourceRef}</div>
+                    <p className="line-clamp-4 text-sm leading-6 text-[#616161]">{segment.text}</p>
                   </div>
                 ))
               )}
             </div>
-          </div>
+          </section>
 
-          <div className="card">
-            <h2 className="section-title">Study output</h2>
+          <section className="study-panel-section">
+            <p className="text-xs text-[#75758a]">Output</p>
             {artifacts.length === 0 ? (
-              <div className="mt-3 rounded-md border border-dashed border-gray-200 p-4">
-                <p className="text-sm leading-6 text-gray-600">
-                  Generated explanations, summaries, quizzes, and cheat sheets will appear here with source references.
-                </p>
-              </div>
+              <p className="mt-3 text-sm leading-6 text-[#616161]">
+                Generated explanations, summaries, quizzes, and cheat sheets appear here with source references.
+              </p>
             ) : (
-              <div className="mt-3 space-y-3">
+              <div className="mt-3 divide-y divide-[#d9d9dd] border-y border-[#d9d9dd]">
                 {artifacts.map((artifact) => (
-                  <article key={artifact.id || `${artifact.type}-${artifact.title}`} className="rounded-md border border-gray-200 p-3">
-                    <div className="mb-2 flex flex-wrap gap-2">
-                      <span className="chip-blue">{artifact.title}</span>
-                    </div>
-                    <p className="text-sm leading-6 text-gray-700">{artifact.content}</p>
+                  <article key={artifact.id || `${artifact.type}-${artifact.title}`} className="py-4">
+                    <div className="mb-2 text-sm font-medium text-[#17171c]">{artifact.title}</div>
+                    <p className="text-sm leading-6 text-[#616161]">{artifact.content}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {artifact.sourceRefs.map((ref) => (
-                        <span key={`${artifact.id}-${ref.segmentId}`} className="chip">
+                        <span key={`${artifact.id}-${ref.segmentId}`} className="status-pill">
                           {ref.label}
                         </span>
                       ))}
@@ -295,8 +321,9 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
                 ))}
               </div>
             )}
-          </div>
+          </section>
         </aside>
+        </div>
       </div>
     </div>
   );

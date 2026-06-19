@@ -5,11 +5,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
+import { createHash } from 'crypto';
 import { authOptions } from '@/lib/auth';
 // import { createStorageService } from '@study-assistant/shared';
 import { Client as MinioClient } from 'minio';
 import { prisma } from '@study-assistant/db';
 import { z } from 'zod';
+import { parseMinioEndpoint } from '@/lib/minio-config';
 // import { DocumentParserFactory } from '@study-assistant/shared'; // Temporarily commented to test
 
 // 支持的文件类型
@@ -32,6 +34,33 @@ interface UploadRequest {
   file: File;
   folderId: string;
   title?: string;
+}
+
+function createMinioClient(): MinioClient {
+  const endpoint = parseMinioEndpoint(process.env.MINIO_ENDPOINT, process.env.MINIO_PORT);
+
+  return new MinioClient({
+    endPoint: endpoint.endPoint,
+    port: endpoint.port,
+    useSSL: process.env.MINIO_USE_SSL === 'true',
+    accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+    secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin123',
+  });
+}
+
+async function ensureBucketExists(minioClient: MinioClient, bucketName: string) {
+  const bucketExists = await minioClient.bucketExists(bucketName);
+
+  if (!bucketExists) {
+    console.log('🪣 Bucket missing, creating:', bucketName);
+    await minioClient.makeBucket(bucketName);
+  }
+}
+
+function createSegmentHash(lectureId: string, content: string, index: number): string {
+  return createHash('sha256')
+    .update(`${lectureId}:${index}:${content}`)
+    .digest('hex');
 }
 
 export async function POST(request: NextRequest) {
@@ -128,23 +157,13 @@ export async function POST(request: NextRequest) {
 
     // 创建MinIO客户端
     console.log('🔧 创建MinIO客户端...');
-    const minioClient = new MinioClient({
-      endPoint: 'localhost',
-      port: 9000,
-      useSSL: false,
-      accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-      secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin123',
-    });
+    const minioClient = createMinioClient();
 
     const bucketName = process.env.MINIO_BUCKET_NAME || 'study-assistant';
     
     // 检查bucket是否存在
     console.log('🔄 检查bucket存在性...');
-    const bucketExists = await minioClient.bucketExists(bucketName);
-    if (!bucketExists) {
-      console.log('❌ Bucket不存在:', bucketName);
-      throw new Error(`Storage bucket '${bucketName}' does not exist`);
-    }
+    await ensureBucketExists(minioClient, bucketName);
     console.log('✅ MinIO客户端和bucket检查完成');
 
     // 转换文件为Buffer
@@ -359,22 +378,13 @@ export async function GET(request: NextRequest) {
 function createProcessingMinioClient(): MinioClient {
   console.log('🔧 Creating MinIO client for document processing...');
   
-  // Split endpoint from port if combined
-  let endpoint = process.env.MINIO_ENDPOINT || 'localhost';
-  let port = parseInt(process.env.MINIO_PORT || '9000');
+  const endpoint = parseMinioEndpoint(process.env.MINIO_ENDPOINT, process.env.MINIO_PORT);
   
-  // Handle case where endpoint contains port (e.g., "localhost:9000")
-  if (endpoint.includes(':')) {
-    const parts = endpoint.split(':');
-    endpoint = parts[0];
-    port = parseInt(parts[1]) || port;
-  }
-  
-  console.log(`🔧 MinIO config: endpoint=${endpoint}, port=${port}`);
+  console.log(`🔧 MinIO config: endpoint=${endpoint.endPoint}, port=${endpoint.port}`);
   
   return new MinioClient({
-    endPoint: endpoint,
-    port: port,
+    endPoint: endpoint.endPoint,
+    port: endpoint.port,
     useSSL: process.env.MINIO_USE_SSL === 'true',
     accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
     secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin123',
@@ -560,7 +570,7 @@ async function processDocumentInternal(lectureId: string, userId: string) {
 
     // Save segments to database
     const savedSegments = await Promise.all(
-      parsedDoc.segments.map(segment =>
+      parsedDoc.segments.map((segment, index) =>
         prisma.segment.create({
           data: {
             lectureId: lecture.id,
@@ -569,7 +579,7 @@ async function processDocumentInternal(lectureId: string, userId: string) {
             page: segment.page,
             charStart: segment.charStart,
             charEnd: segment.charEnd,
-            hash: Buffer.from(segment.content).toString('base64').substring(0, 32), // Generate hash for content
+            hash: createSegmentHash(lecture.id, segment.content, index),
           }
         })
       )

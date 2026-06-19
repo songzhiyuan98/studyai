@@ -44,17 +44,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN" className="h-full">
-      <body className={`${inter.className} h-full bg-gray-50 antialiased`}>
+      <body className={`${inter.className} h-full bg-white antialiased`}>
         <AuthProvider>
-          <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/90 backdrop-blur">
+          <header className="sticky top-0 z-40 border-b border-[#d9d9dd] bg-white/95 backdrop-blur">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center h-16">
+              <div className="flex h-16 items-center justify-between gap-4">
                 <div className="flex items-center">
-                  <Link href="/" className="flex items-center gap-3 rounded-md hover:opacity-80 transition-opacity">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white">
-                      <div className="h-3 w-3 rounded-sm bg-blue-600" />
+                  <Link href="/dashboard" className="flex items-center gap-3 rounded-md transition-opacity hover:opacity-80">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md border border-[#d9d9dd] bg-white">
+                      <div className="h-3 w-3 rounded-sm bg-[#17171c]" />
                     </div>
-                    <span className="text-base font-semibold text-gray-950">
+                    <span className="text-base font-medium text-[#17171c]">
                       StudyFlow
                     </span>
                   </Link>
@@ -66,9 +66,9 @@ export default function RootLayout({
           <main className="min-h-[calc(100vh-4rem)]">
             {children}
           </main>
-          <footer className="border-t border-gray-200 bg-white">
+          <footer className="border-t border-[#d9d9dd] bg-white">
             <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-              <div className="flex flex-col gap-2 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2 text-sm text-[#75758a] sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   &copy; 2026 StudyFlow
                 </div>
