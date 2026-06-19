@@ -16,19 +16,19 @@ const inter = Inter({ subsets: ['latin'] });
 // 页面元数据配置
 export const metadata: Metadata = {
   title: {
-    template: '%s | Study Assistant',
-    default: 'Study Assistant - AI学习助手',
+    template: '%s | StudyFlow',
+    default: 'StudyFlow',
   },
-  description: '基于AI的智能学习辅助平台，将教育材料转换为个性化学习内容和模拟考试',
-  keywords: ['AI', '学习', '教育', 'PDF', '翻译', '总结', '考试'],
-  authors: [{ name: 'Study Assistant Team' }],
+  description: 'Citation-first study workspace for student-owned lecture materials.',
+  keywords: ['study workspace', 'RAG', 'lecture notes', 'citation', 'student tools'],
+  authors: [{ name: 'StudyFlow Team' }],
   openGraph: {
     type: 'website',
     locale: 'zh_CN',
     url: 'http://localhost:3000',
-    siteName: 'Study Assistant',
-    title: 'Study Assistant - AI学习助手',
-    description: '基于AI的智能学习辅助平台',
+    siteName: 'StudyFlow',
+    title: 'StudyFlow',
+    description: 'Citation-first study workspace for student-owned lecture materials.',
   },
   robots: {
     index: true,
@@ -44,44 +44,36 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN" className="h-full">
-      <body className={`${inter.className} h-full bg-white antialiased`}>
+      <body className={`${inter.className} h-full bg-gray-50 antialiased`}>
         <AuthProvider>
-          {/* 极简导航头部 */}
-          <header className="bg-white border-b border-gray-100">
-            <div className="max-w-6xl mx-auto px-6">
+          <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/90 backdrop-blur">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between items-center h-16">
-                {/* 极简Logo - 点击返回主页 */}
                 <div className="flex items-center">
-                  <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-                    <div className="w-8 h-8 bg-black flex items-center justify-center">
-                      <div className="w-4 h-4 bg-white"></div>
+                  <Link href="/" className="flex items-center gap-3 rounded-md hover:opacity-80 transition-opacity">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white">
+                      <div className="h-3 w-3 rounded-sm bg-blue-600" />
                     </div>
-                    <span className="text-xl font-light tracking-wide text-black">
-                      Study Assistant
+                    <span className="text-base font-semibold text-gray-950">
+                      StudyFlow
                     </span>
                   </Link>
                 </div>
-                
-                {/* 会话感知导航 */}
                 <Navigation />
               </div>
             </div>
           </header>
-          
-          {/* 主要内容区域 */}
-          <main className="min-h-screen">
+          <main className="min-h-[calc(100vh-4rem)]">
             {children}
           </main>
-          
-          {/* 极简脚部 */}
-          <footer className="bg-white border-t border-gray-100">
-            <div className="max-w-6xl mx-auto px-6 py-12">
-              <div className="flex justify-between items-center">
-                <div className="text-gray-600 text-sm">
-                  &copy; 2025 Study Assistant
+          <footer className="border-t border-gray-200 bg-white">
+            <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+              <div className="flex flex-col gap-2 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  &copy; 2026 StudyFlow
                 </div>
-                <div className="text-gray-400 text-sm">
-                  AI-Powered Learning Platform
+                <div>
+                  Student-owned course context, grounded in sources.
                 </div>
               </div>
             </div>

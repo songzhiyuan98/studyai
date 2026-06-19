@@ -1,7 +1,7 @@
 {
   "name": "@study-assistant/web",
   "version": "0.1.0",
-  "description": "前端Web应用 - Next.js + React",
+  "description": "StudyFlow web app - citation-first student study workspace",
   "private": true,
   "scripts": {
     "dev": "next dev",

@@ -32,9 +32,13 @@ export class LectureQueries {
     courseId: string;
     type: 'PDF' | 'PPTX' | 'TXT';
     title: string;
+    originalName: string;
     fileName: string;
     fileUrl: string;
+    fileKey: string;
     fileSize: number;
+    folderId: string;
+    userId: string;
     meta?: any;
   }): Promise<Lecture> {
     return prisma.lecture.create({
@@ -50,7 +54,7 @@ export class LectureQueries {
    */
   static async updateStatus(
     id: string, 
-    status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED',
+    status: 'PENDING' | 'PROCESSING' | 'PROCESSED' | 'FAILED',
     meta?: any
   ): Promise<Lecture> {
     return prisma.lecture.update({
@@ -58,7 +62,7 @@ export class LectureQueries {
       data: {
         status,
         meta,
-        processedAt: status === 'COMPLETED' ? new Date() : null
+        processedAt: status === 'PROCESSED' ? new Date() : null
       }
     });
   }

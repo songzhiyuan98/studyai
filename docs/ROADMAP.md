@@ -1,99 +1,61 @@
-# 🗺️ 开发路线图
+# StudyFlow Roadmap
 
-## 🎯 **Phase 1: 基础建设 (第1-2周)**
-**目标**: 核心文档处理管道和基础内容生成
+## Phase 1: Citation-First Study Loop
 
-### ✅ Week 1: 核心基础设施
-- [x] **Monorepo 环境搭建** (✅ 已完成)
-- [x] **PostgreSQL + pgvector 数据库配置** (✅ 已完成 2025-09-08)
-- [x] **基础认证系统 (NextAuth.js)** (✅ 已完成 2025-09-08)
-- [x] **文件上传和存储系统 (S3/MinIO)** (✅ 已完成 2025-09-08)
-- [ ] **PDF/TXT 解析管道 (Node.js)** ← 当前任务
-- [ ] **文档分段和锚点实现**
+**Goal:** Build the smallest reliable student workflow: upload course material, parse it into source-aware segments, select a study scope, and perform small citation-backed AI actions.
 
-### 📋 Week 2: 内容选择和生成
-- [ ] **PDF.js 文档阅读器界面构建**
-- [ ] **文本选择和段落管理**
-- [ ] **BullMQ 后台作业队列创建**
-- [ ] **基础 AI 翻译和总结**
-- [ ] **向量嵌入和相似性搜索**
-- [ ] **审阅内容展示界面**
-- [x] **🗂️ 文件夹组织系统** (✅ 已完成 2025-09-08)
+### In Progress
 
----
+- Account-based workspace.
+- Folder/course-style organization.
+- File upload to MinIO with database records.
+- Basic reader, library, upload, review, and study pages.
 
-## ⚡ **Phase 2: 功能增强 (第3-4周)**
-**目标**: 高级功能和考试系统
+### Next
 
-### 📈 Week 3: 高级处理
-- [ ] **PPTX 幻灯片支持**
-- [ ] **OCR 扫描文档处理 (Python sidecar)**
-- [ ] **双栏学术论文布局重建**
-- [ ] **表格和公式识别**
-- [ ] **向量搜索相关知识侧边栏**
-- [ ] **内容导出 (Markdown, CSV, Anki)**
+- Replace mock parsing with real TXT and PDF parsing.
+- Implement structure-aware chunking with stable `Segment` source metadata.
+- Build a working lecture reader backed by database data.
+- Add segment selection and saved study scope state.
+- Add embeddings for segments and pgvector retrieval inside the selected scope.
+- Implement micro actions: Explain, Summarize, Translate, Key Terms, Mini Quiz.
+- Store generated artifacts with `sourceRefs`.
 
-### 🎓 Week 4: 考试系统
-- [ ] **考试蓝图系统 (题型、难度)**
-- [ ] **基于证据的题目生成**
-- [ ] **考试播放器界面和计时器**
-- [ ] **自动评分系统和评分标准**
-- [ ] **性能分析和反馈**
-- [ ] **错误分析和改进建议**
+## Phase 2: RAG Quality
 
----
+**Goal:** Move from basic retrieval to student-grade, source-grounded RAG.
 
-## 🚀 **Phase 3: 生产就绪 (第5-6周)**
-**目标**: 安全、性能和部署准备
+- Metadata-filtered retrieval by user, course/folder, lecture, page/slide, and saved scope.
+- Hybrid search combining keyword and vector retrieval.
+- Parent-child retrieval so small chunks retrieve larger page/slide context.
+- MMR or equivalent context deduplication.
+- Context packing by topic and source order.
+- Citation validation for generated claims.
+- Source jump links from generated artifacts back to lecture segments.
 
-### 🔒 Week 5: 安全合规
-- [ ] **学术诚信保护措施**
-- [ ] **全面审计日志**
-- [ ] **基于角色的访问控制 (RBAC)**
-- [ ] **成本控制和令牌预算**
-- [ ] **数据加密和隐私控制**
-- [ ] **合规报告功能**
+## Phase 3: Study Artifacts
 
-### 🛠️ Week 6: 运维部署
-- [ ] **OpenTelemetry 监控**
-- [ ] **缓存和性能优化**
-- [ ] **Docker 容器和 Kubernetes manifests**
-- [ ] **自动化测试 CI/CD 管道**
-- [ ] **错误跟踪和警报系统**
-- [ ] **生产部署文档准备**
+**Goal:** Turn contextual interactions into reusable review materials.
 
----
+- Saved study packs for midterm/final/chapter review.
+- Flashcards generated from selected or retrieved segments.
+- Printable cheat sheet generation with user constraints.
+- Export to Markdown/PDF.
+- Review history for generated explanations, translations, and quizzes.
 
-## 📊 **当前状态** (更新: 2025-09-08)
+## Phase 4: Exam and Feedback
 
-### ✅ 已完成
-- ✅ **数据库基础设施** - PostgreSQL + pgvector + Prisma
-- ✅ **认证系统** - NextAuth.js + 凭证/OAuth + 中间件保护
-- ✅ **文件夹组织** - 用户级文档分类和管理
-- ✅ **文件上传系统** - MinIO 存储 + API 集成 + Bug修复完成
+**Goal:** Add larger assessment workflows after the RAG foundation is trustworthy.
 
-### 🔄 进行中
-- **PDF/TXT 解析管道** - 文档内容提取和处理
+- Exam blueprint builder.
+- Multi-question mock exams based on selected study scopes.
+- Grading rubrics for short answers.
+- Evidence-backed explanations for answers.
+- Weak-area summaries based on attempts.
 
-### 📈 完成度
-- **Phase 1**: 67% (4/6 主要任务)
-- **总体进度**: 22% (4/18 主要任务)
+## Deferred for Later
 
----
-
-## 🎯 **下一步行动** 
-
-1. **立即任务**: 实现 PDF/TXT 解析管道和文档内容提取
-2. **本周目标**: 完成 Week 1 剩余基础设施任务
-3. **里程碑**: Phase 1 文档处理基础功能完整可用
-
-### 🔧 具体下一步任务：
-- 实现 PDF 文本提取 (使用 PDF.js 或 pdf-parse)
-- 实现 PPTX 内容解析 (使用 officegen 或类似工具)
-- 实现 TXT 文件读取和编码处理
-- 设计文档分段策略和锚点系统
-- 创建文档内容预处理管道
-
----
-
-**📝 更新说明**: 本文档每完成主要功能后更新，记录实际进度和调整后的时间表。
+- Full teacher/instructor workflows.
+- Classroom analytics.
+- Complex review approval queues.
+- Production billing and quota systems.

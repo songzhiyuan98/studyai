@@ -400,7 +400,7 @@ async function processDocumentInternal(lectureId: string, userId: string) {
   console.log('🔍 Memory usage before processing:', process.memoryUsage());
 
   // Set timeout for the entire process
-  const timeoutPromise = new Promise((_, reject) => {
+  const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => reject(new Error('Document processing timeout (5 minutes)')), 5 * 60 * 1000);
   });
 
@@ -465,7 +465,7 @@ async function processDocumentInternal(lectureId: string, userId: string) {
     // Create MinIO client just before use
     const minioClient = createProcessingMinioClient();
     
-    let fileBuffer: Buffer;
+    let fileBuffer: Buffer | null;
     try {
       const downloadPromise = (async () => {
         const chunks: Buffer[] = [];
@@ -504,7 +504,16 @@ async function processDocumentInternal(lectureId: string, userId: string) {
     console.log('📊 Pre-parse memory:', process.memoryUsage());
     const mimeType = getMimeType(lecture.type);
     
-    let parsedDoc;
+    let parsedDoc: {
+      content: string;
+      metadata: Record<string, unknown>;
+      segments: Array<{
+        content: string;
+        page: number;
+        charStart: number;
+        charEnd: number;
+      }>;
+    };
     try {
       // 临时使用mock parsing来避免DocumentParserFactory初始化问题
       console.log('⚠️ Using mock parsing to avoid initialization issues');
@@ -573,7 +582,7 @@ async function processDocumentInternal(lectureId: string, userId: string) {
         status: 'PROCESSED',
         // content字段不存在于数据库schema中，移除它
         meta: {
-          ...lecture.meta,
+          ...(lecture.meta && typeof lecture.meta === 'object' && !Array.isArray(lecture.meta) ? lecture.meta : {}),
           ...parsedDoc.metadata,
           processedAt: new Date().toISOString(),
           segmentCount: savedSegments.length,

@@ -1,5 +1,27 @@
 # 📝 开发变更日志
 
+## 2026-06-19 - StudyFlow 产品重定位与前端安全修复
+
+**完成项目**: 将 Study Assistant 重定位为 StudyFlow，并建立 citation-first 学生学习工作台方向。
+
+### 已完成
+
+- 将 README、Roadmap、Architecture、API 文档更新为 StudyFlow 产品定位。
+- 明确 MVP 主线：上传资料、解析切分、选择 Study Scope、执行微型 AI 动作、保存带引用的学习产物。
+- 将翻译定位为 derived micro action，不进入 ingestion pipeline，不影响原文切分和 RAG source of truth。
+- 将 cheat sheet 加入后续路线图，作为基于 Study Scope 的可打印生成产物。
+- 修复登录 callback URL 安全隐患：只允许同应用相对路径，拒绝外部 absolute URL 和 protocol-relative URL。
+- 修复文档阅读器和考试页的 Next.js server/client component 运行时错误。
+- 增加 Node 测试覆盖 callback URL sanitizer 和交互页 client component 约束。
+
+### 产品原则
+
+- 原始 lecture segment 永远是 source of truth。
+- AI 输出必须保存 `sourceRefs`。
+- 交互体验优先支持小范围、连续、上下文感知的学习动作，而不是一次性生成大量内容。
+
+---
+
 ## 2025-09-08 - API文档同步更新完成
 
 **完成项目**: API文档更新，反映文件上传系统bug修复后的准确状态

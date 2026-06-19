@@ -13,52 +13,50 @@ export function Navigation() {
 
   if (status === 'loading') {
     return (
-      <div className="flex items-center space-x-4">
-        <div className="w-16 h-8 bg-gray-200 animate-pulse rounded"></div>
-        <div className="w-20 h-8 bg-gray-200 animate-pulse rounded"></div>
+      <div className="flex items-center gap-3">
+        <div className="h-8 w-20 animate-pulse rounded-md bg-gray-100" />
+        <div className="h-8 w-24 animate-pulse rounded-md bg-gray-100" />
       </div>
     );
   }
 
   if (session?.user) {
     return (
-      <div className="flex items-center space-x-6">
-        {/* 已登录用户的导航 */}
-        <nav className="hidden md:flex items-center space-x-8">
-          <Link href="/dashboard" className="text-gray-900 hover:text-green-500 transition-colors text-sm font-medium">
-            Dashboard
+      <div className="flex items-center gap-5">
+        <nav className="hidden items-center gap-1 md:flex">
+          <Link href="/dashboard" className="nav-link">
+            Workspace
           </Link>
-          <Link href="/upload" className="text-gray-900 hover:text-green-500 transition-colors text-sm font-medium">
+          <Link href="/upload" className="nav-link">
             Upload
           </Link>
-          <Link href="/library" className="text-gray-900 hover:text-green-500 transition-colors text-sm font-medium">
+          <Link href="/library" className="nav-link">
             Library
           </Link>
-          <Link href="/study" className="text-gray-900 hover:text-green-500 transition-colors text-sm font-medium">
+          <Link href="/study" className="nav-link">
             Study
           </Link>
-          <Link href="/review" className="text-gray-900 hover:text-green-500 transition-colors text-sm font-medium">
+          <Link href="/review" className="nav-link">
             Review
           </Link>
         </nav>
-        
-        {/* 用户菜单 */}
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
+
+        <div className="flex items-center gap-3">
+          <div className="hidden items-center gap-2 sm:flex">
             {session.user.image && (
-              <img 
+              <img
                 src={session.user.image} 
                 alt={session.user.name || session.user.email}
-                className="w-8 h-8 rounded-full"
+                className="h-7 w-7 rounded-full"
               />
             )}
-            <span className="text-sm font-medium text-gray-900">
+            <span className="max-w-40 truncate text-sm text-gray-700">
               {session.user.name || session.user.email}
             </span>
           </div>
           <button
             onClick={() => signOut({ callbackUrl: '/' })}
-            className="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
+            className="btn-ghost"
           >
             登出
           </button>
@@ -68,12 +66,11 @@ export function Navigation() {
   }
 
   return (
-    <div className="flex items-center space-x-4">
-      {/* 未登录用户的导航 */}
-      <Link href="/login" className="text-gray-900 hover:text-green-500 transition-colors text-sm font-medium">
+    <div className="flex items-center gap-2">
+      <Link href="/login" className="btn-ghost">
         Login
       </Link>
-      <Link href="/register" className="bg-black text-white px-6 py-2 text-sm font-medium hover:bg-gray-800 transition-colors">
+      <Link href="/register" className="btn-primary">
         Sign Up
       </Link>
     </div>

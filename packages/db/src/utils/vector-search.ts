@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '../index';
-import type { Segment } from '@prisma/client';
+import type { Prisma, Segment } from '@prisma/client';
 
 /**
  * 向量搜索结果接口
@@ -103,7 +103,22 @@ export class VectorSearch {
       LIMIT $2
     `;
 
-    const results = await prisma.$queryRawUnsafe<Array<Segment & { similarity: number }>>(
+    type RawSegmentSearchRow = {
+      id: string;
+      lecture_id: string;
+      text: string;
+      token_count: number;
+      page: number | null;
+      slide: number | null;
+      char_start: number | null;
+      char_end: number | null;
+      bbox: Prisma.JsonValue;
+      hash: string;
+      created_at: Date;
+      similarity: number;
+    };
+
+    const results = await prisma.$queryRawUnsafe<RawSegmentSearchRow[]>(
       query,
       ...queryParams
     );
