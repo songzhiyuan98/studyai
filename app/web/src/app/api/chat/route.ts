@@ -5,55 +5,13 @@ import { z } from 'zod';
 import { authOptions } from '@/lib/auth';
 import { formatSourceRef } from '@/lib/reader-format';
 import { retrieveContextForQuery, compactContextText } from '@/lib/rag-context';
+import { buildChatAnswer, chatModeLabels } from '@/lib/chat-answer';
 
 const chatSchema = z.object({
   message: z.string().min(1).max(2000),
   mode: z.enum(['free', 'explain', 'summarize', 'key_terms', 'mini_quiz', 'cheat_sheet']).default('free'),
   lectureIds: z.array(z.string().min(1)).max(20).optional(),
 });
-
-type ChatMode = z.infer<typeof chatSchema>['mode'];
-
-const modeLabels: Record<ChatMode, string> = {
-  free: 'Study answer',
-  explain: 'Explanation',
-  summarize: 'Summary',
-  key_terms: 'Key terms',
-  mini_quiz: 'Mini quiz',
-  cheat_sheet: 'Cheat sheet draft',
-};
-
-const modeInstructions: Record<ChatMode, string> = {
-  free: 'Here is a grounded study response based on your library context.',
-  explain: 'Here is a clear explanation of the selected concept.',
-  summarize: 'Here is a compact summary of the retrieved lecture context.',
-  key_terms: 'Here are the key terms that appear most relevant.',
-  mini_quiz: 'Here is a short practice quiz grounded in the retrieved context.',
-  cheat_sheet: 'Here is a printable cheat-sheet outline grounded in the retrieved context.',
-};
-
-function buildAnswer(mode: ChatMode, message: string, contextText: string) {
-  const compactMessage = message.trim();
-  const contextPreview = contextText || 'No matching context was found.';
-
-  if (mode === 'mini_quiz') {
-    return `${modeInstructions[mode]}\n\n1. What is the main idea behind: ${compactMessage}?\n2. Which source example best supports this idea?\n3. Explain the answer in your own words using one cited source.\n\nSource notes considered: ${contextPreview}`;
-  }
-
-  if (mode === 'key_terms') {
-    const terms = Array.from(new Set(contextPreview.match(/[A-Za-z][A-Za-z0-9_-]{3,}/g) || []))
-      .slice(0, 8)
-      .join(', ');
-
-    return `${modeInstructions[mode]}\n\n${terms || 'No strong terms found yet.'}\n\nUse these as anchors while reviewing: ${contextPreview}`;
-  }
-
-  if (mode === 'cheat_sheet') {
-    return `${modeInstructions[mode]}\n\n- Topic: ${compactMessage}\n- Must know: ${contextPreview}\n- Practice: turn each cited point into one quick recall question.\n- Source check: keep the citation labels next to each bullet before printing.`;
-  }
-
-  return `${modeInstructions[mode]}\n\nQuestion: ${compactMessage}\n\nGrounded context: ${contextPreview}`;
-}
 
 export async function GET() {
   try {
@@ -232,8 +190,12 @@ export async function POST(request: NextRequest) {
       data: {
         message: {
           role: 'assistant',
-          title: modeLabels[parsed.data.mode],
-          content: buildAnswer(parsed.data.mode, parsed.data.message, contextText),
+          title: chatModeLabels[parsed.data.mode],
+          content: buildChatAnswer({
+            mode: parsed.data.mode,
+            message: parsed.data.message,
+            contextText,
+          }),
           sourceRefs,
           retrieval: {
             strategy: 'lexical_page_aware_v0',
