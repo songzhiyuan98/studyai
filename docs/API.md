@@ -136,6 +136,50 @@ Response shape:
 }
 ```
 
+### Get Lecture Detail
+
+```http
+GET /api/lectures/:id
+Cookie: next-auth session
+```
+
+Returns one lecture owned by the current user with its folder and ordered source segments. The reader uses this endpoint to render source-backed study scope selection.
+
+Response shape:
+
+```json
+{
+  "success": true,
+  "data": {
+    "lecture": {
+      "id": "lec_...",
+      "title": "Linear Regression",
+      "originalName": "linear-regression.pdf",
+      "type": "PDF",
+      "status": "PROCESSED",
+      "fileSize": 4096,
+      "createdAt": "2026-06-19T19:00:00.000Z",
+      "folder": {
+        "id": "folder_...",
+        "name": "Machine Learning"
+      },
+      "segments": [
+        {
+          "id": "seg_...",
+          "text": "Segment text...",
+          "tokenCount": 42,
+          "page": 2,
+          "slide": null,
+          "charStart": 120,
+          "charEnd": 360,
+          "createdAt": "2026-06-19T19:02:00.000Z"
+        }
+      ]
+    }
+  }
+}
+```
+
 ## Planned Study APIs
 
 The frontend is being aligned around these future APIs:
