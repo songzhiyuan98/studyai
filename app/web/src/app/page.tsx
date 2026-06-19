@@ -1,114 +1,133 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { LandingExperience } from '@/components/landing-experience';
 
 export const metadata: Metadata = {
   title: 'StudyFlow',
-  description: 'A citation-first study workspace for student-owned lecture materials.',
+  description: 'A citation-first AI study workspace for student-owned lecture materials.',
 };
 
 const workflow = [
-  ['01', 'Collect', 'Upload lectures, slides, notes, and PDFs into course folders.'],
-  ['02', 'Select', 'Build a study scope from exact source segments.'],
-  ['03', 'Generate', 'Ask for small explanations, summaries, quizzes, and terms.'],
-  ['04', 'Review', 'Keep every output attached to source references.'],
+  ['01', 'Build your library', 'Create course folders, upload lecture PDFs, and keep every source in one searchable place.'],
+  ['02', 'Chat with context', 'Ask what to review, request explanations, translate difficult passages, or generate practice questions.'],
+  ['03', 'Check the evidence', 'Every useful answer can carry source references, pages, and selected chunks for fast verification.'],
+  ['04', 'Save study assets', 'Keep strong answers, quiz drafts, cheat sheets, and review plans for later sessions.'],
 ];
 
-const capabilities = [
-  'Course file library',
-  'Source segment reader',
-  'Scope-based AI actions',
-  'Saved study artifacts',
-  'RAG-ready architecture',
-  'Printable cheat sheet roadmap',
+const productMoments = [
+  ['Source-grounded chat', 'A ChatGPT-like study surface that retrieves from your own lecture files before answering.'],
+  ['Knowledge-base library', 'A Drive-style file manager for courses, folders, PDFs, notes, and future AI-assisted uploads.'],
+  ['Micro-actions in chat', 'Quick pills for explain, summarize, translate, quiz, and cheat sheet generation without leaving the flow.'],
+  ['Reader diagnostics', 'A developer-facing source map to inspect chunks, citations, and retrieval behavior while building RAG.'],
+];
+
+const comparison = [
+  ['Generic chat', 'You paste files again, lose context, and manually remember which lecture matters.'],
+  ['StudyFlow', 'Your library stays organized, retrieval is scoped, and the chat can cite the exact study material.'],
 ];
 
 export default function HomePage() {
   return (
-    <div className="bg-white">
-      <section className="marketing-shell">
-        <div className="marketing-hero">
-          <div className="min-w-0">
-            <p className="eyebrow">Student-owned course context</p>
-            <h1 className="mt-5 max-w-5xl text-5xl font-normal leading-none tracking-normal text-[#17171c] sm:text-6xl lg:text-7xl">
-              Study with AI that remembers your lecture sources.
-            </h1>
-            <p className="mt-6 max-w-2xl text-base leading-7 text-[#616161] sm:text-lg">
-              StudyFlow gives students one place to manage course files, select precise context, and create grounded study outputs with citations.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href="/register" className="btn-primary h-11 px-6">
-                Create workspace
-              </Link>
-              <Link href="/login" className="btn-secondary h-11 px-6">
-                Sign in
-              </Link>
-            </div>
-          </div>
+    <div className="landing-page">
+      <section className="landing-hero">
+        <div className="landing-hero-inner">
+          <Link href="/" className="landing-brand" aria-label="StudyFlow home">
+            <span className="landing-brand-mark">
+              <span />
+            </span>
+            <span>StudyFlow</span>
+          </Link>
 
-          <div className="product-preview">
-            <div className="flex items-center justify-between border-b border-[#d9d9dd] px-4 py-3">
-              <span className="text-sm font-medium text-[#17171c]">Current study scope</span>
-              <span className="status-pill">3 sources</span>
-            </div>
-            <div className="p-4">
-              <div className="border-y border-[#d9d9dd]">
-                {['Lecture 02 · page 12', 'Lecture 03 · slide 8', 'Review notes · section 4'].map((item) => (
-                  <div key={item} className="flex items-center justify-between border-b border-[#d9d9dd] py-3 last:border-b-0">
-                    <span className="text-sm text-[#616161]">{item}</span>
-                    <span className="text-xs text-[#93939f]">selected</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-5 rounded-lg bg-[#eeece7]/55 p-4">
-                <p className="text-xs uppercase tracking-normal text-[#75758a]">Grounded output</p>
-                <p className="mt-3 text-sm leading-6 text-[#212121]">
-                  A concise explanation generated from selected segments, with citations preserved for verification.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="status-pill">L02 p12</span>
-                  <span className="status-pill">L03 s8</span>
-                </div>
-              </div>
-            </div>
+          <p className="eyebrow mt-10">AI study workspace for real course materials</p>
+          <h1 className="landing-title">
+            Turn lecture files into a study chat that remembers.
+          </h1>
+          <p className="landing-copy">
+            StudyFlow gives students one place to manage PDFs, notes, source context, AI chat, saved outputs, and future cheat-sheet workflows.
+          </p>
+
+          <div className="landing-cta-row">
+            <Link href="/register" className="btn-primary h-11 px-6">
+              Create workspace
+            </Link>
+            <Link href="/login" className="btn-secondary h-11 px-6">
+              Sign in
+            </Link>
           </div>
         </div>
       </section>
 
-      <section className="border-y border-[#d9d9dd]">
-        <div className="marketing-shell py-0">
-          <div className="grid md:grid-cols-4">
-            {workflow.map(([step, title, description], index) => (
-              <div
-                key={title}
-                className={`py-6 md:px-5 ${index > 0 ? 'border-t border-[#d9d9dd] md:border-l md:border-t-0' : ''}`}
-              >
-                <p className="text-xs text-[#75758a]">{step}</p>
-                <h2 className="mt-3 text-2xl font-normal text-[#17171c]">{title}</h2>
-                <p className="mt-3 text-sm leading-6 text-[#616161]">{description}</p>
-              </div>
-            ))}
-          </div>
+      <LandingExperience />
+
+      <section className="landing-section">
+        <div className="landing-section-head">
+          <p className="eyebrow">Why it exists</p>
+          <h2>Students do not just need another note app.</h2>
+          <p>
+            They need a place where study materials, source context, and AI interaction live together instead of being pasted into a new chat every time.
+          </p>
+        </div>
+
+        <div className="landing-comparison">
+          {comparison.map(([title, body]) => (
+            <div key={title} className="landing-comparison-item">
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      <section className="marketing-shell">
-        <div className="grid gap-8 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <section className="landing-band">
+        <div className="landing-band-inner">
           <div>
-            <p className="eyebrow">Product surface</p>
-            <h2 className="mt-3 text-3xl font-normal leading-tight text-[#17171c]">Built like a study tool, not a content generator.</h2>
+            <p className="eyebrow">Product flow</p>
+            <h2>Library organizes the sources. Chat becomes the learning surface.</h2>
           </div>
-          <div className="grid gap-0 border-y border-[#d9d9dd] sm:grid-cols-2">
-            {capabilities.map((item, index) => (
-              <div
-                key={item}
-                className={`py-4 text-sm text-[#616161] sm:px-4 ${
-                  index > 0 ? 'border-t border-[#d9d9dd]' : ''
-                } ${index % 2 === 1 ? 'sm:border-l' : ''} ${index === 1 ? 'sm:border-t-0' : ''}`}
-              >
-                {item}
-              </div>
+          <div className="landing-flow-grid">
+            {workflow.map(([step, title, description]) => (
+              <article key={title} className="landing-flow-item">
+                <p>{step}</p>
+                <h3>{title}</h3>
+                <span>{description}</span>
+              </article>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="landing-section">
+        <div className="landing-section-head">
+          <p className="eyebrow">What the product will support</p>
+          <h2>Designed around small, continuous study interactions.</h2>
+          <p>
+            The goal is not one giant generated document. The product should keep students in a tight loop of asking, checking, saving, and refining.
+          </p>
+        </div>
+
+        <div className="landing-moment-list">
+          {productMoments.map(([title, description]) => (
+            <div key={title} className="landing-moment-row">
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="landing-final">
+        <p className="eyebrow">Start with your first course folder</p>
+        <h2>Make your lecture files useful before the next quiz.</h2>
+        <p>
+          Create a workspace, add a few files, then let Chat help you decide what to study next.
+        </p>
+        <div className="landing-cta-row">
+          <Link href="/register" className="btn-primary h-11 px-6">
+            Create workspace
+          </Link>
+          <Link href="/login" className="btn-secondary h-11 px-6">
+            Sign in
+          </Link>
         </div>
       </section>
     </div>

@@ -73,7 +73,7 @@ MINIO_USE_SSL=false
 OPENAI_API_KEY=sk-proj-你的OpenAI-API-Key
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL_CHAT=gpt-3.5-turbo
-OPENAI_MODEL_EMBEDDING=text-embedding-ada-002
+OPENAI_MODEL_EMBEDDING=text-embedding-3-small
 
 # NextAuth.js认证
 NEXTAUTH_SECRET=dev-secret-key-change-in-production

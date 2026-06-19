@@ -8,11 +8,13 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@study-assistant/db';
 import { z } from 'zod';
+import { ensureFolderHierarchySchema } from '@/lib/folder-hierarchy';
 
 // 请求验证schema
 const createFolderSchema = z.object({
   name: z.string().min(1, 'Folder name is required').max(100, 'Folder name too long'),
   description: z.string().optional(),
+  parentId: z.string().min(1).nullable().optional(),
 });
 
 // 获取用户的文件夹列表
@@ -27,6 +29,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    await ensureFolderHierarchySchema();
+
     // 获取文件夹列表，包含文档数量
     const folders = await prisma.folder.findMany({
       where: {
@@ -36,6 +40,7 @@ export async function GET(request: NextRequest) {
         _count: {
           select: {
             lectures: true,
+            children: true,
           },
         },
       },
@@ -49,7 +54,9 @@ export async function GET(request: NextRequest) {
       id: folder.id,
       name: folder.name,
       description: folder.description,
+      parentId: folder.parentId,
       documentCount: folder._count.lectures,
+      folderCount: folder._count.children,
       createdAt: folder.createdAt,
       updatedAt: folder.updatedAt,
     }));
@@ -84,6 +91,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await ensureFolderHierarchySchema();
+
     // 解析请求体
     const body = await request.json();
 
@@ -100,13 +109,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, description } = validationResult.data;
+    const { name, description, parentId = null } = validationResult.data;
+
+    if (parentId) {
+      const parentFolder = await prisma.folder.findFirst({
+        where: {
+          id: parentId,
+          userId: session.user.id,
+        },
+      });
+
+      if (!parentFolder) {
+        return NextResponse.json(
+          { success: false, error: 'Parent folder not found' },
+          { status: 404 }
+        );
+      }
+    }
 
     // 检查是否存在同名文件夹
     const existingFolder = await prisma.folder.findFirst({
       where: {
         userId: session.user.id,
         name: name,
+        parentId,
       },
     });
 
@@ -122,12 +148,14 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         description: description || null,
+        parentId,
         userId: session.user.id,
       },
       include: {
         _count: {
           select: {
             lectures: true,
+            children: true,
           },
         },
       },
@@ -142,7 +170,9 @@ export async function POST(request: NextRequest) {
         id: folder.id,
         name: folder.name,
         description: folder.description,
+        parentId: folder.parentId,
         documentCount: folder._count.lectures,
+        folderCount: folder._count.children,
         createdAt: folder.createdAt,
         updatedAt: folder.updatedAt,
       },

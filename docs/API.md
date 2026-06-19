@@ -97,7 +97,7 @@ Content-Type: multipart/form-data
 
 Form fields:
 
-- `file`: PDF, PPTX, or TXT file.
+- `file`: PDF or TXT file. PPTX is reserved for the slide-parser milestone.
 - `folderId`: folder id owned by the current user.
 - `title`: optional display title.
 
@@ -106,11 +106,16 @@ Current behavior:
 - Validates authenticated user, file type, size, and folder ownership.
 - Stores the original file in MinIO.
 - Creates a `Lecture` row.
-- Runs an internal mock processing step that creates placeholder segments.
+- Runs internal document ingestion:
+  - TXT is decoded as UTF-8 text.
+  - PDF is parsed with `pdf-parse`.
+  - Text is normalized and split into source segments using page-aware, paragraph/sentence-aware character windows with overlap.
+  - Each segment stores text, token estimate, character anchors, PDF page anchors when available, and a stable hash.
 
 Important next step:
 
-- Replace mock processing with real TXT/PDF parsing and structure-aware chunking.
+- Add embeddings and vector retrieval. Current segments are parser chunks with lexical/page-aware retrieval, not vector-indexed RAG chunks yet.
+- Upgrade PDF/PPTX ingestion to structure-aware chunking with page/slide layout anchors.
 
 ### List Lectures
 
@@ -182,6 +187,41 @@ Response shape:
 
 ## Study APIs
 
+## Planned: Study Chat APIs
+
+### Create Chat Session
+
+```http
+POST /api/chat/sessions
+Cookie: next-auth session
+Content-Type: application/json
+```
+
+Creates a student-owned chat session. Optional initial scope can point to a folder, lecture, saved scope, or reader segment.
+
+### Send Chat Message
+
+```http
+POST /api/chat/sessions/:id/messages
+Cookie: next-auth session
+Content-Type: application/json
+```
+
+Target behavior:
+
+- Accept a natural-language study message.
+- Resolve explicit or inferred library scope.
+- Retrieve source segments with metadata filters.
+- Use embeddings through pgvector when available, with lexical/page-aware fallback.
+- Stream the answer to the frontend.
+- Save user message, assistant answer, retrieved refs, final cited refs, and model metadata.
+
+Current RAG status:
+
+- Active implementation: lexical/page-aware retrieval v0 for reader micro actions.
+- Not active yet: embeddings, pgvector retrieval, reranking, streaming chat generation.
+- Recommended embedding default: `text-embedding-3-small`, stored as 1536-dimensional vectors in `Segment.embedding`.
+
 ### Run Micro Action
 
 ```http
@@ -189,7 +229,7 @@ GET /api/study/actions?limit=50
 Cookie: next-auth session
 ```
 
-Lists saved study artifacts for the current user, newest first. The Review page uses this endpoint.
+Lists saved study artifacts for the current user, newest first. The Saved page uses this endpoint.
 
 Response:
 
@@ -208,7 +248,7 @@ Cookie: next-auth session
 Content-Type: application/json
 ```
 
-Creates a source-backed study artifact from selected source segments. Current behavior is deterministic placeholder generation: the endpoint creates a `Selection`, creates an `Item`, stores source refs, and returns a short artifact for the reader UI. Later RAG and LLM generation should replace only the placeholder content step, not the request/response contract.
+Creates a source-backed study artifact from selected source segments. Current behavior is deterministic placeholder generation with retrieval v0: the endpoint creates a `Selection`, retrieves nearby/lexically related segments from the same lecture, creates an `Item`, stores selected source refs and retrieved context refs, and returns a short artifact for the reader UI. Later embedding retrieval and LLM generation should replace only the retrieval/scoring and content generation steps, not the request/response contract.
 
 Request:
 
@@ -252,6 +292,19 @@ Response:
           "label": "page 12 · seg_..."
         }
       ],
+      "relatedRefs": [
+        {
+          "lectureId": "lec_...",
+          "segmentId": "seg_related...",
+          "page": 13,
+          "slide": null,
+          "charStart": 361,
+          "charEnd": 680,
+          "label": "page 13 · seg_related...",
+          "score": 1.42,
+          "reason": "lexical"
+        }
+      ],
       "createdAt": "2026-06-19T19:02:00.000Z"
     }
   }
@@ -281,7 +334,7 @@ Planned behavior:
 
 ## Source Reference Contract
 
-All generated artifacts should store source references in a consistent shape:
+All generated artifacts should store selected source references and optional retrieved context references in a consistent shape:
 
 ```json
 {
@@ -294,8 +347,20 @@ All generated artifacts should store source references in a consistent shape:
       "charStart": 120,
       "charEnd": 360
     }
+  ],
+  "relatedRefs": [
+    {
+      "lectureId": "lec_...",
+      "segmentId": "seg_related...",
+      "page": 4,
+      "slide": null,
+      "charStart": 361,
+      "charEnd": 640,
+      "score": 0.86,
+      "reason": "nearby"
+    }
   ]
 }
 ```
 
-This contract is what allows generated explanations, translations, quizzes, and future cheat sheets to link back to the original lecture material.
+This contract is what allows generated explanations, quizzes, and future cheat sheets to link back to explicit user-selected material while also showing which extra context the retrieval layer considered.

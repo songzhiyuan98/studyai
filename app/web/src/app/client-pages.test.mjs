@@ -21,3 +21,27 @@ test('login form does not expose credentials to native query-string submission',
   assert.doesNotMatch(source, /name=["']email["']/);
   assert.doesNotMatch(source, /name=["']password["']/);
 });
+
+test('root layout delegates authenticated chrome to AppShell', () => {
+  const source = readFileSync(resolve(root, 'src/app/layout.tsx'), 'utf8');
+  assert.match(source, /import \{ AppShell \} from ['"]\.\.\/components\/app-shell['"]/);
+  assert.match(source, /<AppShell>\s*\{children\}\s*<\/AppShell>/);
+  assert.doesNotMatch(source, /<header className=/);
+  assert.doesNotMatch(source, /<footer className=/);
+});
+
+test('authenticated navigation is focused on chat library and saved', () => {
+  const source = readFileSync(resolve(root, 'src/components/app-shell.tsx'), 'utf8');
+  assert.match(source, /\{ href: ['"]\/chat['"], label: ['"]Chat['"] \}/);
+  assert.match(source, /\{ href: ['"]\/library['"], label: ['"]Library['"] \}/);
+  assert.match(source, /\{ href: ['"]\/saved['"], label: ['"]Saved['"]/);
+  assert.doesNotMatch(source, /\{ href: ['"]\/study['"], label: ['"]Study['"] \}/);
+  assert.doesNotMatch(source, /\{ href: ['"]\/review['"], label: ['"]Review['"] \}/);
+});
+
+test('library page is positioned as knowledge base management', () => {
+  const source = readFileSync(resolve(root, 'src/app/library/page.tsx'), 'utf8');
+  assert.match(source, /Knowledge base/);
+  assert.match(source, /Organize lecture files and folders/);
+  assert.match(source, /'list', 'grid', 'compact'/);
+});

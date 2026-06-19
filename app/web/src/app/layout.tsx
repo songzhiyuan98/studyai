@@ -4,10 +4,9 @@
  */
 
 import { Inter } from 'next/font/google';
-import Link from 'next/link';
 import type { Metadata } from 'next';
 import { AuthProvider } from '../providers/auth-provider';
-import { Navigation } from '../components/navigation';
+import { AppShell } from '../components/app-shell';
 import './globals.css';
 
 // 配置Inter字体
@@ -46,38 +45,9 @@ export default function RootLayout({
     <html lang="zh-CN" className="h-full">
       <body className={`${inter.className} h-full bg-white antialiased`}>
         <AuthProvider>
-          <header className="sticky top-0 z-40 border-b border-[#d9d9dd] bg-white/95 backdrop-blur">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="flex h-16 items-center justify-between gap-4">
-                <div className="flex items-center">
-                  <Link href="/dashboard" className="flex items-center gap-3 rounded-md transition-opacity hover:opacity-80">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md border border-[#d9d9dd] bg-white">
-                      <div className="h-3 w-3 rounded-sm bg-[#17171c]" />
-                    </div>
-                    <span className="text-base font-medium text-[#17171c]">
-                      StudyFlow
-                    </span>
-                  </Link>
-                </div>
-                <Navigation />
-              </div>
-            </div>
-          </header>
-          <main className="min-h-[calc(100vh-4rem)]">
+          <AppShell>
             {children}
-          </main>
-          <footer className="border-t border-[#d9d9dd] bg-white">
-            <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-              <div className="flex flex-col gap-2 text-sm text-[#75758a] sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  &copy; 2026 StudyFlow
-                </div>
-                <div>
-                  Student-owned course context, grounded in sources.
-                </div>
-              </div>
-            </div>
-          </footer>
+          </AppShell>
         </AuthProvider>
       </body>
     </html>

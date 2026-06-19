@@ -134,15 +134,14 @@ export class DatabaseMigrations {
     });
 
     // 创建测试文件夹
-    const testFolder = await prisma.folder.upsert({
+    const testFolder = await prisma.folder.findFirst({
       where: {
-        userId_name: {
-          userId: testUser.id,
-          name: '机器学习课程'
-        }
-      },
-      update: {},
-      create: {
+        userId: testUser.id,
+        name: '机器学习课程',
+        parentId: null
+      }
+    }) || await prisma.folder.create({
+      data: {
         name: '机器学习课程',
         description: 'AI基础知识学习材料',
         userId: testUser.id

@@ -12,7 +12,9 @@ type Folder = {
   id: string;
   name: string;
   description?: string;
+  parentId?: string | null;
   documentCount: number;
+  folderCount?: number;
 };
 
 type UploadProgress = {
@@ -23,22 +25,29 @@ type UploadProgress = {
 
 const ALLOWED_FILE_TYPES = {
   'application/pdf': '.pdf',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
   'text/plain': '.txt',
 };
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
+function formatSourceStatus(status: string) {
+  if (status === 'Processed') return 'Ready';
+  if (status === 'Processing') return 'Indexing';
+  if (status === 'Pending') return 'Queued';
+  return status;
+}
+
 export default function LibraryPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [lectures, setLectures] = useState<LectureApiRow[]>([]);
-  const [selectedFolder, setSelectedFolder] = useState('all');
+  const [selectedFolder, setSelectedFolder] = useState('root');
   const [searchQuery, setSearchQuery] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
   const [showNewFolder, setShowNewFolder] = useState(false);
+  const [newItemMode, setNewItemMode] = useState<'folder' | 'file'>('folder');
   const [showUploadPanel, setShowUploadPanel] = useState(false);
-  const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'grid' | 'compact'>('list');
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -80,29 +89,45 @@ export default function LibraryPage() {
     [lectures],
   );
 
-  const visibleItems = useMemo(
-    () => visibleLibraryItems(libraryItems, selectedFolder, searchQuery),
-    [libraryItems, selectedFolder, searchQuery],
+  const activeFolder = selectedFolder === 'root' ? null : folders.find((folder) => folder.id === selectedFolder) || null;
+  const currentFolders = useMemo(
+    () => folders.filter((folder) => {
+      const parentMatches = activeFolder ? folder.parentId === activeFolder.id : !folder.parentId;
+      const queryMatches = folder.name.toLowerCase().includes(searchQuery.trim().toLowerCase());
+      return parentMatches && queryMatches;
+    }),
+    [activeFolder, folders, searchQuery],
   );
+  const breadcrumbFolders = useMemo(() => {
+    if (!activeFolder) return [];
 
-  const folderOptions = useMemo(() => [
-    { id: 'all', name: 'All materials', documentCount: libraryItems.length },
-    ...folders,
-  ], [folders, libraryItems.length]);
+    const chain: Folder[] = [];
+    const visited = new Set<string>();
+    let current: Folder | null = activeFolder;
 
-  const activeFolder = folderOptions.find((folder) => folder.id === selectedFolder) || folderOptions[0];
-  const targetFolderId = selectedFolder === 'all' ? folders[0]?.id : selectedFolder;
-  const processedCount = libraryItems.filter((item) => item.status === 'Processed').length;
+    while (current && !visited.has(current.id)) {
+      chain.unshift(current);
+      visited.add(current.id);
+      current = current.parentId ? folders.find((folder) => folder.id === current?.parentId) || null : null;
+    }
+
+    return chain;
+  }, [activeFolder, folders]);
+  const visibleItems = useMemo(
+    () => activeFolder ? visibleLibraryItems(libraryItems, activeFolder.id, searchQuery) : [],
+    [activeFolder, libraryItems, searchQuery],
+  );
+  const targetFolderId = activeFolder?.id;
 
   const validateFile = (file: File): string | null => {
     if (!Object.keys(ALLOWED_FILE_TYPES).includes(file.type)) {
-      return 'Only PDF, PPTX, and TXT files are supported.';
+      return 'Only PDF and TXT files are supported in the current parser.';
     }
     if (file.size > MAX_FILE_SIZE) {
       return 'File is larger than 100MB.';
     }
     if (!targetFolderId) {
-      return 'Create or select a collection before uploading.';
+      return 'Open a folder before uploading source files.';
     }
     return null;
   };
@@ -115,7 +140,7 @@ export default function LibraryPage() {
     const response = await fetch('/api/folders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, parentId: activeFolder?.id || null }),
     });
     const result = await response.json();
 
@@ -126,6 +151,7 @@ export default function LibraryPage() {
 
     setNewFolderName('');
     setShowNewFolder(false);
+    setNewItemMode('folder');
     setSelectedFolder(result.data.id);
     await loadLibrary();
   };
@@ -163,7 +189,7 @@ export default function LibraryPage() {
     }
 
     if (selectedFolder === folder.id) {
-      setSelectedFolder('all');
+      setSelectedFolder('root');
     }
     await loadLibrary();
   };
@@ -255,102 +281,307 @@ export default function LibraryPage() {
 
   return (
     <div className="tool-shell">
-      <header className="tool-hero">
+      <header className="kb-hero">
         <div className="min-w-0">
           <p className="eyebrow">Library</p>
-          <h1 className="tool-title">Study sources</h1>
-          <p className="tool-subtitle">
-            Keep lecture files, notes, and generated context in one source-backed workspace.
-          </p>
+          <h1 className="kb-title">Knowledge base</h1>
+          <p className="tool-subtitle">Organize lecture files and folders for source-grounded Chat.</p>
         </div>
         <div className="tool-actions">
           <input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             className="input-field h-11 min-w-0 sm:w-80"
-            placeholder="Search materials"
+            placeholder={selectedFolder === 'root' ? 'Search folders' : 'Search files'}
           />
-          <button
-            type="button"
-            onClick={() => setShowUploadPanel((value) => !value)}
-            className="btn-primary h-11 shrink-0"
-          >
-            {showUploadPanel ? 'Close upload' : 'Add material'}
-          </button>
         </div>
       </header>
 
-      <section className="library-console">
-        <aside className="collection-rail">
-          <div className="flex items-center justify-between border-b border-[#d9d9dd] pb-3">
-            <div>
-              <p className="rail-label">Collections</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setNewFolderName('');
-                setShowNewFolder(true);
-              }}
-              className="rail-action-button"
-            >
-              New
-            </button>
-          </div>
-
-          <nav className="mt-4 space-y-2">
-            {folderOptions.map((folder) => {
-              const active = selectedFolder === folder.id;
-              const editable = folder.id !== 'all';
-
-              return (
-                <div key={folder.id} className={`collection-line ${active ? 'collection-line-active' : ''}`}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFolder(folder.id)}
-                    className="min-w-0 flex-1 truncate text-left"
-                  >
-                    {folder.name}
-                  </button>
-                  {active && editable ? (
-                    <button type="button" onClick={() => setEditingFolder(folder)} className="collection-edit-button">
-                      Edit
-                    </button>
-                  ) : null}
-                </div>
-              );
-            })}
-          </nav>
-
-          <div className="mt-8 border-t border-[#d9d9dd] pt-5">
-            <p className="text-xs text-[#75758a]">Ready sources</p>
-            <p className="mt-2 text-3xl font-normal text-[#17171c]">{processedCount}</p>
-            <p className="mt-3 text-xs leading-5 text-[#616161]">
-              Processed files can be opened as study scopes. Segment extraction is still mocked in this build.
-            </p>
-          </div>
-        </aside>
-
-        <main className="source-board">
+      <section className="drive-console">
+        <main className="kb-board">
           <div className="board-toolbar">
-            <div>
-              <p className="text-xs text-[#75758a]">Current collection</p>
-              <h2 className="mt-1 text-2xl font-normal text-[#17171c]">{activeFolder?.name || 'All materials'}</h2>
+            <div className="min-w-0">
+              <nav className="drive-breadcrumb" aria-label="Library location">
+                <button type="button" onClick={() => setSelectedFolder('root')} className="drive-breadcrumb-item">
+                  Library
+                </button>
+                {breadcrumbFolders.map((folder) => (
+                  <span key={folder.id} className="contents">
+                    <span className="text-[#a3a3a3]">/</span>
+                    {folder.id === activeFolder?.id ? (
+                      <span className="drive-breadcrumb-current">{folder.name}</span>
+                    ) : (
+                      <button type="button" onClick={() => setSelectedFolder(folder.id)} className="drive-breadcrumb-item">
+                        {folder.name}
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </nav>
+              <p className="mt-2 text-sm text-[#737373]">
+                {activeFolder
+                  ? `${currentFolders.length} folders · ${visibleItems.length} files`
+                  : `${currentFolders.length} folders in your knowledge base`}
+              </p>
             </div>
-            <div className="flex items-center gap-5 text-sm text-[#75758a]">
-              <span>{visibleItems.length} shown</span>
-              <span>{libraryItems.length} total</span>
+            <div className="board-toolbar-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setNewFolderName('');
+                  setNewItemMode('folder');
+                  setShowNewFolder(true);
+                }}
+                className="btn-secondary h-10"
+              >
+                New
+              </button>
+              <div className="view-switcher" aria-label="Source view">
+                {(['list', 'grid', 'compact'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setViewMode(mode)}
+                    className={viewMode === mode ? 'view-switcher-button view-switcher-button-active' : 'view-switcher-button'}
+                  >
+                    {mode[0].toUpperCase() + mode.slice(1)}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {actionMessage ? (
-            <div className="mb-4 border-l-2 border-[#ff7759] bg-[#ffad9b]/20 px-4 py-3 text-sm text-[#212121]">
+            <div className="mb-4 border-l-2 border-[#ff7759] bg-[#ffad9b]/20 px-4 py-3 text-sm text-[#000000]">
               {actionMessage}
             </div>
           ) : null}
 
-          {showUploadPanel ? (
-            <section className="upload-drawer">
+          <section className="source-list">
+            {loading && (
+              <div className="space-y-3 py-4">
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="h-16 rounded-md bg-[#fafafa]/60" />
+                ))}
+              </div>
+            )}
+
+            {!loading && error && (
+              <div className="empty-state">
+                <h3>Could not load sources</h3>
+                <p>{error}</p>
+              </div>
+            )}
+
+            {!loading && !error && currentFolders.length === 0 && visibleItems.length === 0 && (
+              <div className="empty-state">
+                <h3>{activeFolder ? 'This folder is empty' : 'No folders yet'}</h3>
+                <p>{activeFolder ? 'Add a folder or upload a source file here.' : 'Create a folder to start organizing lecture PDFs and notes for Chat.'}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewItemMode('folder');
+                    setShowNewFolder(true);
+                  }}
+                  className="btn-primary mt-5"
+                >
+                  New
+                </button>
+              </div>
+            )}
+
+            {!loading && !error && (currentFolders.length > 0 || visibleItems.length > 0) && viewMode === 'list' && (
+              <div className="kb-source-list-head">
+                <span>Name</span>
+                <span>Kind</span>
+                <span>Details</span>
+                <span>Updated</span>
+                <span className="text-right">Manage</span>
+              </div>
+            )}
+
+            {!loading && !error && (currentFolders.length > 0 || visibleItems.length > 0) && viewMode === 'list' && (
+              <div className="divide-y divide-[#e5e5e5]">
+                {currentFolders.map((folder) => (
+                  <article key={folder.id} className="drive-row">
+                    <button type="button" onClick={() => setSelectedFolder(folder.id)} className="drive-row-main">
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-[#000000]">{folder.name}</span>
+                        <span className="mt-1 block text-xs text-[#737373]">
+                          {folder.folderCount || 0} folders · {folder.documentCount} files
+                        </span>
+                      </span>
+                    </button>
+                    <span className="hidden text-sm text-[#737373] sm:inline">Folder</span>
+                    <span className="hidden text-sm text-[#737373] lg:inline">{folder.folderCount || 0} folders · {folder.documentCount} files</span>
+                    <span className="hidden text-sm text-[#737373] lg:inline">—</span>
+                    <span className="drive-action-group">
+                      <button type="button" onClick={() => renameFolder(folder)} className="text-link">
+                        Rename
+                      </button>
+                      <button type="button" onClick={() => deleteFolder(folder)} className="text-link text-red-700">
+                        Delete
+                      </button>
+                    </span>
+                  </article>
+                ))}
+                {visibleItems.map((document) => (
+                  <article key={document.id} className="kb-source-row">
+                    <Link href={`/documents/${document.id}`} className="min-w-0">
+                      <div className="truncate text-sm font-medium text-[#000000]">{document.title}</div>
+                      <div className="mt-1 truncate text-sm text-[#737373]">
+                        {document.originalName} · {document.fileSize}
+                      </div>
+                    </Link>
+                    <span className="text-sm text-[#737373]">{document.type}</span>
+                    <span className={document.status === 'Processed' ? 'status-pill status-ready' : 'status-pill'}>
+                      {formatSourceStatus(document.status)} · {document.segments} chunks
+                    </span>
+                    <span className="text-sm text-[#737373]">{document.uploadedAt}</span>
+                    <span className="drive-action-group">
+                      <button type="button" onClick={() => renameLecture(document.id, document.title)} className="text-link">
+                        Rename
+                      </button>
+                      <button type="button" onClick={() => deleteLecture(document.id, document.title)} className="text-link text-red-700">
+                        Delete
+                      </button>
+                    </span>
+                  </article>
+                ))}
+              </div>
+            )}
+
+            {!loading && !error && (currentFolders.length > 0 || visibleItems.length > 0) && viewMode === 'grid' && (
+              <div className="kb-source-grid">
+                {currentFolders.map((folder) => (
+                  <article key={folder.id} className="drive-folder-card">
+                    <button type="button" onClick={() => setSelectedFolder(folder.id)} className="block w-full text-left">
+                      <span className="drive-folder-mark" />
+                      <span className="mt-5 block line-clamp-2 text-left text-sm font-medium leading-5 text-[#000000]">{folder.name}</span>
+                      <span className="mt-2 block text-left text-xs text-[#737373]">
+                        {folder.folderCount || 0} folders · {folder.documentCount} files
+                      </span>
+                    </button>
+                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-[#e5e5e5] pt-3">
+                      <span className="text-xs text-[#737373]">Folder</span>
+                      <span className="drive-action-group">
+                        <button type="button" onClick={() => renameFolder(folder)} className="text-link">
+                          Rename
+                        </button>
+                        <button type="button" onClick={() => deleteFolder(folder)} className="text-link text-red-700">
+                          Delete
+                        </button>
+                      </span>
+                    </div>
+                  </article>
+                ))}
+                {visibleItems.map((document) => (
+                  <article key={document.id} className="kb-source-card">
+                    <Link href={`/documents/${document.id}`} className="min-w-0">
+                      <div className="kb-source-card-icon">PDF</div>
+                      <h3 className="mt-4 line-clamp-2 text-sm font-medium leading-5 text-[#000000]">{document.title}</h3>
+                      <p className="mt-2 truncate text-xs text-[#737373]">{document.originalName}</p>
+                    </Link>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className={document.status === 'Processed' ? 'status-pill status-ready' : 'status-pill'}>
+                        {formatSourceStatus(document.status)}
+                      </span>
+                      <span className="status-pill status-muted">{document.segments} chunks</span>
+                    </div>
+                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-[#e5e5e5] pt-3">
+                      <span className="min-w-0 truncate text-xs text-[#737373]">{document.folderName}</span>
+                      <span className="drive-action-group">
+                        <button type="button" onClick={() => renameLecture(document.id, document.title)} className="text-link">
+                          Rename
+                        </button>
+                        <button type="button" onClick={() => deleteLecture(document.id, document.title)} className="text-link text-red-700">
+                          Delete
+                        </button>
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+
+            {!loading && !error && (currentFolders.length > 0 || visibleItems.length > 0) && viewMode === 'compact' && (
+              <div className="divide-y divide-[#e5e5e5]">
+                {currentFolders.map((folder) => (
+                  <article key={folder.id} className="drive-compact-row">
+                    <button type="button" onClick={() => setSelectedFolder(folder.id)} className="drive-compact-name text-left">
+                      {folder.name}
+                    </button>
+                    <span className="hidden text-xs text-[#737373] sm:inline">Folder</span>
+                    <span className="text-xs text-[#737373]">{folder.documentCount} files</span>
+                    <span className="drive-action-group">
+                      <button type="button" onClick={() => renameFolder(folder)} className="text-link">
+                        Rename
+                      </button>
+                      <button type="button" onClick={() => deleteFolder(folder)} className="text-link text-red-700">
+                        Delete
+                      </button>
+                    </span>
+                  </article>
+                ))}
+                {visibleItems.map((document) => (
+                  <article key={document.id} className="drive-compact-row">
+                    <Link href={`/documents/${document.id}`} className="drive-compact-name">
+                      {document.title}
+                    </Link>
+                    <span className="hidden text-xs text-[#737373] sm:inline">{document.type}</span>
+                    <span className={document.status === 'Processed' ? 'status-pill status-ready' : 'status-pill'}>
+                      {formatSourceStatus(document.status)}
+                    </span>
+                    <span className="drive-action-group">
+                      <button type="button" onClick={() => renameLecture(document.id, document.title)} className="text-link">
+                        Rename
+                      </button>
+                      <button type="button" onClick={() => deleteLecture(document.id, document.title)} className="text-link text-red-700">
+                        Delete
+                      </button>
+                    </span>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </main>
+      </section>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept=".pdf,.txt"
+        className="hidden"
+        onChange={(event) => event.target.files && handleFiles(event.target.files)}
+      />
+
+      {showUploadPanel ? (
+        <div className="modal-backdrop">
+          <section className="kb-upload-modal">
+            <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] pb-4">
+              <div className="min-w-0">
+                <p className="eyebrow">Add source</p>
+                <h2 className="mt-2 text-2xl font-medium leading-tight text-[#000000]">Upload to knowledge base</h2>
+                <p className="mt-2 text-sm leading-6 text-[#737373]">
+                  New files will be parsed into source chunks and become available to Chat after indexing.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUploadPanel(false);
+                  setIsDragActive(false);
+                }}
+                className="modal-close-button"
+                aria-label="Close upload modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-5">
               <div
                 onDragOver={(event) => {
                   event.preventDefault();
@@ -370,32 +601,24 @@ export default function LibraryPage() {
                 className={`upload-dropzone ${isDragActive ? 'upload-dropzone-active' : ''}`}
               >
                 <div>
-                  <p className="text-sm font-medium text-[#17171c]">
-                    Upload to {selectedFolder === 'all' ? folders[0]?.name || 'a collection' : folders.find((folder) => folder.id === selectedFolder)?.name}
+                  <p className="text-sm font-medium text-[#000000]">
+                    Target folder: {activeFolder?.name || 'open a folder first'}
                   </p>
-                  <p className="mt-1 text-sm leading-6 text-[#616161]">
-                    Drop PDF, PPTX, or TXT files here. The parser will create source segments for later RAG work.
+                  <p className="mt-1 text-sm leading-6 text-[#737373]">
+                    Drop PDF or TXT files here, or choose files from your computer.
                   </p>
                 </div>
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="btn-secondary shrink-0">
                   Choose files
                 </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept=".pdf,.pptx,.txt"
-                  className="hidden"
-                  onChange={(event) => event.target.files && handleFiles(event.target.files)}
-                />
               </div>
 
               {uploadProgress.length > 0 ? (
-                <div className="mt-4 divide-y divide-[#d9d9dd] border-y border-[#d9d9dd]">
+                <div className="mt-5 divide-y divide-[#e5e5e5] border-y border-[#e5e5e5]">
                   {uploadProgress.map((item) => (
                     <div key={item.fileName} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-[#17171c]">{item.fileName}</div>
+                        <div className="truncate text-sm font-medium text-[#000000]">{item.fileName}</div>
                         {item.error ? <div className="mt-1 text-sm text-red-700">{item.error}</div> : null}
                       </div>
                       <span className={item.status === 'success' ? 'status-pill status-ready' : item.status === 'error' ? 'status-pill status-error' : 'status-pill'}>
@@ -405,149 +628,135 @@ export default function LibraryPage() {
                   ))}
                 </div>
               ) : null}
-            </section>
-          ) : null}
-
-          <section className="source-list">
-            <div className="source-list-head">
-              <span>Material</span>
-              <span>Status</span>
-              <span>Scope</span>
-              <span>Updated</span>
-              <span className="text-right">Manage</span>
             </div>
 
-            {loading && (
-              <div className="space-y-3 py-4">
-                {[1, 2, 3].map((item) => (
-                  <div key={item} className="h-16 rounded-md bg-[#eeece7]/60" />
-                ))}
-              </div>
-            )}
-
-            {!loading && error && (
-              <div className="empty-state">
-                <h3>Could not load materials</h3>
-                <p>{error}</p>
-              </div>
-            )}
-
-            {!loading && !error && visibleItems.length === 0 && (
-              <div className="empty-state">
-                <h3>No materials in this view</h3>
-                <p>Open the upload drawer and add a lecture file to start building a source library.</p>
-                <button type="button" onClick={() => setShowUploadPanel(true)} className="btn-primary mt-5">
-                  Add first material
-                </button>
-              </div>
-            )}
-
-            {!loading && !error && visibleItems.length > 0 && (
-              <div className="divide-y divide-[#d9d9dd]">
-                {visibleItems.map((document) => (
-                  <article key={document.id} className="source-row">
-                    <Link href={`/documents/${document.id}`} className="min-w-0">
-                      <div className="truncate text-base font-medium text-[#17171c]">{document.title}</div>
-                      <div className="mt-1 truncate text-sm text-[#75758a]">
-                        {document.originalName} · {document.folderName} · {document.fileSize}
-                      </div>
-                    </Link>
-                    <span className={document.status === 'Processed' ? 'status-pill status-ready' : 'status-pill'}>
-                      {document.status}
-                    </span>
-                    <span className="text-sm text-[#616161]">
-                      {document.type} · {document.segments} segments
-                    </span>
-                    <span className="text-sm text-[#75758a]">{document.uploadedAt}</span>
-                    <span className="flex justify-end gap-3">
-                      <button type="button" onClick={() => renameLecture(document.id, document.title)} className="text-link">
-                        Rename
-                      </button>
-                      <button type="button" onClick={() => deleteLecture(document.id, document.title)} className="text-link text-red-700">
-                        Delete
-                      </button>
-                    </span>
-                  </article>
-                ))}
-              </div>
-            )}
+            <div className="mt-5 flex items-center justify-between border-t border-[#e5e5e5] pt-4">
+              <p className="text-xs text-[#737373]">Supported now: PDF and TXT</p>
+              <button
+                type="button"
+                onClick={() => setShowUploadPanel(false)}
+                className="btn-secondary"
+              >
+                Done
+              </button>
+            </div>
           </section>
-        </main>
-      </section>
+        </div>
+      ) : null}
 
       {showNewFolder ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#17171c]/25 px-4">
-          <div className="w-full max-w-sm rounded-lg border border-[#d9d9dd] bg-white p-5 shadow-sm">
-            <p className="text-xs uppercase tracking-normal text-[#75758a]">New collection</p>
-            <h2 className="mt-2 text-xl font-normal text-[#17171c]">Create a folder?</h2>
-            <p className="mt-2 text-sm leading-6 text-[#616161]">
-              This folder will appear in your library sidebar and can hold uploaded lecture materials.
+        <div className="modal-backdrop">
+          <div className="modal-panel max-w-lg">
+            <p className="text-xs uppercase tracking-normal text-[#737373]">New</p>
+            <h2 className="mt-2 text-xl font-normal text-[#000000]">
+              Add to {activeFolder?.name || 'Library'}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[#737373]">
+              Create a nested folder here or upload source files into the current folder.
             </p>
-            <input
-              value={newFolderName}
-              onChange={(event) => setNewFolderName(event.target.value)}
-              onKeyDown={(event) => event.key === 'Enter' && createFolder()}
-              className="input-field mt-4"
-              placeholder="Folder name"
-              autoFocus
-            />
+            <div className="view-switcher mt-5">
+              {(['folder', 'file'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setNewItemMode(mode)}
+                  className={newItemMode === mode ? 'view-switcher-button view-switcher-button-active' : 'view-switcher-button'}
+                >
+                  {mode === 'folder' ? 'Folder' : 'File'}
+                </button>
+              ))}
+            </div>
+
+            {newItemMode === 'folder' ? (
+              <input
+                value={newFolderName}
+                onChange={(event) => setNewFolderName(event.target.value)}
+                onKeyDown={(event) => event.key === 'Enter' && createFolder()}
+                className="input-field mt-5"
+                placeholder="Folder name"
+                autoFocus
+              />
+            ) : (
+              <div className="mt-5">
+                {!activeFolder ? (
+                  <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] px-4 py-4 text-sm leading-6 text-[#737373]">
+                    Open or create a folder before uploading source files.
+                  </div>
+                ) : (
+                  <div
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      setIsDragActive(true);
+                    }}
+                    onDragLeave={(event) => {
+                      event.preventDefault();
+                      setIsDragActive(false);
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      setIsDragActive(false);
+                      if (event.dataTransfer.files.length > 0) {
+                        handleFiles(event.dataTransfer.files);
+                      }
+                    }}
+                    className={`upload-dropzone ${isDragActive ? 'upload-dropzone-active' : ''}`}
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-[#000000]">Target folder: {activeFolder.name}</p>
+                      <p className="mt-1 text-sm leading-6 text-[#737373]">
+                        Drop PDF or TXT files here, or choose files from your computer.
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="btn-secondary shrink-0">
+                      Choose files
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {uploadProgress.length > 0 && newItemMode === 'file' ? (
+              <div className="mt-5 divide-y divide-[#e5e5e5] border-y border-[#e5e5e5]">
+                {uploadProgress.map((item) => (
+                  <div key={item.fileName} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-[#000000]">{item.fileName}</div>
+                      {item.error ? <div className="mt-1 text-sm text-red-700">{item.error}</div> : null}
+                    </div>
+                    <span className={item.status === 'success' ? 'status-pill status-ready' : item.status === 'error' ? 'status-pill status-error' : 'status-pill'}>
+                      {item.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setShowNewFolder(false);
                   setNewFolderName('');
+                  setNewItemMode('folder');
                 }}
                 className="btn-secondary"
               >
                 Cancel
               </button>
-              <button type="button" onClick={createFolder} className="btn-primary">
-                Create folder
-              </button>
+              {newItemMode === 'folder' ? (
+                <button type="button" onClick={createFolder} className="btn-primary">
+                  Create folder
+                </button>
+              ) : (
+                <button type="button" onClick={() => setShowNewFolder(false)} className="btn-primary">
+                  Done
+                </button>
+              )}
             </div>
           </div>
         </div>
       ) : null}
 
-      {editingFolder ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#17171c]/25 px-4">
-          <div className="w-full max-w-sm rounded-lg border border-[#d9d9dd] bg-white p-5 shadow-sm">
-            <p className="text-xs uppercase tracking-normal text-[#75758a]">Edit folder</p>
-            <h2 className="mt-2 text-xl font-normal text-[#17171c]">{editingFolder.name}</h2>
-            <p className="mt-2 text-sm leading-6 text-[#616161]">
-              Rename this folder or delete it if it is empty.
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setEditingFolder(null)} className="btn-secondary">
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const folder = editingFolder;
-                  setEditingFolder(null);
-                  await renameFolder(folder);
-                }}
-                className="btn-secondary"
-              >
-                Rename
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const folder = editingFolder;
-                  setEditingFolder(null);
-                  await deleteFolder(folder);
-                }}
-                className="btn-secondary text-red-700 hover:bg-red-50"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

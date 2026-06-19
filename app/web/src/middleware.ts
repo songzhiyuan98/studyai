@@ -11,6 +11,7 @@ export const config = {
     '/dashboard/:path*',
     '/upload/:path*',
     '/library/:path*',
+    '/saved/:path*',
     '/study/:path*',
     '/review/:path*',
     '/exam/:path*',

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { prisma } from '@study-assistant/db';
 import { z } from 'zod';
 import { authOptions } from '@/lib/auth';
+import { ensureFolderHierarchySchema } from '@/lib/folder-hierarchy';
 
 const updateFolderSchema = z.object({
   name: z.string().min(1, 'Folder name is required').max(100, 'Folder name too long'),
@@ -21,6 +22,8 @@ export async function PATCH(
         { status: 401 },
       );
     }
+
+    await ensureFolderHierarchySchema();
 
     const parsed = updateFolderSchema.safeParse(await request.json());
 
@@ -49,6 +52,7 @@ export async function PATCH(
       where: {
         userId: session.user.id,
         name: parsed.data.name,
+        parentId: existingFolder.parentId,
         NOT: {
           id: params.id,
         },
@@ -73,6 +77,7 @@ export async function PATCH(
         _count: {
           select: {
             lectures: true,
+            children: true,
           },
         },
       },
@@ -84,7 +89,9 @@ export async function PATCH(
         id: folder.id,
         name: folder.name,
         description: folder.description,
+        parentId: folder.parentId,
         documentCount: folder._count.lectures,
+        folderCount: folder._count.children,
         createdAt: folder.createdAt,
         updatedAt: folder.updatedAt,
       },
@@ -113,6 +120,8 @@ export async function DELETE(
       );
     }
 
+    await ensureFolderHierarchySchema();
+
     const folder = await prisma.folder.findFirst({
       where: {
         id: params.id,
@@ -122,6 +131,7 @@ export async function DELETE(
         _count: {
           select: {
             lectures: true,
+            children: true,
           },
         },
       },
@@ -137,6 +147,13 @@ export async function DELETE(
     if (folder._count.lectures > 0) {
       return NextResponse.json(
         { success: false, error: 'Delete or move materials before deleting this folder' },
+        { status: 400 },
+      );
+    }
+
+    if (folder._count.children > 0) {
+      return NextResponse.json(
+        { success: false, error: 'Delete nested folders before deleting this folder' },
         { status: 400 },
       );
     }

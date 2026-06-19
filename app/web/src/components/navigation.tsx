@@ -14,10 +14,9 @@ export function Navigation() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/dashboard', label: 'Workspace' },
+    { href: '/chat', label: 'Chat' },
     { href: '/library', label: 'Library' },
-    { href: '/study', label: 'Study' },
-    { href: '/review', label: 'Review' },
+    { href: '/saved', label: 'Saved' },
   ];
 
   if (status === 'loading') {

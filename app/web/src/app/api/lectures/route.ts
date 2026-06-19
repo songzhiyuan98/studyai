@@ -5,19 +5,18 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { createHash } from 'crypto';
 import { authOptions } from '@/lib/auth';
 // import { createStorageService } from '@study-assistant/shared';
 import { Client as MinioClient } from 'minio';
 import { prisma } from '@study-assistant/db';
 import { z } from 'zod';
 import { parseMinioEndpoint } from '@/lib/minio-config';
+import { createStableSegmentHash, parseDocumentBuffer } from '@/lib/document-ingestion';
 // import { DocumentParserFactory } from '@study-assistant/shared'; // Temporarily commented to test
 
 // 支持的文件类型
 const ALLOWED_FILE_TYPES = {
   'application/pdf': '.pdf',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
   'text/plain': '.txt',
 } as const;
 
@@ -55,12 +54,6 @@ async function ensureBucketExists(minioClient: MinioClient, bucketName: string) 
     console.log('🪣 Bucket missing, creating:', bucketName);
     await minioClient.makeBucket(bucketName);
   }
-}
-
-function createSegmentHash(lectureId: string, content: string, index: number): string {
-  return createHash('sha256')
-    .update(`${lectureId}:${index}:${content}`)
-    .digest('hex');
 }
 
 export async function POST(request: NextRequest) {
@@ -204,9 +197,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ 文件上传成功:', uploadResult);
 
     // 确定文件类型
-    const fileType = file.type === 'application/pdf' ? 'PDF' :
-                     file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ? 'PPTX' :
-                     'TXT';
+    const fileType = file.type === 'application/pdf' ? 'PDF' : 'TXT';
 
     // 保存到数据库
     const lecture = await prisma.lecture.create({
@@ -391,19 +382,6 @@ function createProcessingMinioClient(): MinioClient {
   });
 }
 
-function getMimeType(fileType: string): string {
-  switch (fileType) {
-    case 'PDF':
-      return 'application/pdf';
-    case 'PPTX':
-      return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-    case 'TXT':
-      return 'text/plain';
-    default:
-      return 'application/octet-stream';
-  }
-}
-
 // Process document function - moved from separate file to avoid dynamic import issues
 async function processDocumentInternal(lectureId: string, userId: string) {
   console.log('📄 Processing document internally:', lectureId, 'for user:', userId);
@@ -512,46 +490,27 @@ async function processDocumentInternal(lectureId: string, userId: string) {
     // Parse document with timeout and memory monitoring
     console.log('🔍 Parsing document, type:', lecture.type);
     console.log('📊 Pre-parse memory:', process.memoryUsage());
-    const mimeType = getMimeType(lecture.type);
-    
     let parsedDoc: {
       content: string;
       metadata: Record<string, unknown>;
       segments: Array<{
         content: string;
-        page: number;
+        page: number | null;
         charStart: number;
         charEnd: number;
       }>;
     };
     try {
-      // 临时使用mock parsing来避免DocumentParserFactory初始化问题
-      console.log('⚠️ Using mock parsing to avoid initialization issues');
-      parsedDoc = {
-        content: `Mock content for ${lecture.originalName}. File size: ${fileBuffer.length} bytes.`,
-        metadata: {
-          pageCount: 1,
-          wordCount: 10,
-          mock: true,
-          originalMimeType: mimeType,
-          processedAt: new Date().toISOString()
-        },
-        segments: [
-          {
-            content: `Mock segment 1 from ${lecture.originalName} - This is the first mock segment with unique content.`,
-            page: 1,
-            charStart: 0,
-            charEnd: 85,
-          },
-          {
-            content: `Mock segment 2 from ${lecture.originalName} - This is the second mock segment with different unique content.`,
-            page: 1,
-            charStart: 86,
-            charEnd: 186,
-          }
-        ]
-      };
-      console.log('✅ Mock document parsed, segments:', parsedDoc.segments.length);
+      parsedDoc = await parseDocumentBuffer({
+        buffer: fileBuffer,
+        lectureType: lecture.type,
+      });
+
+      if (parsedDoc.segments.length === 0) {
+        throw new Error('No readable text segments were extracted from this document.');
+      }
+
+      console.log('✅ Document parsed, segments:', parsedDoc.segments.length);
       console.log('📊 Post-parse memory:', process.memoryUsage());
       
     } catch (error) {
@@ -579,7 +538,7 @@ async function processDocumentInternal(lectureId: string, userId: string) {
             page: segment.page,
             charStart: segment.charStart,
             charEnd: segment.charEnd,
-            hash: createSegmentHash(lecture.id, segment.content, index),
+            hash: createStableSegmentHash(lecture.id, segment.content, index),
           }
         })
       )
@@ -590,6 +549,7 @@ async function processDocumentInternal(lectureId: string, userId: string) {
       where: { id: lectureId },
       data: {
         status: 'PROCESSED',
+        processedAt: new Date(),
         // content字段不存在于数据库schema中，移除它
         meta: {
           ...(lecture.meta && typeof lecture.meta === 'object' && !Array.isArray(lecture.meta) ? lecture.meta : {}),

@@ -16,6 +16,8 @@ export type StudySourceRef = {
   charStart: number | null;
   charEnd: number | null;
   label: string;
+  score?: number;
+  reason?: 'lexical' | 'nearby';
 };
 
 export type StudyArtifact = {
@@ -25,6 +27,7 @@ export type StudyArtifact = {
   title: string;
   content: string;
   sourceRefs: StudySourceRef[];
+  relatedRefs?: StudySourceRef[];
   createdAt?: string | Date;
 };
 
@@ -33,6 +36,7 @@ export type StoredStudyItemRow = {
   type: StudyItemType;
   payloadJson: unknown;
   sourceRefs: unknown;
+  relatedRefs?: unknown;
   createdAt: string | Date;
 };
 
@@ -91,15 +95,23 @@ function parseSourceRefs(sourceRefs: unknown): StudySourceRef[] {
 
   return sourceRefs
     .filter((ref): ref is Record<string, unknown> => Boolean(ref) && typeof ref === 'object' && !Array.isArray(ref))
-    .map((ref) => ({
-      lectureId: typeof ref.lectureId === 'string' ? ref.lectureId : '',
-      segmentId: typeof ref.segmentId === 'string' ? ref.segmentId : '',
-      page: typeof ref.page === 'number' ? ref.page : null,
-      slide: typeof ref.slide === 'number' ? ref.slide : null,
-      charStart: typeof ref.charStart === 'number' ? ref.charStart : null,
-      charEnd: typeof ref.charEnd === 'number' ? ref.charEnd : null,
-      label: typeof ref.label === 'string' ? ref.label : 'source',
-    }))
+    .map((ref) => {
+      const reason: StudySourceRef['reason'] = ref.reason === 'lexical' || ref.reason === 'nearby'
+        ? ref.reason
+        : undefined;
+
+      return {
+        lectureId: typeof ref.lectureId === 'string' ? ref.lectureId : '',
+        segmentId: typeof ref.segmentId === 'string' ? ref.segmentId : '',
+        page: typeof ref.page === 'number' ? ref.page : null,
+        slide: typeof ref.slide === 'number' ? ref.slide : null,
+        charStart: typeof ref.charStart === 'number' ? ref.charStart : null,
+        charEnd: typeof ref.charEnd === 'number' ? ref.charEnd : null,
+        label: typeof ref.label === 'string' ? ref.label : 'source',
+        score: typeof ref.score === 'number' ? ref.score : undefined,
+        reason,
+      };
+    })
     .filter((ref) => ref.lectureId && ref.segmentId);
 }
 
@@ -116,10 +128,14 @@ export function buildPlaceholderArtifact({
   action,
   segmentTexts,
   sourceRefs,
+  relatedTexts = [],
+  relatedRefs = [],
 }: {
   action: StudyActionId;
   segmentTexts: string[];
   sourceRefs: StudySourceRef[];
+  relatedTexts?: string[];
+  relatedRefs?: StudySourceRef[];
 }): StudyArtifact {
   const selectedText = segmentTexts
     .map((text) => text.trim())
@@ -127,12 +143,21 @@ export function buildPlaceholderArtifact({
     .join(' ');
   const preview = selectedText.length > 320 ? `${selectedText.slice(0, 317)}...` : selectedText;
 
+  const relatedPreview = relatedTexts
+    .map((text) => text.trim())
+    .filter(Boolean)
+    .join(' ');
+  const compactRelatedPreview = relatedPreview.length > 220 ? `${relatedPreview.slice(0, 217)}...` : relatedPreview;
+
   return {
     type: action,
     itemType: getStudyAction(action).itemType,
     title: formatStudyActionTitle(action, sourceRefs.length),
-    content: `${placeholderIntros[action]} ${preview}`,
+    content: compactRelatedPreview
+      ? `${placeholderIntros[action]} ${preview}\n\nRetrieved context considered: ${compactRelatedPreview}`
+      : `${placeholderIntros[action]} ${preview}`,
     sourceRefs,
+    relatedRefs,
   };
 }
 
@@ -142,6 +167,7 @@ export function mapStoredItemToArtifact(item: StoredStudyItemRow): StudyArtifact
     ? payloadAction
     : itemTypeFallbackAction[item.type];
   const sourceRefs = parseSourceRefs(item.sourceRefs);
+  const relatedRefs = parseSourceRefs(item.relatedRefs);
   const payloadTitle = getPayloadValue(item.payloadJson, 'title');
   const payloadContent = getPayloadValue(item.payloadJson, 'content');
 
@@ -158,6 +184,7 @@ export function mapStoredItemToArtifact(item: StoredStudyItemRow): StudyArtifact
       ? payloadContent
       : 'Saved study artifact.',
     sourceRefs,
+    relatedRefs,
     createdAt: item.createdAt,
   };
 }

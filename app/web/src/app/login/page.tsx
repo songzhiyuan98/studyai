@@ -47,31 +47,50 @@ export default function LoginPage() {
   return (
     <div className="auth-shell">
       <section className="auth-copy">
-        <p className="eyebrow">Sign in</p>
-        <h1 className="mt-4 text-4xl font-normal leading-tight text-[#17171c] sm:text-5xl">
-          Return to your source-backed study desk.
+        <Link href="/" className="auth-brand" aria-label="StudyFlow home">
+          <span className="landing-brand-mark">
+            <span />
+          </span>
+          <span>StudyFlow</span>
+        </Link>
+        <p className="eyebrow mt-10">Welcome back</p>
+        <h1 className="auth-title">
+          Continue learning from the sources you already trust.
         </h1>
-        <p className="mt-5 max-w-xl text-base leading-7 text-[#616161]">
-          Continue from saved lecture context, generated artifacts, and the exact sources behind your study notes.
+        <p className="auth-subtitle">
+          Return to your library, saved source scopes, and Chat sessions without rebuilding context from scratch.
         </p>
-        <div className="mt-8 border-y border-[#d9d9dd] py-4">
-          {['Library', 'Reader', 'Review'].map((item) => (
-            <div key={item} className="flex items-center justify-between py-2 text-sm">
-              <span className="text-[#616161]">{item}</span>
-              <span className="text-[#93939f]">source-aware</span>
+
+        <div className="auth-preview">
+          <div className="auth-preview-bar">
+            <span>Today in StudyFlow</span>
+            <span className="status-pill">sources ready</span>
+          </div>
+          <div className="auth-preview-body">
+            <div className="auth-chat-line auth-chat-line-user">
+              What should I review before quiz 2?
             </div>
-          ))}
+            <div className="auth-chat-line">
+              I found the strongest overlap in lambda calculus, Haskell functions, and pattern matching.
+            </div>
+            <div className="auth-source-strip">
+              <span>lambda.pdf p7</span>
+              <span>haskell.pdf p3</span>
+              <span>saved quiz</span>
+            </div>
+          </div>
         </div>
       </section>
 
       <section className="auth-panel">
-        <div className="mb-6">
-          <p className="text-xs uppercase tracking-normal text-[#75758a]">Workspace access</p>
-          <h2 className="mt-2 text-2xl font-normal text-[#17171c]">Sign in to StudyFlow</h2>
+        <div className="auth-panel-head">
+          <p className="eyebrow">Workspace access</p>
+          <h2>Sign in</h2>
+          <p>Use your StudyFlow account to reopen Chat and Library.</p>
         </div>
 
         {error ? (
-          <div className="mb-4 border-l-2 border-red-700 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="auth-error">
             {error}
           </div>
         ) : null}
@@ -120,7 +139,7 @@ export default function LoginPage() {
           Continue with Google
         </button>
 
-        <p className="mt-6 text-center text-sm text-[#616161]">
+        <p className="mt-6 text-center text-sm text-[#737373]">
           New to StudyFlow?{' '}
           <Link href="/register" className="text-link">
             Create a workspace

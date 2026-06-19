@@ -68,30 +68,50 @@ export default function RegisterPage() {
   return (
     <div className="auth-shell">
       <section className="auth-copy">
-        <p className="eyebrow">Create workspace</p>
-        <h1 className="mt-4 text-4xl font-normal leading-tight text-[#17171c] sm:text-5xl">
-          Build a study system around your own materials.
+        <Link href="/" className="auth-brand" aria-label="StudyFlow home">
+          <span className="landing-brand-mark">
+            <span />
+          </span>
+          <span>StudyFlow</span>
+        </Link>
+        <p className="eyebrow mt-10">New workspace</p>
+        <h1 className="auth-title">
+          Build a study workspace around your own course files.
         </h1>
-        <p className="mt-5 max-w-xl text-base leading-7 text-[#616161]">
-          Start with a private workspace for lecture files, selected context, citations, and future RAG-powered study flows.
+        <p className="auth-subtitle">
+          Start with a library, then let Chat retrieve from your lectures, notes, and saved source scopes.
         </p>
-        <div className="mt-8 grid gap-0 border-y border-[#d9d9dd]">
-          {['Upload course files', 'Select chapters or lectures', 'Generate grounded study artifacts'].map((item, index) => (
-            <div key={item} className={`py-3 text-sm text-[#616161] ${index > 0 ? 'border-t border-[#d9d9dd]' : ''}`}>
-              {String(index + 1).padStart(2, '0')} · {item}
+
+        <div className="auth-preview">
+          <div className="auth-preview-bar">
+            <span>Workspace setup</span>
+            <span className="status-pill">3 minute start</span>
+          </div>
+          <div className="auth-preview-body">
+            {['Create a course folder', 'Upload PDFs or notes', 'Ask Chat what to study next'].map((item, index) => (
+              <div key={item} className="auth-setup-row">
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <p>{item}</p>
+              </div>
+            ))}
+            <div className="auth-source-strip">
+              <span>Library</span>
+              <span>Chat</span>
+              <span>Saved outputs</span>
             </div>
-          ))}
+          </div>
         </div>
       </section>
 
       <section className="auth-panel">
-        <div className="mb-6">
-          <p className="text-xs uppercase tracking-normal text-[#75758a]">New workspace</p>
-          <h2 className="mt-2 text-2xl font-normal text-[#17171c]">Create your account</h2>
+        <div className="auth-panel-head">
+          <p className="eyebrow">Account</p>
+          <h2>Create your account</h2>
+          <p>Your workspace will open directly into the AI study surface.</p>
         </div>
 
         {error ? (
-          <div className="mb-4 border-l-2 border-red-700 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="auth-error">
             {error}
           </div>
         ) : null}
@@ -184,7 +204,7 @@ export default function RegisterPage() {
           Continue with Google
         </button>
 
-        <p className="mt-6 text-center text-sm text-[#616161]">
+        <p className="mt-6 text-center text-sm text-[#737373]">
           Already have an account?{' '}
           <Link href="/login" className="text-link">
             Sign in

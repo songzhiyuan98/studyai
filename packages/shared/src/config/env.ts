@@ -37,7 +37,7 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().min(1, 'OpenAI API Key 是必需的'),
   OPENAI_BASE_URL: z.string().url().default('https://api.openai.com/v1'),
   OPENAI_MODEL_CHAT: z.string().default('gpt-3.5-turbo'),
-  OPENAI_MODEL_EMBEDDING: z.string().default('text-embedding-ada-002'),
+  OPENAI_MODEL_EMBEDDING: z.string().default('text-embedding-3-small'),
 
   // 认证配置
   NEXTAUTH_SECRET: z.string().min(32, 'NextAuth secret 至少需要32个字符'),

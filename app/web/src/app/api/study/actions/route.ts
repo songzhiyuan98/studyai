@@ -11,6 +11,7 @@ import {
   mapStoredItemToArtifact,
 } from '@/lib/study-actions';
 import { formatSourceRef } from '@/lib/reader-format';
+import { retrieveRelatedContext } from '@/lib/rag-context';
 
 const actionSchema = z.object({
   lectureId: z.string().min(1),
@@ -130,11 +131,56 @@ export async function POST(request: NextRequest) {
       charEnd: segment.charEnd,
       label: formatSourceRef(segment),
     }));
+    const candidateSegments = await prisma.segment.findMany({
+      where: {
+        lectureId: lecture.id,
+      },
+      orderBy: [
+        { page: 'asc' },
+        { slide: 'asc' },
+        { charStart: 'asc' },
+        { createdAt: 'asc' },
+      ],
+    });
+    const retrievedContext = retrieveRelatedContext({
+      selectedSegments: segments.map((segment) => ({
+        id: segment.id,
+        lectureId: segment.lectureId,
+        text: segment.text,
+        page: segment.page,
+        slide: segment.slide,
+        charStart: segment.charStart,
+        charEnd: segment.charEnd,
+      })),
+      candidateSegments: candidateSegments.map((segment) => ({
+        id: segment.id,
+        lectureId: segment.lectureId,
+        text: segment.text,
+        page: segment.page,
+        slide: segment.slide,
+        charStart: segment.charStart,
+        charEnd: segment.charEnd,
+      })),
+      limit: 4,
+    });
+    const relatedRefs = retrievedContext.map(({ segment, score, reason }) => ({
+      lectureId: lecture.id,
+      segmentId: segment.id,
+      page: segment.page,
+      slide: segment.slide,
+      charStart: segment.charStart,
+      charEnd: segment.charEnd,
+      label: formatSourceRef(segment),
+      score,
+      reason,
+    }));
     const action = parsed.data.action as StudyActionId;
     const placeholder = buildPlaceholderArtifact({
       action,
       segmentTexts: segments.map((segment) => segment.text),
       sourceRefs,
+      relatedTexts: retrievedContext.map(({ segment }) => segment.text),
+      relatedRefs,
     });
 
     const selection = await prisma.selection.create({
@@ -154,10 +200,15 @@ export async function POST(request: NextRequest) {
           title: formatStudyActionTitle(action, segments.length),
           content: placeholder.content,
           instructions: parsed.data.instructions || null,
-          generationMode: 'placeholder',
+          generationMode: 'retrieval_v0',
+          retrieval: {
+            strategy: 'lexical_page_aware_v0',
+            relatedCount: retrievedContext.length,
+          },
         },
         sourceRefs,
-        model: 'placeholder',
+        relatedRefs,
+        model: 'retrieval-v0',
         tokenUsed: 0,
       },
     });

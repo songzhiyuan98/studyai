@@ -83,22 +83,21 @@ export default function ReviewPage() {
       const queryMatch = !query
         || artifact.title.toLowerCase().includes(query)
         || artifact.content.toLowerCase().includes(query)
-        || artifact.sourceRefs.some((ref) => ref.label.toLowerCase().includes(query));
+        || artifact.sourceRefs.some((ref) => ref.label.toLowerCase().includes(query))
+        || artifact.relatedRefs?.some((ref) => ref.label.toLowerCase().includes(query));
 
       return filterMatch && queryMatch;
     });
   }, [activeFilter, artifacts, searchQuery]);
 
-  const sourceCount = new Set(artifacts.flatMap((artifact) => artifact.sourceRefs.map((ref) => ref.lectureId))).size;
-
   return (
     <div className="tool-shell">
       <header className="tool-hero">
         <div className="min-w-0">
-          <p className="eyebrow">Review</p>
-          <h1 className="tool-title">Study outputs</h1>
+          <p className="eyebrow">Saved</p>
+          <h1 className="kb-title">Saved outputs</h1>
           <p className="tool-subtitle">
-            Revisit generated study material with the references that produced it.
+            Revisit generated summaries, quizzes, translations, and cheat sheets with the source references that produced them.
           </p>
         </div>
         <div className="tool-actions">
@@ -111,23 +110,9 @@ export default function ReviewPage() {
         </div>
       </header>
 
-      <section className="review-console">
-        <aside className="review-rail">
-          <div className="border-b border-[#d9d9dd] pb-5">
-            <p className="text-xs text-[#75758a]">Saved context</p>
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-3xl font-normal text-[#17171c]">{artifacts.length}</p>
-                <p className="text-xs text-[#75758a]">outputs</p>
-              </div>
-              <div>
-                <p className="text-3xl font-normal text-[#17171c]">{sourceCount}</p>
-                <p className="text-xs text-[#75758a]">sources</p>
-              </div>
-            </div>
-          </div>
-
-          <nav className="mt-5 space-y-1">
+      <section className="saved-console">
+        <div className="saved-filter-bar">
+          <nav className="saved-filter-scroll" aria-label="Saved output filters">
             {artifactFilters.map((filter) => {
               const active = activeFilter === filter.id;
               const count = filter.id === 'all'
@@ -139,7 +124,7 @@ export default function ReviewPage() {
                   key={filter.id}
                   type="button"
                   onClick={() => setActiveFilter(filter.id)}
-                  className={`collection-item ${active ? 'collection-item-active' : ''}`}
+                  className={active ? 'saved-filter-pill saved-filter-pill-active' : 'saved-filter-pill'}
                 >
                   <span>{filter.label}</span>
                   <span>{count}</span>
@@ -147,34 +132,25 @@ export default function ReviewPage() {
               );
             })}
           </nav>
-        </aside>
+          <span className="hidden text-sm text-[#737373] sm:block">{visibleArtifacts.length} shown</span>
+        </div>
 
-        <main className="review-board">
-          <div className="board-toolbar">
-            <div>
-              <p className="text-xs text-[#75758a]">Current view</p>
-              <h2 className="mt-1 text-2xl font-normal text-[#17171c]">
-                {artifactFilters.find((filter) => filter.id === activeFilter)?.label}
-              </h2>
-            </div>
-            <span className="text-sm text-[#75758a]">{visibleArtifacts.length} shown</span>
-          </div>
-
+        <main className="saved-board">
           {loading ? (
-            <div className="space-y-3 border-t border-[#d9d9dd] py-4">
+            <div className="space-y-3 border-t border-[#e5e5e5] py-4">
               {[0, 1, 2].map((item) => (
-                <div key={item} className="h-24 rounded-md bg-[#eeece7]/60" />
+                <div key={item} className="h-24 rounded-md bg-[#fafafa]/60" />
               ))}
             </div>
           ) : error ? (
-            <div className="empty-state border-t border-[#d9d9dd]">
-              <h3>Review unavailable</h3>
+            <div className="empty-state border-t border-[#e5e5e5]">
+              <h3>Saved outputs unavailable</h3>
               <p>{error}</p>
             </div>
           ) : visibleArtifacts.length === 0 ? (
-            <div className="empty-state border-t border-[#d9d9dd]">
+            <div className="empty-state border-t border-[#e5e5e5]">
               <h3>No saved outputs here</h3>
-              <p>Open a lecture, select a source segment, and run a micro action to save source-backed material.</p>
+              <p>Use Chat or open a source reader to save source-backed material here.</p>
             </div>
           ) : (
             <div className="artifact-stream">
@@ -183,25 +159,37 @@ export default function ReviewPage() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="status-pill status-ready">{artifact.type.replace('_', ' ')}</span>
-                      <span className="text-xs text-[#75758a]">{formatArtifactDate(artifact.createdAt)}</span>
+                      <span className="text-xs text-[#737373]">{formatArtifactDate(artifact.createdAt)}</span>
                     </div>
-                    <h3 className="mt-3 text-xl font-normal text-[#17171c]">{artifact.title}</h3>
-                    <p className="mt-3 max-w-3xl text-sm leading-7 text-[#616161]">{artifact.content}</p>
+                    <h3 className="mt-3 text-lg font-normal text-[#000000]">{artifact.title}</h3>
+                    <p className="mt-3 max-w-3xl text-sm leading-7 text-[#737373]">{artifact.content}</p>
+                    <div className="artifact-source-strip">
+                      <p className="text-xs text-[#737373]">References</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {artifact.sourceRefs.length === 0 ? (
+                          <span className="text-sm text-[#a3a3a3]">No source refs</span>
+                        ) : (
+                          artifact.sourceRefs.map((ref) => (
+                            <span key={`${artifact.id}-${ref.segmentId}`} className="status-pill">
+                              {ref.label}
+                            </span>
+                          ))
+                        )}
+                      </div>
+                      {artifact.relatedRefs?.length ? (
+                        <div className="mt-3">
+                          <p className="text-xs text-[#737373]">Retrieved context</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {artifact.relatedRefs.map((ref) => (
+                              <span key={`${artifact.id}-related-${ref.segmentId}`} className="status-pill status-muted">
+                                {ref.label}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                  <aside className="artifact-sources">
-                    <p className="text-xs text-[#75758a]">References</p>
-                    <div className="mt-2 flex flex-wrap gap-2 lg:flex-col">
-                      {artifact.sourceRefs.length === 0 ? (
-                        <span className="text-sm text-[#93939f]">No source refs</span>
-                      ) : (
-                        artifact.sourceRefs.map((ref) => (
-                          <span key={`${artifact.id}-${ref.segmentId}`} className="status-pill">
-                            {ref.label}
-                          </span>
-                        ))
-                      )}
-                    </div>
-                  </aside>
                 </article>
               ))}
             </div>
