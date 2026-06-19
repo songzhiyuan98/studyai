@@ -6,10 +6,20 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 
 export function Navigation() {
   const { data: session, status } = useSession();
+  const pathname = usePathname();
+
+  const navItems = [
+    { href: '/dashboard', label: 'Workspace' },
+    { href: '/upload', label: 'Upload' },
+    { href: '/library', label: 'Library' },
+    { href: '/study', label: 'Study' },
+    { href: '/review', label: 'Review' },
+  ];
 
   if (status === 'loading') {
     return (
@@ -24,21 +34,14 @@ export function Navigation() {
     return (
       <div className="flex items-center gap-5">
         <nav className="hidden items-center gap-1 md:flex">
-          <Link href="/dashboard" className="nav-link">
-            Workspace
-          </Link>
-          <Link href="/upload" className="nav-link">
-            Upload
-          </Link>
-          <Link href="/library" className="nav-link">
-            Library
-          </Link>
-          <Link href="/study" className="nav-link">
-            Study
-          </Link>
-          <Link href="/review" className="nav-link">
-            Review
-          </Link>
+          {navItems.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            return (
+              <Link key={item.href} href={item.href} className={active ? 'nav-link nav-link-active' : 'nav-link'}>
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="flex items-center gap-3">
