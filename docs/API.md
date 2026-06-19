@@ -114,7 +114,7 @@ Current behavior:
 
 Important next step:
 
-- Add embeddings and vector retrieval. Current segments are parser chunks with lexical/page-aware retrieval, not vector-indexed RAG chunks yet.
+- Add embeddings and vector retrieval. Current ingestion can optionally generate OpenAI embeddings, write them to `Segment.embedding`, and let Chat try pgvector retrieval before falling back to lexical/page-aware retrieval.
 - Upgrade PDF/PPTX ingestion to structure-aware chunking with page/slide layout anchors.
 
 ### List Lectures
@@ -219,7 +219,8 @@ Target behavior:
 Current RAG status:
 
 - Active implementation: lexical/page-aware retrieval v0 for reader micro actions.
-- Not active yet: embeddings, pgvector retrieval, reranking, streaming chat generation.
+- Active when configured: optional OpenAI embeddings, pgvector retrieval, and lexical fallback.
+- Not active yet: reranking and streaming chat generation.
 - Recommended embedding default: `text-embedding-3-small`, stored as 1536-dimensional vectors in `Segment.embedding`.
 
 ### Run Micro Action

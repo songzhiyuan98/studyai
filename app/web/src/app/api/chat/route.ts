@@ -1,17 +1,89 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { prisma } from '@study-assistant/db';
+import { Prisma, prisma } from '@study-assistant/db';
 import { z } from 'zod';
 import { authOptions } from '@/lib/auth';
 import { formatSourceRef } from '@/lib/reader-format';
 import { retrieveContextForQuery, compactContextText } from '@/lib/rag-context';
 import { buildChatAnswer, chatModeLabels } from '@/lib/chat-answer';
+import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 
 const chatSchema = z.object({
   message: z.string().min(1).max(2000),
   mode: z.enum(['free', 'explain', 'summarize', 'key_terms', 'mini_quiz', 'cheat_sheet']).default('free'),
   lectureIds: z.array(z.string().min(1)).max(20).optional(),
 });
+
+type VectorSearchRow = {
+  id: string;
+  lecture_id: string;
+  text: string;
+  page: number | null;
+  slide: number | null;
+  char_start: number | null;
+  char_end: number | null;
+  score: number;
+};
+
+async function retrieveVectorContext({
+  query,
+  userId,
+  lectureIds,
+  limit = 6,
+}: {
+  query: string;
+  userId: string;
+  lectureIds?: string[];
+  limit?: number;
+}) {
+  if (!isEmbeddingConfigured()) {
+    return [];
+  }
+
+  const [queryEmbedding] = await createEmbeddings([{ id: 'query', text: query }]);
+  if (!queryEmbedding) {
+    return [];
+  }
+
+  const embeddingJson = JSON.stringify(queryEmbedding.embedding);
+  const lectureFilter = lectureIds?.length
+    ? Prisma.sql`AND s.lecture_id IN (${Prisma.join(lectureIds)})`
+    : Prisma.empty;
+
+  const rows = await prisma.$queryRaw<VectorSearchRow[]>`
+    SELECT
+      s.id,
+      s.lecture_id,
+      s.text,
+      s.page,
+      s.slide,
+      s.char_start,
+      s.char_end,
+      1 - (s.embedding <=> ${embeddingJson}::vector) as score
+    FROM segments s
+    JOIN lectures l ON l.id = s.lecture_id
+    WHERE l.user_id = ${userId}
+      AND l.status = 'PROCESSED'
+      AND s.embedding IS NOT NULL
+      ${lectureFilter}
+    ORDER BY s.embedding <=> ${embeddingJson}::vector
+    LIMIT ${limit}
+  `;
+
+  return rows.map((row) => ({
+    segment: {
+      id: row.id,
+      lectureId: row.lecture_id,
+      text: row.text,
+      page: row.page,
+      slide: row.slide,
+      charStart: row.char_start,
+      charEnd: row.char_end,
+    },
+    score: Number(row.score),
+    reason: 'lexical' as const,
+  }));
+}
 
 export async function GET() {
   try {
@@ -156,11 +228,30 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const retrieved = retrieveContextForQuery({
-      query: parsed.data.message,
-      candidateSegments,
-      limit: 6,
-    });
+    let retrievalStrategy = 'lexical_page_aware_v0';
+    let retrieved = [];
+
+    try {
+      retrieved = await retrieveVectorContext({
+        query: parsed.data.message,
+        userId: session.user.id,
+        lectureIds: scopedLectureIds,
+        limit: 6,
+      });
+      if (retrieved.length > 0) {
+        retrievalStrategy = 'pgvector_embedding_v0';
+      }
+    } catch (vectorError) {
+      console.error('Vector retrieval failed, falling back to lexical:', vectorError);
+    }
+
+    if (retrieved.length === 0) {
+      retrieved = retrieveContextForQuery({
+        query: parsed.data.message,
+        candidateSegments,
+        limit: 6,
+      });
+    }
     const fallbackSegments = candidateSegments.slice(0, 3).map((segment) => ({
       segment,
       score: 0,
@@ -198,7 +289,7 @@ export async function POST(request: NextRequest) {
           }),
           sourceRefs,
           retrieval: {
-            strategy: 'lexical_page_aware_v0',
+            strategy: retrievalStrategy,
             count: context.length,
             scopedLectureCount: lectures.length,
           },

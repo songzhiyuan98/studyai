@@ -12,6 +12,7 @@ import { prisma } from '@study-assistant/db';
 import { z } from 'zod';
 import { parseMinioEndpoint } from '@/lib/minio-config';
 import { createStableSegmentHash, parseDocumentBuffer } from '@/lib/document-ingestion';
+import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 // import { DocumentParserFactory } from '@study-assistant/shared'; // Temporarily commented to test
 
 // 支持的文件类型
@@ -54,6 +55,20 @@ async function ensureBucketExists(minioClient: MinioClient, bucketName: string) 
     console.log('🪣 Bucket missing, creating:', bucketName);
     await minioClient.makeBucket(bucketName);
   }
+}
+
+async function writeSegmentEmbeddings(embeddings: Array<{ id: string; embedding: number[] }>) {
+  if (embeddings.length === 0) return;
+
+  await prisma.$transaction(
+    embeddings.map(({ id, embedding }) =>
+      prisma.$executeRaw`
+        UPDATE segments
+        SET embedding = ${JSON.stringify(embedding)}::vector
+        WHERE id = ${id}
+      `,
+    ),
+  );
 }
 
 export async function POST(request: NextRequest) {
@@ -543,6 +558,36 @@ async function processDocumentInternal(lectureId: string, userId: string) {
         })
       )
     );
+    let embeddingMeta: Record<string, unknown> = {
+      embeddingStatus: isEmbeddingConfigured() ? 'skipped' : 'disabled',
+      embeddingModel: process.env.OPENAI_MODEL_EMBEDDING || 'text-embedding-3-small',
+      embeddedSegmentCount: 0,
+    };
+
+    if (isEmbeddingConfigured()) {
+      try {
+        const embeddings = await createEmbeddings(
+          savedSegments.map((segment) => ({
+            id: segment.id,
+            text: segment.text,
+          })),
+        );
+        await writeSegmentEmbeddings(embeddings);
+        embeddingMeta = {
+          ...embeddingMeta,
+          embeddingStatus: 'completed',
+          embeddedSegmentCount: embeddings.length,
+        };
+        console.log('✅ Segment embeddings generated:', embeddings.length);
+      } catch (embeddingError) {
+        embeddingMeta = {
+          ...embeddingMeta,
+          embeddingStatus: 'failed',
+          embeddingError: embeddingError instanceof Error ? embeddingError.message : 'Unknown embedding error',
+        };
+        console.error('❌ Segment embedding generation failed:', embeddingError);
+      }
+    }
 
     // Update lecture with parsed content and metadata
     const updatedLecture = await prisma.lecture.update({
@@ -557,6 +602,7 @@ async function processDocumentInternal(lectureId: string, userId: string) {
           processedAt: new Date().toISOString(),
           segmentCount: savedSegments.length,
           wordCount: parsedDoc.content.split(/\s+/).length,
+          ...embeddingMeta,
           // 将内容保存到meta中而不是单独的content字段
           content: parsedDoc.content
         }

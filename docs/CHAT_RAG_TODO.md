@@ -83,8 +83,8 @@ student asks what to study
 
 ## Milestone 3: Embedding Pipeline
 
-- Generate embeddings after successful ingestion.
-- Write vectors to `Segment.embedding`.
+- Generate embeddings after successful ingestion. Basic optional OpenAI generation is wired in the web ingestion route.
+- Write vectors to `Segment.embedding`. Basic pgvector writes are wired when a real `OPENAI_API_KEY` is configured.
 - Track embedding status on lecture or segment records.
 - Make embedding generation retryable.
 - Keep `OPENAI_MODEL_EMBEDDING` configurable.
@@ -105,7 +105,7 @@ student asks what to study
   - packed context
 - Retrieval strategy:
   - metadata filter first
-  - vector search when embeddings exist
+  - vector search when embeddings exist. Chat now attempts pgvector retrieval first when embeddings are configured.
   - lexical fallback when vectors are missing
   - page/slide adjacency expansion
   - deduplication before context packing
