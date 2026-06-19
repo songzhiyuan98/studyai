@@ -2,12 +2,33 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { prisma } from '@study-assistant/db';
 import { z } from 'zod';
+import { Client as MinioClient } from 'minio';
 import { authOptions } from '@/lib/auth';
+import { parseMinioEndpoint } from '@/lib/minio-config';
 
 const updateLectureSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title is too long').optional(),
   folderId: z.string().min(1).optional(),
 });
+
+function createMinioClient(): MinioClient {
+  const endpoint = parseMinioEndpoint(process.env.MINIO_ENDPOINT, process.env.MINIO_PORT);
+
+  return new MinioClient({
+    endPoint: endpoint.endPoint,
+    port: endpoint.port,
+    useSSL: process.env.MINIO_USE_SSL === 'true',
+    accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+    secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin123',
+  });
+}
+
+async function deleteStoredLectureObject(fileKey: string) {
+  const bucketName = process.env.MINIO_BUCKET_NAME || 'study-assistant';
+  const minioClient = createMinioClient();
+
+  await minioClient.removeObject(bucketName, fileKey);
+}
 
 export async function GET(
   _request: NextRequest,
@@ -194,6 +215,16 @@ export async function DELETE(
         id: params.id,
       },
     });
+
+    try {
+      await deleteStoredLectureObject(lecture.fileKey);
+    } catch (storageError) {
+      console.error('Failed to delete lecture object from storage:', {
+        lectureId: lecture.id,
+        fileKey: lecture.fileKey,
+        error: storageError,
+      });
+    }
 
     return NextResponse.json({
       success: true,

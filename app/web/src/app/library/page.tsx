@@ -49,6 +49,9 @@ export default function LibraryPage() {
   const [showUploadPanel, setShowUploadPanel] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grid' | 'compact'>('list');
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
+  const [selectedLectureIds, setSelectedLectureIds] = useState<string[]>([]);
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -118,6 +121,13 @@ export default function LibraryPage() {
     [activeFolder, libraryItems, searchQuery],
   );
   const targetFolderId = activeFolder?.id;
+  const visibleLectureIds = useMemo(() => visibleItems.map((item) => item.id), [visibleItems]);
+  const selectedVisibleCount = selectedLectureIds.filter((id) => visibleLectureIds.includes(id)).length;
+  const allVisibleSelected = visibleLectureIds.length > 0 && selectedVisibleCount === visibleLectureIds.length;
+
+  useEffect(() => {
+    setSelectedLectureIds((current) => current.filter((id) => visibleLectureIds.includes(id)));
+  }, [visibleLectureIds]);
 
   const validateFile = (file: File): string | null => {
     if (!Object.keys(ALLOWED_FILE_TYPES).includes(file.type)) {
@@ -229,6 +239,56 @@ export default function LibraryPage() {
     await loadLibrary();
   };
 
+  const toggleLectureSelection = (lectureId: string) => {
+    setSelectedLectureIds((current) => (
+      current.includes(lectureId)
+        ? current.filter((id) => id !== lectureId)
+        : [...current, lectureId]
+    ));
+  };
+
+  const toggleSelectAllVisible = () => {
+    setSelectedLectureIds((current) => {
+      const currentSet = new Set(current);
+
+      if (allVisibleSelected) {
+        visibleLectureIds.forEach((id) => currentSet.delete(id));
+      } else {
+        visibleLectureIds.forEach((id) => currentSet.add(id));
+      }
+
+      return Array.from(currentSet);
+    });
+  };
+
+  const bulkDeleteLectures = async () => {
+    if (selectedLectureIds.length === 0) return;
+
+    setBulkDeleting(true);
+    setActionMessage('');
+
+    try {
+      const responses = await Promise.all(
+        selectedLectureIds.map((lectureId) => fetch(`/api/lectures/${lectureId}`, { method: 'DELETE' })),
+      );
+
+      const failedResponse = responses.find((response) => !response.ok);
+
+      if (failedResponse) {
+        const result = await failedResponse.json().catch(() => ({}));
+        throw new Error(result.error || 'Some selected materials could not be deleted.');
+      }
+
+      setSelectedLectureIds([]);
+      setShowBulkDelete(false);
+      await loadLibrary();
+    } catch (deleteError) {
+      setActionMessage(deleteError instanceof Error ? deleteError.message : 'Selected materials could not be deleted.');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const uploadFile = async (file: File) => {
     const validation = validateFile(file);
     if (validation) {
@@ -325,6 +385,17 @@ export default function LibraryPage() {
               </p>
             </div>
             <div className="board-toolbar-actions">
+              {selectedLectureIds.length > 0 ? (
+                <div className="bulk-action-bar">
+                  <span>{selectedLectureIds.length} selected</span>
+                  <button type="button" onClick={() => setShowBulkDelete(true)} className="text-link text-red-700">
+                    Delete
+                  </button>
+                  <button type="button" onClick={() => setSelectedLectureIds([])} className="text-link">
+                    Clear
+                  </button>
+                </div>
+              ) : null}
               <button
                 type="button"
                 onClick={() => {
@@ -392,6 +463,15 @@ export default function LibraryPage() {
 
             {!loading && !error && (currentFolders.length > 0 || visibleItems.length > 0) && viewMode === 'list' && (
               <div className="kb-source-list-head">
+                <label className="bulk-select-control">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    disabled={visibleLectureIds.length === 0}
+                    onChange={toggleSelectAllVisible}
+                    aria-label="Select all visible files"
+                  />
+                </label>
                 <span>Name</span>
                 <span>Kind</span>
                 <span>Details</span>
@@ -404,6 +484,7 @@ export default function LibraryPage() {
               <div className="divide-y divide-[#e5e5e5]">
                 {currentFolders.map((folder) => (
                   <article key={folder.id} className="drive-row">
+                    <span className="bulk-select-placeholder" />
                     <button type="button" onClick={() => setSelectedFolder(folder.id)} className="drive-row-main">
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium text-[#000000]">{folder.name}</span>
@@ -427,6 +508,14 @@ export default function LibraryPage() {
                 ))}
                 {visibleItems.map((document) => (
                   <article key={document.id} className="kb-source-row">
+                    <label className="bulk-select-control">
+                      <input
+                        type="checkbox"
+                        checked={selectedLectureIds.includes(document.id)}
+                        onChange={() => toggleLectureSelection(document.id)}
+                        aria-label={`Select ${document.title}`}
+                      />
+                    </label>
                     <Link href={`/documents/${document.id}`} className="min-w-0">
                       <div className="truncate text-sm font-medium text-[#000000]">{document.title}</div>
                       <div className="mt-1 truncate text-sm text-[#737373]">
@@ -476,7 +565,15 @@ export default function LibraryPage() {
                   </article>
                 ))}
                 {visibleItems.map((document) => (
-                  <article key={document.id} className="kb-source-card">
+                  <article key={document.id} className={selectedLectureIds.includes(document.id) ? 'kb-source-card kb-source-card-selected' : 'kb-source-card'}>
+                    <label className="bulk-card-check">
+                      <input
+                        type="checkbox"
+                        checked={selectedLectureIds.includes(document.id)}
+                        onChange={() => toggleLectureSelection(document.id)}
+                        aria-label={`Select ${document.title}`}
+                      />
+                    </label>
                     <Link href={`/documents/${document.id}`} className="min-w-0">
                       <div className="kb-source-card-icon">PDF</div>
                       <h3 className="mt-4 line-clamp-2 text-sm font-medium leading-5 text-[#000000]">{document.title}</h3>
@@ -525,6 +622,14 @@ export default function LibraryPage() {
                 ))}
                 {visibleItems.map((document) => (
                   <article key={document.id} className="drive-compact-row">
+                    <label className="bulk-select-control">
+                      <input
+                        type="checkbox"
+                        checked={selectedLectureIds.includes(document.id)}
+                        onChange={() => toggleLectureSelection(document.id)}
+                        aria-label={`Select ${document.title}`}
+                      />
+                    </label>
                     <Link href={`/documents/${document.id}`} className="drive-compact-name">
                       {document.title}
                     </Link>
@@ -752,6 +857,38 @@ export default function LibraryPage() {
                   Done
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showBulkDelete ? (
+        <div className="modal-backdrop">
+          <div className="modal-panel max-w-lg">
+            <p className="text-xs uppercase tracking-normal text-[#737373]">Delete selected</p>
+            <h2 className="mt-2 text-xl font-normal text-[#000000]">
+              Delete {selectedLectureIds.length} selected {selectedLectureIds.length === 1 ? 'file' : 'files'}?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[#737373]">
+              This removes the source files, parsed chunks, and generated study data connected to them.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowBulkDelete(false)}
+                disabled={bulkDeleting}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={bulkDeleteLectures}
+                disabled={bulkDeleting}
+                className="btn-primary bg-red-700 hover:bg-red-800"
+              >
+                {bulkDeleting ? 'Deleting...' : 'Delete files'}
+              </button>
             </div>
           </div>
         </div>

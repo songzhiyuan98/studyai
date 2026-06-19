@@ -69,6 +69,39 @@ function lexicalScore(queryTokens: string[], segmentText: string): number {
   return overlap / uniqueQueryTokens.length;
 }
 
+export function retrieveContextForQuery({
+  query,
+  candidateSegments,
+  limit = 6,
+}: {
+  query: string;
+  candidateSegments: RetrievalSegment[];
+  limit?: number;
+}): RetrievedContext[] {
+  const queryTokens = tokenizeForRetrieval(query);
+
+  return candidateSegments
+    .map((segment) => ({
+      segment,
+      score: lexicalScore(queryTokens, segment.text),
+      reason: 'lexical' as const,
+    }))
+    .filter((result) => result.score > 0)
+    .sort((first, second) => {
+      if (second.score !== first.score) {
+        return second.score - first.score;
+      }
+
+      const lectureDiff = first.segment.lectureId.localeCompare(second.segment.lectureId);
+      if (lectureDiff !== 0) {
+        return lectureDiff;
+      }
+
+      return (first.segment.page || 0) - (second.segment.page || 0);
+    })
+    .slice(0, limit);
+}
+
 function nearbyScore(selectedSegments: RetrievalSegment[], segment: RetrievalSegment): number {
   const samePage = selectedSegments.some((selected) => (
     selected.page !== null

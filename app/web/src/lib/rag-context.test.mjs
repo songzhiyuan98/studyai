@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   compactContextText,
+  retrieveContextForQuery,
   retrieveRelatedContext,
   tokenizeForRetrieval,
 } from './rag-context.ts';
@@ -54,6 +55,47 @@ test('retrieves lexical and nearby context excluding selected segments', () => {
   assert.equal(results.some((result) => result.segment.id === 'seg_selected'), false);
   assert.equal(results[0].segment.id, 'seg_lexical');
   assert.ok(results.some((result) => result.segment.id === 'seg_same_page'));
+});
+
+test('retrieves context directly from a user query', () => {
+  const candidates = [
+    {
+      id: 'seg-1',
+      lectureId: 'lecture-a',
+      text: 'Lambda calculus explains function application and substitution.',
+      page: 2,
+      slide: null,
+      charStart: 0,
+      charEnd: 64,
+    },
+    {
+      id: 'seg-2',
+      lectureId: 'lecture-b',
+      text: 'Haskell pattern matching chooses the first matching equation.',
+      page: 5,
+      slide: null,
+      charStart: 0,
+      charEnd: 61,
+    },
+    {
+      id: 'seg-3',
+      lectureId: 'lecture-c',
+      text: 'Photosynthesis stores energy in plant cells.',
+      page: 1,
+      slide: null,
+      charStart: 0,
+      charEnd: 45,
+    },
+  ];
+
+  const results = retrieveContextForQuery({
+    query: 'How does Haskell pattern matching choose equations?',
+    candidateSegments: candidates,
+  });
+
+  assert.equal(results[0].segment.id, 'seg-2');
+  assert.equal(results[0].reason, 'lexical');
+  assert.ok(results.every((result) => result.score > 0));
 });
 
 test('compacts retrieved context to a bounded string', () => {

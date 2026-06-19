@@ -235,7 +235,8 @@
   }
 
   .app-main-chat {
-    @apply overflow-hidden;
+    @apply h-[calc(100vh-3.5rem)] overflow-hidden;
+    -webkit-overflow-scrolling: auto;
   }
 
   .app-page-transition {
@@ -244,7 +245,7 @@
   }
 
   .app-page-transition-chat {
-    @apply h-full min-h-0;
+    @apply flex h-full min-h-0 overflow-hidden;
   }
 
   @keyframes app-page-enter {
@@ -830,7 +831,24 @@
   }
 
   .board-toolbar-actions {
-    @apply flex shrink-0 items-center gap-2;
+    @apply flex shrink-0 flex-wrap items-center gap-2;
+  }
+
+  .bulk-action-bar {
+    @apply inline-flex items-center gap-3 rounded-full border border-[#e5e5e5] bg-white px-3 py-2 text-xs font-medium text-[#737373] shadow-[0_6px_18px_rgba(0,0,0,0.04)];
+  }
+
+  .bulk-select-control {
+    @apply flex h-5 w-5 shrink-0 items-center justify-center;
+  }
+
+  .bulk-select-control input,
+  .bulk-card-check input {
+    @apply h-4 w-4 rounded border-[#d4d4d4] text-[#000000] focus:ring-[#000000];
+  }
+
+  .bulk-select-placeholder {
+    @apply hidden h-5 w-5 lg:block;
   }
 
   .view-switcher {
@@ -854,15 +872,15 @@
   }
 
   .kb-source-list-head {
-    @apply hidden grid-cols-[minmax(240px,1fr)_150px_160px_120px_150px] border-b border-[#e5e5e5] px-3 pb-2 text-xs uppercase tracking-normal text-[#737373] lg:grid;
+    @apply hidden grid-cols-[28px_minmax(240px,1fr)_150px_160px_120px_150px] border-b border-[#e5e5e5] px-3 pb-2 text-xs uppercase tracking-normal text-[#737373] lg:grid;
   }
 
   .kb-source-row {
-    @apply grid gap-3 rounded-xl py-3 transition-colors hover:bg-[#fafafa]/70 lg:grid-cols-[minmax(240px,1fr)_150px_160px_120px_150px] lg:items-center lg:px-3;
+    @apply grid gap-3 rounded-xl py-3 transition-colors hover:bg-[#fafafa]/70 lg:grid-cols-[28px_minmax(240px,1fr)_150px_160px_120px_150px] lg:items-center lg:px-3;
   }
 
   .drive-row {
-    @apply grid gap-3 rounded-xl py-3 transition-colors hover:bg-[#fafafa]/70 lg:grid-cols-[minmax(240px,1fr)_150px_160px_120px_150px] lg:items-center lg:px-3;
+    @apply grid gap-3 rounded-xl py-3 transition-colors hover:bg-[#fafafa]/70 lg:grid-cols-[28px_minmax(240px,1fr)_150px_160px_120px_150px] lg:items-center lg:px-3;
   }
 
   .drive-row-main {
@@ -894,7 +912,15 @@
   }
 
   .kb-source-card {
-    @apply min-w-0 rounded-xl border border-[#e5e5e5] bg-white p-4 transition-colors hover:border-[#d4d4d4] hover:bg-[#fafafa]/40;
+    @apply relative min-w-0 rounded-xl border border-[#e5e5e5] bg-white p-4 transition-colors hover:border-[#d4d4d4] hover:bg-[#fafafa]/40;
+  }
+
+  .kb-source-card-selected {
+    @apply border-[#000000] bg-[#fafafa]/50;
+  }
+
+  .bulk-card-check {
+    @apply absolute right-4 top-4 flex h-5 w-5 items-center justify-center;
   }
 
   .kb-source-card-icon {
@@ -931,16 +957,20 @@
   }
 
   .chat-app-shell {
-    @apply h-full overflow-hidden bg-white;
+    @apply flex h-full min-h-0 w-full overflow-hidden bg-white;
+    height: 100%;
   }
 
   .chat-main {
-    @apply relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-white;
+    @apply relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white;
+    height: 100%;
   }
 
   .chat-scroll {
-    @apply flex min-h-0 w-full flex-1 flex-col gap-7 overflow-y-auto px-5 pb-64 pt-8 sm:px-8 lg:pt-10;
+    @apply min-h-0 w-full flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 pb-64 pt-4 sm:px-8 lg:pt-5;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    height: 100%;
   }
 
   .chat-scroll::-webkit-scrollbar {
@@ -948,7 +978,7 @@
   }
 
   .chat-welcome {
-    @apply mx-auto w-full max-w-4xl py-10 text-center;
+    @apply mx-auto w-full max-w-4xl py-5 text-center;
   }
 
   .chat-welcome h2 {
@@ -994,6 +1024,14 @@
 
   .chat-citation-row {
     @apply mt-4 flex flex-wrap gap-2;
+  }
+
+  .chat-message-actions {
+    @apply mt-3 flex flex-wrap items-center gap-3;
+  }
+
+  .chat-message-action {
+    @apply text-xs font-medium text-[#737373] underline decoration-[#737373]/20 underline-offset-4 transition-colors hover:text-[#000000] hover:decoration-[#000000]/50 disabled:text-[#a3a3a3] disabled:no-underline;
   }
 
   .chat-composer-dock {
