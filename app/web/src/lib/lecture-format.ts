@@ -67,6 +67,10 @@ export function mapLectureToLibraryItem(lecture: LectureApiRow): LibraryItem {
   };
 }
 
+export function hasIndexingLectures(lectures: LectureApiRow[]): boolean {
+  return lectures.some((lecture) => lecture.status === 'PENDING' || lecture.status === 'PROCESSING');
+}
+
 export function visibleLibraryItems(
   items: LibraryItem[],
   selectedFolderId: string,

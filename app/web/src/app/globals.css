@@ -1119,6 +1119,18 @@
     }
   }
 
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 0.45;
+      transform: scale(0.88);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
   .collection-rail,
   .review-rail {
     @apply border-b border-[#e5e5e5] py-5 lg:border-b-0 lg:border-r lg:pr-5;
@@ -1183,6 +1195,15 @@
 
   .source-list {
     @apply min-w-0;
+  }
+
+  .indexing-banner {
+    @apply mb-4 flex w-fit max-w-full items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-2 text-sm text-[#525252] shadow-[0_10px_30px_rgba(0,0,0,0.05)];
+  }
+
+  .indexing-dot {
+    @apply h-2 w-2 rounded-full bg-[#315cff];
+    animation: pulse-soft 1.4s ease-in-out infinite;
   }
 
   .source-list-head {

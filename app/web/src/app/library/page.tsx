@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   type LectureApiRow,
+  hasIndexingLectures,
   mapLectureToLibraryItem,
   visibleLibraryItems,
 } from '@/lib/lecture-format';
@@ -57,8 +58,10 @@ export default function LibraryPage() {
   const [error, setError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
 
-  const loadLibrary = async () => {
-    setLoading(true);
+  const loadLibrary = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (!silent) {
+      setLoading(true);
+    }
     setError('');
 
     try {
@@ -79,18 +82,21 @@ export default function LibraryPage() {
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Failed to load library.');
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadLibrary();
-  }, []);
+  }, [loadLibrary]);
 
   const libraryItems = useMemo(
     () => lectures.map(mapLectureToLibraryItem),
     [lectures],
   );
+  const hasIndexingSources = hasIndexingLectures(lectures);
 
   const activeFolder = selectedFolder === 'root' ? null : folders.find((folder) => folder.id === selectedFolder) || null;
   const currentFolders = useMemo(
@@ -128,6 +134,16 @@ export default function LibraryPage() {
   useEffect(() => {
     setSelectedLectureIds((current) => current.filter((id) => visibleLectureIds.includes(id)));
   }, [visibleLectureIds]);
+
+  useEffect(() => {
+    if (!hasIndexingSources) return;
+
+    const timer = window.setInterval(() => {
+      loadLibrary({ silent: true });
+    }, 2500);
+
+    return () => window.clearInterval(timer);
+  }, [hasIndexingSources, loadLibrary]);
 
   const validateFile = (file: File): string | null => {
     if (!Object.keys(ALLOWED_FILE_TYPES).includes(file.type)) {
@@ -425,6 +441,13 @@ export default function LibraryPage() {
           {actionMessage ? (
             <div className="mb-4 border-l-2 border-[#ff7759] bg-[#ffad9b]/20 px-4 py-3 text-sm text-[#000000]">
               {actionMessage}
+            </div>
+          ) : null}
+
+          {hasIndexingSources ? (
+            <div className="indexing-banner" role="status">
+              <span className="indexing-dot" aria-hidden="true" />
+              <span>Indexing source files. Chat will pick them up when they are ready.</span>
             </div>
           ) : null}
 

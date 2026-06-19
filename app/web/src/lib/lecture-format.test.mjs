@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { formatFileSize, mapLectureToLibraryItem, visibleLibraryItems } from './lecture-format.ts';
+import {
+  formatFileSize,
+  hasIndexingLectures,
+  mapLectureToLibraryItem,
+  visibleLibraryItems,
+} from './lecture-format.ts';
 
 const apiLecture = {
   id: 'lec_1',
@@ -53,4 +58,11 @@ test('formats file sizes with stable desktop-friendly units', () => {
   assert.equal(formatFileSize(512), '512 B');
   assert.equal(formatFileSize(2048), '2.0 KB');
   assert.equal(formatFileSize(5 * 1024 * 1024), '5.0 MB');
+});
+
+test('detects lectures that still need indexing refreshes', () => {
+  assert.equal(hasIndexingLectures([apiLecture]), false);
+  assert.equal(hasIndexingLectures([{ ...apiLecture, status: 'PENDING' }]), true);
+  assert.equal(hasIndexingLectures([{ ...apiLecture, status: 'PROCESSING' }]), true);
+  assert.equal(hasIndexingLectures([{ ...apiLecture, status: 'FAILED' }]), false);
 });
