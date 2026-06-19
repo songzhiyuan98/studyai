@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 
 type ActionMode = 'free' | 'explain' | 'summarize' | 'key_terms' | 'mini_quiz' | 'cheat_sheet';
@@ -61,6 +61,8 @@ function formatAssistantContent(content: string) {
 export default function ChatPage() {
   const chatScrollRef = useRef<HTMLElement>(null);
   const typingTimersRef = useRef<number[]>([]);
+  const hasHydratedSourcesRef = useRef(false);
+  const mountedRef = useRef(true);
   const [mode, setMode] = useState<ActionMode>('free');
   const [message, setMessage] = useState('');
   const [sources, setSources] = useState<ChatSource[]>([]);
@@ -80,45 +82,71 @@ export default function ChatPage() {
     ? 'All ready sources'
     : `${confirmedSources.length} ${confirmedSources.length === 1 ? 'source' : 'sources'}`;
 
-  useEffect(() => {
-    let mounted = true;
-
-    const loadSources = async () => {
+  const loadSources = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (!silent) {
       setLoadingSources(true);
-      setError('');
+    }
+    setError('');
 
-      try {
-        const response = await fetch('/api/chat', {
-          method: 'GET',
-          headers: { Accept: 'application/json' },
-        });
-        const payload = await response.json();
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+      });
+      const payload = await response.json();
 
-        if (!response.ok || !payload.success) {
-          throw new Error(payload.error || 'Failed to load chat sources.');
-        }
-
-        if (!mounted) return;
-
-        const loadedSources = payload.data.sources as ChatSource[];
-        setSources(loadedSources);
-        setConfirmedSources(loadedSources.slice(0, 3).map((source) => source.id));
-      } catch (loadError) {
-        if (!mounted) return;
-        setError(loadError instanceof Error ? loadError.message : 'Failed to load chat sources.');
-      } finally {
-        if (mounted) {
-          setLoadingSources(false);
-        }
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || 'Failed to load chat sources.');
       }
-    };
 
+      if (!mountedRef.current) return;
+
+      const loadedSources = payload.data.sources as ChatSource[];
+      const loadedIds = new Set(loadedSources.map((source) => source.id));
+
+      setSources(loadedSources);
+      setConfirmedSources((current) => {
+        if (!hasHydratedSourcesRef.current) {
+          return loadedSources.slice(0, 3).map((source) => source.id);
+        }
+
+        return current.filter((sourceId) => loadedIds.has(sourceId));
+      });
+      hasHydratedSourcesRef.current = true;
+    } catch (loadError) {
+      if (!mountedRef.current) return;
+      setError(loadError instanceof Error ? loadError.message : 'Failed to load chat sources.');
+    } finally {
+      if (mountedRef.current && !silent) {
+        setLoadingSources(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
     loadSources();
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
     };
-  }, []);
+  }, [loadSources]);
+
+  useEffect(() => {
+    const refreshOnFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadSources({ silent: true });
+      }
+    };
+
+    document.addEventListener('visibilitychange', refreshOnFocus);
+    window.addEventListener('focus', refreshOnFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', refreshOnFocus);
+      window.removeEventListener('focus', refreshOnFocus);
+    };
+  }, [loadSources]);
 
   useEffect(() => {
     const scrollElement = chatScrollRef.current;
@@ -342,6 +370,9 @@ export default function ChatPage() {
                       <div>scope: {confirmedSources.length > 0 ? `${confirmedSources.length} selected` : 'all ready sources'}</div>
                     </div>
                     <div className="chat-source-tools">
+                      <button type="button" onClick={() => loadSources()} className="chat-message-action">
+                        Refresh sources
+                      </button>
                       <button type="button" onClick={selectAllSources} disabled={sources.length === 0} className="chat-message-action">
                         Select all
                       </button>

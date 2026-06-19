@@ -45,3 +45,10 @@ test('library page is positioned as knowledge base management', () => {
   assert.match(source, /Organize lecture files and folders/);
   assert.match(source, /'list', 'grid', 'compact'/);
 });
+
+test('chat page can refresh ready library sources after uploads finish indexing', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+  assert.match(source, /Refresh sources/);
+  assert.match(source, /visibilitychange/);
+  assert.match(source, /hasHydratedSourcesRef/);
+});
