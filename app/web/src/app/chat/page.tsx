@@ -69,6 +69,7 @@ export default function ChatPage() {
   const [loadingSources, setLoadingSources] = useState(true);
   const [sending, setSending] = useState(false);
   const [savingMessageId, setSavingMessageId] = useState<string | null>(null);
+  const [showSourceScope, setShowSourceScope] = useState(false);
   const [error, setError] = useState('');
 
   const selectedMode = useMemo(
@@ -139,6 +140,14 @@ export default function ChatPage() {
         ? current.filter((id) => id !== sourceId)
         : [...current, sourceId]
     ));
+  };
+
+  const selectAllSources = () => {
+    setConfirmedSources(sources.map((source) => source.id));
+  };
+
+  const clearSources = () => {
+    setConfirmedSources([]);
   };
 
   const sendMessage = async (event: React.FormEvent) => {
@@ -294,29 +303,24 @@ export default function ChatPage() {
           <div className="chat-turn chat-turn-assistant">
             <div className="chat-avatar">S</div>
             <div className="chat-turn-content">
-              <p>
-                Choose a source scope before sending, or leave it empty and I will search all ready sources.
-              </p>
-
-              <div className="chat-source-card">
-                <div className="flex items-center justify-between gap-3">
+              <div className="chat-source-card chat-source-card-compact">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-medium text-[#000000]">Source scope</p>
-                    <p className="mt-1 text-xs text-[#737373]">Ready Library files become searchable context for Chat.</p>
+                    <p className="mt-1 text-xs text-[#737373]">
+                      {confirmedSources.length === 0
+                        ? 'Searching all ready Library sources.'
+                        : `Searching ${sourceLabel} from your Library.`}
+                    </p>
                   </div>
-                  <span className="status-pill status-muted">
-                    {loadingSources ? 'Loading' : sourceLabel}
-                  </span>
-                </div>
-                <div className="mt-4 ai-terminal">
-                  <div className="ai-terminal-lights">
-                    <span className="bg-[#ff5f56]" />
-                    <span className="bg-[#ffbd2e]" />
-                    <span className="bg-[#27c93f]" />
-                  </div>
-                  <div>retrieval: lexical_page_aware_v0</div>
-                  <div>mode: {selectedMode.label}</div>
-                  <div>scope: {confirmedSources.length > 0 ? `${confirmedSources.length} selected` : 'all ready sources'}</div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSourceScope((current) => !current)}
+                    className="chat-source-toggle"
+                  >
+                    {loadingSources ? 'Loading sources' : sourceLabel}
+                    <span>{showSourceScope ? 'Hide' : 'Edit'}</span>
+                  </button>
                 </div>
 
                 {error ? (
@@ -325,43 +329,65 @@ export default function ChatPage() {
                   </div>
                 ) : null}
 
-                <div className="mt-4 divide-y divide-[#e5e5e5]">
-                  {loadingSources ? (
-                    <div className="space-y-2 py-2">
-                      <div className="h-4 w-2/3 rounded bg-[#f2f2f2]" />
-                      <div className="h-4 w-1/2 rounded bg-[#f2f2f2]" />
+                {showSourceScope ? (
+                  <>
+                    <div className="mt-4 ai-terminal">
+                      <div className="ai-terminal-lights">
+                        <span className="bg-[#ff5f56]" />
+                        <span className="bg-[#ffbd2e]" />
+                        <span className="bg-[#27c93f]" />
+                      </div>
+                      <div>retrieval: embedding when available, lexical fallback</div>
+                      <div>mode: {selectedMode.label}</div>
+                      <div>scope: {confirmedSources.length > 0 ? `${confirmedSources.length} selected` : 'all ready sources'}</div>
                     </div>
-                  ) : sources.length > 0 ? (
-                    sources.map((source) => {
-                      const active = confirmedSources.includes(source.id);
+                    <div className="chat-source-tools">
+                      <button type="button" onClick={selectAllSources} disabled={sources.length === 0} className="chat-message-action">
+                        Select all
+                      </button>
+                      <button type="button" onClick={clearSources} className="chat-message-action">
+                        Search all
+                      </button>
+                    </div>
+                    <div className="mt-3 divide-y divide-[#e5e5e5]">
+                      {loadingSources ? (
+                        <div className="space-y-2 py-2">
+                          <div className="h-4 w-2/3 rounded bg-[#f2f2f2]" />
+                          <div className="h-4 w-1/2 rounded bg-[#f2f2f2]" />
+                        </div>
+                      ) : sources.length > 0 ? (
+                        sources.map((source) => {
+                          const active = confirmedSources.includes(source.id);
 
-                      return (
-                        <button
-                          key={source.id}
-                          type="button"
-                          onClick={() => toggleSource(source.id)}
-                          className="chat-source-row"
-                        >
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm text-[#000000]">{source.label}</span>
-                            <span className="mt-1 block truncate text-xs text-[#737373]">{source.detail}</span>
-                          </span>
-                          <span className={active ? 'status-pill status-ready' : 'status-pill'}>
-                            {active ? 'Use' : 'Skip'}
-                          </span>
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <div className="py-4 text-sm leading-6 text-[#737373]">
-                      No ready sources yet. Go to{' '}
-                      <Link href="/library" className="text-link">
-                        Library
-                      </Link>{' '}
-                      and upload a PDF or TXT file first.
+                          return (
+                            <button
+                              key={source.id}
+                              type="button"
+                              onClick={() => toggleSource(source.id)}
+                              className="chat-source-row"
+                            >
+                              <span className="min-w-0">
+                                <span className="block truncate text-sm text-[#000000]">{source.label}</span>
+                                <span className="mt-1 block truncate text-xs text-[#737373]">{source.detail}</span>
+                              </span>
+                              <span className={active ? 'status-pill status-ready' : 'status-pill'}>
+                                {active ? 'Use' : 'Skip'}
+                              </span>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="py-4 text-sm leading-6 text-[#737373]">
+                          No ready sources yet. Go to{' '}
+                          <Link href="/library" className="text-link">
+                            Library
+                          </Link>{' '}
+                          and upload a PDF or TXT file first.
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </>
+                ) : null}
               </div>
             </div>
           </div>
