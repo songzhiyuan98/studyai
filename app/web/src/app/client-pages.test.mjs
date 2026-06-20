@@ -91,3 +91,13 @@ test('chat page can continue an existing chat session', () => {
   assert.match(source, /sessionId: activeSessionId \|\| undefined/);
   assert.match(source, /studyflow:chat-sessions-changed/);
 });
+
+test('chat citations open the cited reader segment', () => {
+  const chatSource = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+  const readerSource = readFileSync(resolve(root, 'src/app/documents/[id]/page.tsx'), 'utf8');
+
+  assert.match(chatSource, /href=\{`\/documents\/\$\{source\.lectureId\}\?segmentId=\$\{encodeURIComponent\(source\.segmentId\)\}`\}/);
+  assert.match(readerSource, /const citedSegmentId = searchParams\.get\('segmentId'\)/);
+  assert.match(readerSource, /data-segment-id=\{segment\.id\}/);
+  assert.match(readerSource, /scrollIntoView\(\{ behavior: 'smooth', block: 'center' \}\)/);
+});

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   LectureDetailApiRow,
   ReaderLecture,
@@ -26,6 +27,8 @@ type StudyActionResponse = {
 };
 
 export default function DocumentReaderPage({ params }: { params: { id: string } }) {
+  const searchParams = useSearchParams();
+  const citedSegmentId = searchParams.get('segmentId');
   const [lecture, setLecture] = useState<ReaderLecture | null>(null);
   const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
   const [artifacts, setArtifacts] = useState<StudyArtifact[]>([]);
@@ -53,8 +56,16 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
 
         if (!active) return;
 
+        const citedSegment = citedSegmentId
+          ? readerLecture.segments.find((segment) => segment.id === citedSegmentId)
+          : null;
+
         setLecture(readerLecture);
-        setSelectedSegments(readerLecture.segments[0] ? [readerLecture.segments[0].id] : []);
+        setSelectedSegments(citedSegment
+          ? [citedSegment.id]
+          : readerLecture.segments[0]
+            ? [readerLecture.segments[0].id]
+            : []);
       } catch (loadError) {
         if (!active) return;
         setError(loadError instanceof Error ? loadError.message : 'Lecture could not be loaded.');
@@ -70,7 +81,14 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
     return () => {
       active = false;
     };
-  }, [params.id]);
+  }, [citedSegmentId, params.id]);
+
+  useEffect(() => {
+    if (!lecture || !citedSegmentId) return;
+
+    const target = document.querySelector(`[data-segment-id="${CSS.escape(citedSegmentId)}"]`);
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [citedSegmentId, lecture]);
 
   const selectedText = useMemo(
     () => lecture?.segments.filter((segment) => selectedSegments.includes(segment.id)) || [],
@@ -232,6 +250,7 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
                   <button
                     key={segment.id}
                     type="button"
+                    data-segment-id={segment.id}
                     onClick={() => toggleSegment(segment.id)}
                     className={`reader-paragraph ${selected ? 'reader-paragraph-selected' : ''}`}
                   >

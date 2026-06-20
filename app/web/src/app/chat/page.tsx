@@ -607,9 +607,13 @@ export default function ChatPage() {
                 {chatMessage.sourceRefs?.length ? (
                   <div className="chat-citation-row">
                     {chatMessage.sourceRefs.map((source) => (
-                      <span key={`${source.lectureId}-${source.segmentId}`} className="status-pill status-muted">
+                      <Link
+                        key={`${source.lectureId}-${source.segmentId}`}
+                        href={`/documents/${source.lectureId}?segmentId=${encodeURIComponent(source.segmentId)}`}
+                        className="status-pill status-muted"
+                      >
                         {source.label}
-                      </span>
+                      </Link>
                     ))}
                   </div>
                 ) : null}
