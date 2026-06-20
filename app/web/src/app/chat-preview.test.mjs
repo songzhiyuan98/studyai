@@ -49,6 +49,10 @@ test('chat source preview reports planner context strategy', () => {
   assert.match(routeSource, /plannerSource: previewPlan\.plannerSource/);
   assert.match(routeSource, /plannerModel: previewPlan\.plannerModel/);
   assert.match(routeSource, /plannerRationale: previewPlan\.plannerRationale/);
+  assert.match(routeSource, /plannedContextStrategy: previewPlan\.contextStrategy/);
+  assert.match(routeSource, /contextStrategyAdjusted: effectiveContextStrategy !== previewPlan\.contextStrategy/);
+  assert.match(routeSource, /candidateSegmentCount: candidateSegments\.length/);
+  assert.match(routeSource, /activeSegmentCount/);
   assert.match(routeSource, /lecturePackSummary/);
   assert.match(routeSource, /lecture_pack_v0/);
   assert.match(routeSource, /long_document_map_v0/);

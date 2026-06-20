@@ -378,7 +378,12 @@ export async function POST(request: NextRequest) {
         retrieval: {
           strategy: retrievalStrategy,
           contextStrategy: effectiveContextStrategy,
+          plannedContextStrategy: previewPlan.contextStrategy,
+          contextStrategyAdjusted: effectiveContextStrategy !== previewPlan.contextStrategy,
           contextSummary,
+          contextCharBudget,
+          candidateSegmentCount: candidateSegments.length,
+          activeSegmentCount,
           count: context.length,
           scopedLectureCount: activeLectures.length,
           sourceScope: libraryScope.source === 'all_ready' && titleScope?.narrowed

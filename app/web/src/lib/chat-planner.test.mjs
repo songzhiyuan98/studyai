@@ -100,6 +100,12 @@ test('chat route stores planner trace with retrieval metadata', () => {
   assert.match(source, /plannerRationale: chatPlan\.plannerRationale/);
   assert.match(source, /plannerCatalogLectures/);
   assert.match(source, /formatLibraryCatalogForPlanner\(plannerCatalogLectures\)/);
+  assert.match(source, /plannerCatalogCount: plannerCatalogLectures\.length/);
+  assert.match(source, /plannedContextStrategy: chatPlan\.contextStrategy/);
+  assert.match(source, /contextStrategyAdjusted: effectiveContextStrategy !== chatPlan\.contextStrategy/);
+  assert.match(source, /contextCharBudget/);
+  assert.match(source, /candidateSegmentCount: candidateSegments\.length/);
+  assert.match(source, /activeSegmentCount/);
   assert.match(source, /resolvedScope/);
   assert.match(source, /libraryScope\.matchedLabels/);
   assert.match(source, /contextSummary/);

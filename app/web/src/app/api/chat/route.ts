@@ -399,6 +399,7 @@ export async function POST(request: NextRequest) {
         query: 'tool_call',
         plan: chatPlan,
         ...getPlannerTrace(chatPlan),
+        plannerCatalogCount: plannerCatalogLectures.length,
         toolResult: artifact ? 'saved' : 'no_candidate',
       };
 
@@ -463,6 +464,7 @@ export async function POST(request: NextRequest) {
         query: 'tool_call',
         plan: chatPlan,
         ...getPlannerTrace(chatPlan),
+        plannerCatalogCount: plannerCatalogLectures.length,
         toolResult: targetRef ? 'reader_link_ready' : 'no_recent_source',
       };
 
@@ -505,6 +507,7 @@ export async function POST(request: NextRequest) {
         query: 'not_requested',
         plan: chatPlan,
         ...getPlannerTrace(chatPlan),
+        plannerCatalogCount: plannerCatalogLectures.length,
       };
       const generationInput = {
         mode: parsed.data.mode,
@@ -937,13 +940,19 @@ export async function POST(request: NextRequest) {
       historyCount: recentHistory.length,
       query: recentHistory.length > 0 ? 'history_aware' : 'current_message',
       contextStrategy: effectiveContextStrategy,
+      plannedContextStrategy: chatPlan.contextStrategy,
+      contextStrategyAdjusted: effectiveContextStrategy !== chatPlan.contextStrategy,
       contextSummary,
+      contextCharBudget,
+      candidateSegmentCount: candidateSegments.length,
+      activeSegmentCount,
       sourceScope: libraryScope.source === 'all_ready' && titleScope?.narrowed
         ? 'lecture_title'
         : libraryScope.source,
       libraryScope,
       plan: chatPlan,
       ...getPlannerTrace(chatPlan),
+      plannerCatalogCount: plannerCatalogLectures.length,
     };
 
     if (parsed.data.stream) {
