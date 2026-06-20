@@ -484,6 +484,8 @@ export default function ChatPage() {
     if (!sourcePreview?.materials.length || selectedPreviewLectureIds.length === 0) return;
 
     setConfirmedSources(selectedPreviewLectureIds);
+    setSourcePreview(null);
+    setSelectedPreviewLectureIds([]);
     setShowSourceScope(false);
   };
 

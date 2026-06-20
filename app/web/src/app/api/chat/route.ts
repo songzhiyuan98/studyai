@@ -12,6 +12,7 @@ import {
 } from '@/lib/rag-context';
 import { buildChatAnswer, chatModeLabels } from '@/lib/chat-answer';
 import {
+  buildHistoryAwareRetrievalQuery,
   chunkTextForLocalStream,
   generateGroundedChatAnswer,
   getChatModelConfig,
@@ -355,15 +356,19 @@ export async function POST(request: NextRequest) {
 
     let retrievalStrategy = 'lexical_page_aware_v0';
     let vectorResults: RetrievedContext[] = [];
+    const retrievalQuery = buildHistoryAwareRetrievalQuery({
+      message: parsed.data.message,
+      history: recentHistory,
+    });
     const lexicalResults = retrieveContextForQuery({
-      query: parsed.data.message,
+      query: retrievalQuery,
       candidateSegments,
       limit: 8,
     });
 
     try {
       vectorResults = await retrieveVectorContext({
-        query: parsed.data.message,
+        query: retrievalQuery,
         userId: session.user.id,
         lectureIds: scopedLectureIds,
         limit: 8,
@@ -431,6 +436,7 @@ export async function POST(request: NextRequest) {
       count: context.length,
       scopedLectureCount: lectures.length,
       historyCount: recentHistory.length,
+      query: recentHistory.length > 0 ? 'history_aware' : 'current_message',
     };
 
     if (parsed.data.stream) {

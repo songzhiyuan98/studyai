@@ -87,6 +87,7 @@ User chat message
   -> Conversation state
      - latest turns are preserved for follow-up references
      - older turns are compacted when context grows long
+     - casual small talk stays in chat memory but is filtered out of retrieval queries
   -> Intent and study-goal extraction
      - free-form chat
      - fixed action pill mode
@@ -123,11 +124,14 @@ The chat response should stream token-by-token for the user, while the backend p
 
 StudyFlow Chat should be source-aware, not source-imprisoned. Retrieved RAG context helps the model understand the student's course materials, terminology, and citation targets; it is not a hard ceiling on the model's tutoring ability. The assistant should answer naturally like ChatGPT, using general model knowledge to explain concepts, provide examples, connect ideas, and fill in basic background when helpful. Source markers such as `[S1]` are reserved for specific source-supported claims, and the UI keeps a citation trace attached to the answer. The assistant must not fabricate citations or imply that general knowledge came from the student's files.
 
+Conversation memory and retrieval memory are related but not identical. The assistant may use casual conversation history to sound natural and understand user preferences, but RAG retrieval should only expand the query with recent turns that contain concrete learning, source, file, concept, or assessment signals. This prevents greetings or unrelated chat from polluting source ranking while still supporting follow-up requests like "quiz me on that" after a Haskell discussion.
+
 ### Chat Interaction Rules
 
 - Natural-language input is always available.
 - Quick action pills are optional accelerators, not separate pages.
 - A selected pill controls the output format of the next assistant response.
+- Default free chat should feel like a teacher-led conversation: gradual explanation, short checks for what the student wants next, and no unsolicited quiz or cheat-sheet dump.
 - The assistant may ask one short source-confirmation question before generation when the scope is ambiguous.
 - Source confirmation should be based on the internal retrieval/source-preview API or future tool calls, not a generic confirmation modal.
 - If the student chooses a scope manually, the assistant should not repeatedly ask for confirmation.

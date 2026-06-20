@@ -83,6 +83,35 @@ export function compactChatHistory(history: ChatHistoryTurn[] = [], maxTurns = 8
   return truncateText(historyBlock, maxChars);
 }
 
+function hasStudyRetrievalSignal(content: string) {
+  return /\b(quiz|test|exam|homework|assignment|lecture|slide|chapter|page|pdf|txt|notes?|sources?|materials?|haskell|lambda|functions?|types?|syntax|code|programming|definitions?|concepts?|terms?|examples?)\b/i.test(content);
+}
+
+export function buildHistoryAwareRetrievalQuery({
+  message,
+  history = [],
+}: {
+  message: string;
+  history?: ChatHistoryTurn[];
+}) {
+  const usefulHistory = history
+    .slice(-4)
+    .filter((turn) => hasStudyRetrievalSignal(turn.content))
+    .map((turn) => `${turn.role}: ${truncateText(turn.content, 260)}`)
+    .join('\n');
+
+  if (!usefulHistory) {
+    return message;
+  }
+
+  return truncateText([
+    'Recent study conversation:',
+    usefulHistory,
+    '',
+    `Current request: ${message}`,
+  ].join('\n'), 850);
+}
+
 export function buildGroundedPrompt({ mode, message, history, sources }: GenerateGroundedAnswerInput) {
   const sourceBlock = sources.length > 0
     ? sources.map((source, index) => (
@@ -108,6 +137,8 @@ export function buildGroundedPrompt({ mode, message, history, sources }: Generat
     '- Use the retrieved sources to understand the student’s course context, terminology, and likely intent.',
     '- Use recent conversation to resolve follow-up references like "this", "that", "continue", and "quiz me on it".',
     '- Answer like ChatGPT with full tutoring ability: explain, connect concepts, provide examples, and fill in basic background when helpful.',
+    '- In free chat, teach gradually like a patient tutor: start with the core idea, check what the student wants next, and avoid dumping every possible artifact at once.',
+    '- Do not generate quizzes, cheat sheets, or long fixed templates unless the student asks for them or the matching quick action mode is selected.',
     '- Mention source markers such as [S1] only when a specific sentence or bullet is directly grounded in a retrieved source.',
     '- Do not fabricate citations or claim the sources say something they do not say.',
     '- If the student explicitly asks to answer only from the material, stay within the retrieved sources and say what is missing when context is insufficient.',

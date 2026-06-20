@@ -171,6 +171,7 @@ test('chat page can preview suggested sources before generation', () => {
   assert.match(source, /selectAllPreviewMaterials/);
   assert.match(source, /clearPreviewMaterials/);
   assert.match(source, /setConfirmedSources\(selectedPreviewLectureIds\)/);
+  assert.match(source, /setSourcePreview\(null\)/);
   assert.doesNotMatch(source, /setConfirmedSources\(sourcePreview\.materials\.map/);
 });
 
@@ -185,4 +186,13 @@ test('chat API loads recent session history before creating the next user messag
   assert.match(source, /orderBy:\s*\{\s*createdAt: 'desc'\s*\}/);
   assert.match(source, /take: 8/);
   assert.match(source, /history: recentHistory/);
+});
+
+test('chat API uses recent conversation when retrieving follow-up context', () => {
+  const source = readFileSync(resolve(root, 'src/app/api/chat/route.ts'), 'utf8');
+
+  assert.match(source, /buildHistoryAwareRetrievalQuery/);
+  assert.match(source, /const retrievalQuery = buildHistoryAwareRetrievalQuery/);
+  assert.match(source, /query: retrievalQuery/);
+  assert.doesNotMatch(source, /retrieveContextForQuery\(\{\s*query: parsed\.data\.message/);
 });

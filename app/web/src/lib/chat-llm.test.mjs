@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildGroundedPrompt,
+  buildHistoryAwareRetrievalQuery,
   chunkTextForLocalStream,
   generateGroundedChatAnswer,
   getChatModelConfig,
@@ -99,7 +100,52 @@ test('builds prompts with recent conversation history for follow-up questions', 
   assert.match(prompt, /user: What is pattern matching\?/);
   assert.match(prompt, /assistant: Pattern matching checks values against ordered cases\./);
   assert.match(prompt, /Use recent conversation to resolve follow-up references/);
+  assert.match(prompt, /teach gradually like a patient tutor/);
+  assert.match(prompt, /Do not generate quizzes, cheat sheets, or long fixed templates/);
   assert.match(prompt, /Can you continue from that example\?/);
+});
+
+test('builds history-aware retrieval queries for follow-up messages', () => {
+  const query = buildHistoryAwareRetrievalQuery({
+    message: 'Can you quiz me on that?',
+    history: [
+      {
+        role: 'user',
+        content: 'I need to review Haskell higher-order functions and lambda expressions.',
+      },
+      {
+        role: 'assistant',
+        content: 'Higher-order functions can take functions as values.',
+      },
+    ],
+  });
+
+  assert.match(query, /Current request: Can you quiz me on that\?/);
+  assert.match(query, /Haskell higher-order functions and lambda expressions/);
+  assert.match(query, /Higher-order functions can take functions as values/);
+  assert.ok(query.length < 900);
+});
+
+test('keeps casual chat history out of retrieval queries', () => {
+  const query = buildHistoryAwareRetrievalQuery({
+    message: 'Can you explain Haskell functions now?',
+    history: [
+      {
+        role: 'user',
+        content: 'hi how are you today?',
+      },
+      {
+        role: 'assistant',
+        content: 'I am doing well. What would you like to study?',
+      },
+      {
+        role: 'user',
+        content: 'thanks',
+      },
+    ],
+  });
+
+  assert.equal(query, 'Can you explain Haskell functions now?');
 });
 
 test('skips remote generation when chat model is not configured', async () => {
