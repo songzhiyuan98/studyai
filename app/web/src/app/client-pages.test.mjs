@@ -101,6 +101,18 @@ test('reader page uses product language for parsed passages', () => {
   assert.doesNotMatch(source, /readable chunks/);
 });
 
+test('secondary study surfaces use context language', () => {
+  const examSource = readFileSync(resolve(root, 'src/app/exam/[id]/page.tsx'), 'utf8');
+  const studySource = readFileSync(resolve(root, 'src/app/study/page.tsx'), 'utf8');
+
+  assert.match(examSource, /source passage about hidden structure/);
+  assert.match(studySource, /source passages/);
+  assert.doesNotMatch(examSource, /retrieval segment/);
+  assert.doesNotMatch(examSource, /RAG/);
+  assert.doesNotMatch(studySource, /source segments/);
+  assert.doesNotMatch(studySource, /\{segmentCount\} segments/);
+});
+
 test('saved page supports selecting and deleting saved outputs', () => {
   const source = readFileSync(resolve(root, 'src/app/review/page.tsx'), 'utf8');
   assert.match(source, /selectedArtifactIds/);

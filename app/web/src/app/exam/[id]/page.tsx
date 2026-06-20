@@ -12,7 +12,7 @@ const questions = [
   {
     id: 'q2',
     question: 'Which source should a generated answer cite when explaining clustering?',
-    options: ['The retrieval segment about hidden structure', 'The login page', 'The upload API logs', 'A random web result'],
+    options: ['The source passage about hidden structure', 'The login page', 'The upload API logs', 'A random web result'],
     source: 'Lecture 01 · page 2 · seg_3',
   },
 ];

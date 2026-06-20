@@ -35,7 +35,7 @@ export default function StudyPage() {
           <p className="text-xs text-white/65">Active scope</p>
           <p className="mt-2 text-3xl font-normal">{selected.length}</p>
           <p className="mt-2 text-sm leading-6 text-white/75">
-            lectures selected, covering {segmentCount} source segments.
+            lectures selected, covering {segmentCount} source passages.
           </p>
           <div className="mt-4 rounded-full bg-white px-3 py-2 font-mono text-xs text-[#000000]">
             context --scope selected
@@ -63,7 +63,7 @@ export default function StudyPage() {
               <p className="text-xs text-[#737373]">Source set</p>
               <h2 className="mt-1 text-2xl font-normal text-[#000000]">Lectures in scope</h2>
             </div>
-            <span className="text-sm text-[#737373]">{segmentCount} segments</span>
+            <span className="text-sm text-[#737373]">{segmentCount} passages</span>
           </div>
 
           <div className="artifact-stream">
@@ -79,7 +79,7 @@ export default function StudyPage() {
                 >
                   <span className="min-w-0 px-1">
                     <span className="block truncate text-base font-medium text-[#000000]">{lecture.title}</span>
-                    <span className="mt-1 block text-sm text-[#737373]">{lecture.segments} source segments</span>
+                    <span className="mt-1 block text-sm text-[#737373]">{lecture.segments} source passages</span>
                   </span>
                   <span className="px-1 text-sm text-[#737373]">Lecture</span>
                   <span className={isSelected ? 'status-pill status-ready mx-1' : 'status-pill mx-1'}>
