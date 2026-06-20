@@ -17,6 +17,7 @@ import { formatLibraryCatalogForPlanner, planChatTurnWithAi } from '@/lib/chat-p
 import { resolveLibraryScope } from '@/lib/library-catalog';
 import { buildLecturePackContext } from '@/lib/lecture-pack';
 import { CHAT_CONTEXT_SEGMENT_FETCH_LIMIT, getChatContextCharBudget } from '@/lib/chat-context-budget';
+import { buildHistoryAwareRetrievalQuery } from '@/lib/chat-llm';
 
 const previewSchema = z.object({
   message: z.string().min(1).max(2000),
@@ -154,16 +155,19 @@ export async function POST(request: NextRequest) {
       take: 20,
     });
 
+    const retrievalQuery = buildHistoryAwareRetrievalQuery({
+      message: parsed.data.message,
+    });
     const libraryScope = resolveLibraryScope({
       lectures,
-      query: parsed.data.message,
+      query: retrievalQuery,
       explicitLectureIds: scopedLectureIds,
     });
     const titleScope = libraryScope.narrowed
       ? null
       : resolveExplicitLectureScope({
         lectures,
-        query: parsed.data.message,
+        query: retrievalQuery,
       });
     const explicitScope = titleScope || libraryScope;
     const activeLectures = explicitScope.lectures;
@@ -224,7 +228,7 @@ export async function POST(request: NextRequest) {
     });
     const broadCoverageResults = usesBroadCoverage && !usesLecturePack
       ? retrieveBroadCoverageContext({
-        query: parsed.data.message,
+        query: retrievalQuery,
         candidateSegments,
         perLecture: previewPlan.retrievalBreadth === 'broad_lesson' ? 6 : 4,
         limit: previewPlan.retrievalBreadth === 'broad_lesson' ? 20 : 16,
@@ -233,14 +237,14 @@ export async function POST(request: NextRequest) {
     const pageResults = usesLecturePack
       ? []
       : retrieveContextForPageRequest({
-        query: parsed.data.message,
+        query: retrievalQuery,
         candidateSegments,
         limit: 8,
       });
     const lexicalResults = usesLecturePack
       ? []
       : retrieveContextForQuery({
-        query: parsed.data.message,
+        query: retrievalQuery,
         candidateSegments,
         limit: 8,
       });
@@ -248,7 +252,7 @@ export async function POST(request: NextRequest) {
     if (!usesLecturePack && pageResults.length === 0 && broadCoverageResults.length === 0) {
       try {
         vectorResults = await retrieveVectorPreview({
-          query: parsed.data.message,
+          query: retrievalQuery,
           userId: session.user.id,
           lectureIds: retrievalLectureIds,
           limit: 8,
@@ -381,6 +385,7 @@ export async function POST(request: NextRequest) {
           plannedContextStrategy: previewPlan.contextStrategy,
           contextStrategyAdjusted: effectiveContextStrategy !== previewPlan.contextStrategy,
           contextSummary,
+          query: retrievalQuery === parsed.data.message ? 'current_message' : 'expanded_query',
           contextCharBudget,
           candidateSegmentCount: candidateSegments.length,
           activeSegmentCount,
