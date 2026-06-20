@@ -11,9 +11,10 @@ Student
   -> Object Storage
   -> Lecture + Segment Database
   -> Embedding Pipeline
-  -> Retriever
+  -> Planner + Scope Resolver
+  -> Context Packager / Retriever
   -> Library-Grounded Chat
-  -> LLM Action Generator
+  -> Teaching Agent / Action Generator
   -> Saved Study Artifacts
 ```
 
@@ -67,20 +68,21 @@ When source scope is uncertain, the assistant should ask for confirmation before
 
 Chat should not replace the reader. Chat is the active learning entry point; the reader is where citations are inspected, precise scopes are selected, and source material is deeply read.
 
-## RAG Data Flow
+## Scope-First Context Flow
 
 ```text
 User action
   -> Resolve Study Scope
   -> Apply metadata filters
-  -> Retrieve relevant segments
+  -> Choose context strategy
+  -> Pack source-ordered passages or retrieve relevant passages
   -> Deduplicate and pack context
   -> Generate action-specific output
   -> Validate citations
   -> Save artifact with sourceRefs
 ```
 
-## Chat RAG Data Flow
+## Chat Context Data Flow
 
 ```text
 User chat message
@@ -103,18 +105,19 @@ User chat message
      - skip when scope is explicit
      - recommend candidate folders, lectures, or page ranges when retrieval spans multiple plausible sources
      - let the student approve, remove, or adjust the recommended source set
-  -> Retrieval query builder
+  -> Context loader
      - natural-language query
      - optional rewritten query for lecture terminology
      - metadata filters by user, folder, lecture, page/slide, and status
-  -> Hybrid retriever
+     - lecture_pack for full lecture or page-by-page learning
+     - broad coverage for exams and wide review
+     - focused retrieval for local questions
+     - long document map for large PDFs and papers
+  -> Hybrid retriever when retrieval is the chosen strategy
      - vector search over Segment.embedding
      - keyword/lexical fallback
      - page or slide adjacency expansion
-  -> Rerank and deduplicate
-  -> Parent context expansion
-     - retrieve small chunks
-     - pack larger page/slide context for generation
+  -> Rerank, deduplicate, and pack context
   -> Prompt builder
      - instructions to use retrieved context as course grounding
      - permission to add clearly labeled general tutoring explanations
@@ -132,15 +135,15 @@ StudyFlow should evolve from a single LLM call into a planner-led chat loop. The
 
 Initial internal tool surface:
 
-- `library.catalog`: inspect the authenticated student's folder/file catalog, including folder names, course labels, file titles, file names, status, and chunk counts.
-- `scope.resolve`: decide the likely study scope from Library metadata before any chunk retrieval runs.
-- `source.preview`: recommend likely folders, lectures, pages, or chunks for the current request.
+- `library.catalog`: inspect the authenticated student's folder/file catalog, including folder names, course labels, file titles, file names, status, and passage counts.
+- `scope.resolve`: decide the likely study scope from Library metadata before any passage retrieval runs.
+- `source.preview`: recommend likely folders, lectures, pages, or materials for the current request.
 - `rag.retrieve`: retrieve grounded context with user, folder, lecture, and page filters when focused or representative retrieval is the right context strategy.
 - `context.pack`: package selected lecture/page content in source order when the student wants to learn a full lecture, every page, or a short complete source.
 - `agent.teach`: delegate the final explanation, examples, quiz, or review flow to the teaching agent.
 - `artifact.save`: save useful assistant outputs into Saved when the user asks or confirms.
 - `library.manage`: future upload, move, rename, delete, and AI-assisted filing operations.
-- `reader.open`: future deep link into a cited source/page/segment.
+- `reader.open`: deep link into a cited source/page/passage.
 
 The current implementation supports an optional AI planning agent before generation. When a chat model is configured, `planChatTurnWithAi` receives the user's recent conversation plus a compact authenticated Library catalog summary, then asks the planner model for a structured JSON plan covering intent, retrieval breadth, context strategy, delegated agent, confirmation needs, and rationale. The plan is validated against typed enums and then executed only through internal StudyFlow code paths. If the model is unavailable, malformed, or uncertain, the deterministic planner remains the fallback. The important product boundary is not a rigid execution script: the planner coordinates intent, Library scope, and internal tools, while the teaching agent owns the natural learning experience. Future versions can split it into specialized agents: planner, retrieval specialist, teacher, assessment coach, artifact curator, and library operator. The interface should remain tool-call shaped so this migration is incremental.
 
@@ -148,14 +151,14 @@ StudyFlow Chat should be source-aware, not source-imprisoned. Most conceptual ex
 
 Source scope should be catalog-first, then strategy-specific context loading. The planner should not use embedding search to infer which files exist or which course the user means. It should first inspect the user's Library catalog and resolve likely folders/files from metadata such as `CSE 114A`, `lambda.pdf`, or manually selected sources. After scope is resolved, the planner chooses a context strategy:
 
-- `lecture_pack`: for full-lecture, page-by-page, or short complete-source learning. The backend packs selected segments in document order so the model can teach the source coherently instead of seeing only a few similar chunks.
+- `lecture_pack`: for full-lecture, page-by-page, or short complete-source learning. The backend packs selected passages in document order so the model can teach the source coherently instead of seeing only a few similar passages.
 - `focused_rag`: for specific questions, page references, definitions, or local confusion.
 - `broad_rag`: for exams, quizzes, and broad review across a course/folder.
 - `long_document_map`: for long papers or large PDFs where full packing would exceed useful context. The system uses representative coverage and later can add section-map summarization.
 
 Current context budgets are strategy-specific: focused retrieval stays compact, broad review and long-document maps get larger representative coverage, and `lecture_pack` gets the largest ordered source budget. This is intentionally different from classic top-k retrieval because lecture teaching often needs continuity more than nearest-neighbor similarity.
 
-RAG runs inside the resolved scope only when the chosen strategy needs retrieval. For broad requests like "help me review 114A for a midterm," the scope is usually the whole relevant course folder, while retrieved chunks are representative samples for grounding. For "teach me every page of this lecture," the preferred strategy is `lecture_pack`, not top-k retrieval.
+Retrieval runs inside the resolved scope only when the chosen strategy needs retrieval. For broad requests like "help me review 114A for a midterm," the scope is usually the whole relevant course folder, while retrieved passages are representative samples for grounding. For "teach me every page of this lecture," the preferred strategy is `lecture_pack`, not top-k retrieval.
 
 LangChain or LangGraph should be treated as an optional orchestration runtime, not the starting dependency. The MVP keeps planner outputs, internal tools, and agent roles as typed local contracts so they can be tested, traced, and changed quickly. If the agent loop grows into branching workflows with checkpoints, retries, human approval nodes, or multi-agent handoffs that are hard to maintain locally, these same contracts can be moved behind LangGraph-style nodes without rewriting the product model.
 
@@ -186,7 +189,7 @@ Upload file
   -> Store original in MinIO/S3
   -> Create Lecture record
   -> Parse content
-  -> Chunk by structure
+  -> Build source passages by structure
   -> Save Segment records
   -> Generate embeddings
   -> Mark lecture processed
@@ -199,9 +202,9 @@ Current implementation note:
 - Current Chat retrieval uses hybrid vector + lexical ranking when embeddings exist, with lexical fallback when vectors are missing.
 - The schema already reserves `Segment.embedding` as a 1536-dimensional pgvector field.
 
-## Chunking Strategy
+## Passage Building Strategy
 
-Chunking should preserve source fidelity before optimizing for AI generation.
+Passage building should preserve source fidelity before optimizing for AI generation.
 
 - PDF: page, heading, paragraph, list, and later bounding box.
 - PPTX: slide, title, bullet group, speaker notes.
@@ -234,7 +237,7 @@ Current retrieval:
 - Merge vector and lexical results into a hybrid ranked context and preserve each source ref's retrieval reason.
 - When the user explicitly names a material/topic that matches a lecture title, retrieval and source preview first narrow to that lecture set. This keeps requests such as "teach me lambda" from drifting into unrelated Typeclass or Types material unless the model needs them as clearly labeled background.
 - When the user asks for a specific page, exact page retrieval should take priority over semantic retrieval inside the selected or inferred lecture scope.
-- Context strategy is an explicit planner decision. Focused factual questions use top relevant chunks. Exam-prep requests use broad coverage across the selected material. Full-lecture, short-source, and page-by-page learning requests use lecture packing so the assistant can follow the source order instead of overfitting to a few chunks. Long documents fall back to document-map style retrieval rather than blind full-source packing.
+- Context strategy is an explicit planner decision. Focused factual questions use top relevant passages. Exam-prep requests use broad coverage across the selected material. Full-lecture, short-source, and page-by-page learning requests use lecture packing so the assistant can follow the source order instead of overfitting to a few passages. Long documents fall back to document-map style retrieval rather than blind full-source packing.
 - Fall back to lexical/page-aware retrieval when embeddings are unavailable or provider calls fail.
 
 Embedding retrieval constraints:
@@ -293,5 +296,5 @@ Primary logged-in navigation should stay focused on Chat, Library, and Saved. St
 - Never use absolute external callback URLs for auth redirects.
 - Generated outputs must carry source references.
 - User data must be filtered by authenticated user id.
-- RAG prompts should instruct the model to stay within provided source context.
-- Unsupported claims should be omitted or marked as uncertain.
+- Source-aware prompts should use Library context for scope, source order, course wording, examples, and citations, while still allowing general tutoring knowledge unless the student explicitly asks to stay within the files.
+- Unsupported source claims should be omitted, marked uncertain, or left uncited.
