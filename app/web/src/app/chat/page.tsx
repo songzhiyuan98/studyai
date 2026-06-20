@@ -60,6 +60,7 @@ type SourcePreview = {
   sourceRefs: SourceRef[];
   retrieval: {
     strategy: string;
+    contextStrategy?: 'focused_rag' | 'broad_rag' | 'lecture_pack' | 'long_document_map';
     count: number;
     scopedLectureCount: number;
     sourceScope?: 'selected_sources' | 'folder' | 'course' | 'lecture_title' | 'all_ready' | 'none';
@@ -310,8 +311,13 @@ export default function ChatPage() {
   const sourceLabel = confirmedSources.length === 0
     ? 'Auto scope'
     : `${confirmedSources.length} ${confirmedSources.length === 1 ? 'source' : 'sources'}`;
-  const isBroadSourcePreview = Boolean(sourcePreview?.retrieval.strategy.startsWith('broad_'));
-  const sourcePreviewChunkLabel = sourcePreview?.retrieval.strategy.startsWith('broad_')
+  const isSourceRangePreview = Boolean(
+    sourcePreview?.retrieval.strategy.startsWith('broad_')
+      || sourcePreview?.retrieval.contextStrategy === 'lecture_pack'
+      || sourcePreview?.retrieval.contextStrategy === 'long_document_map',
+  );
+  const isLecturePackPreview = sourcePreview?.retrieval.contextStrategy === 'lecture_pack';
+  const sourcePreviewChunkLabel = isSourceRangePreview
     ? 'coverage samples'
     : 'relevant chunks';
   const sourceScopeLabel = sourcePreview?.retrieval.libraryScope?.matchedLabels?.length
@@ -323,9 +329,9 @@ export default function ChatPage() {
         : sourcePreview?.retrieval.sourceScope === 'all_ready'
           ? 'All ready materials'
           : 'Auto scope';
-  const sourcePreviewTitle = isBroadSourcePreview ? 'Suggested study scope' : 'Suggested materials';
-  const sourcePreviewDescription = isBroadSourcePreview
-    ? `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} in scope · ${sourcePreview?.retrieval.count || 0} coverage samples for grounding`
+  const sourcePreviewTitle = isSourceRangePreview ? 'Suggested study scope' : 'Suggested materials';
+  const sourcePreviewDescription = isSourceRangePreview
+    ? `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} in scope · ${sourcePreview?.retrieval.count || 0} ${isLecturePackPreview ? 'source-order segments' : 'coverage samples'} for grounding`
     : `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} likely ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} · ${sourcePreview?.retrieval.count || 0} ${sourcePreviewChunkLabel}`;
 
   const loadSources = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {

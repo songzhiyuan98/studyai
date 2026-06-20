@@ -36,3 +36,13 @@ test('chat source preview resolves scope from the library catalog before chunk r
   assert.match(routeSource, /courseId: true/);
   assert.match(routeSource, /libraryScope/);
 });
+
+test('chat source preview reports planner context strategy', () => {
+  const routeSource = readFileSync(new URL('./api/chat/preview/route.ts', import.meta.url), 'utf8');
+
+  assert.match(routeSource, /effectiveContextStrategy/);
+  assert.match(routeSource, /contextStrategy: effectiveContextStrategy/);
+  assert.match(routeSource, /lecture_pack_v0/);
+  assert.match(routeSource, /long_document_map_v0/);
+  assert.match(routeSource, /buildLecturePackContext/);
+});
