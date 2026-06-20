@@ -35,10 +35,10 @@ test('exposes stable study action ids for reader controls', () => {
   );
 });
 
-test('formats concise action titles with selected segment count', () => {
-  assert.equal(formatStudyActionTitle('explain', 1), 'Explain 1 source segment');
-  assert.equal(formatStudyActionTitle('mini_quiz', 3), 'Mini quiz from 3 source segments');
-  assert.equal(formatStudyActionTitle('cheat_sheet', 2), 'Cheat sheet draft from 2 source segments');
+test('formats concise action titles with selected passage count', () => {
+  assert.equal(formatStudyActionTitle('explain', 1), 'Explain 1 source passage');
+  assert.equal(formatStudyActionTitle('mini_quiz', 3), 'Mini quiz from 3 source passages');
+  assert.equal(formatStudyActionTitle('cheat_sheet', 2), 'Cheat sheet draft from 2 source passages');
 });
 
 test('builds placeholder artifacts with source references preserved', () => {
@@ -52,9 +52,23 @@ test('builds placeholder artifacts with source references preserved', () => {
   });
 
   assert.equal(artifact.type, 'summarize');
-  assert.equal(artifact.title, 'Summary from 2 source segments');
+  assert.equal(artifact.title, 'Summary from 2 source passages');
   assert.match(artifact.content, /Gradient descent updates parameters/);
   assert.deepEqual(artifact.sourceRefs, sourceRefs);
+});
+
+test('builds placeholder artifacts with related context phrased for learners', () => {
+  const artifact = buildPlaceholderArtifact({
+    action: 'explain',
+    segmentTexts: ['Lambda calculus treats functions as first-class values.'],
+    sourceRefs: sourceRefs.slice(0, 1),
+    relatedTexts: ['A nearby passage introduces top-level Haskell bindings.'],
+    relatedRefs: sourceRefs.slice(1),
+  });
+
+  assert.match(artifact.content, /Related context considered:/);
+  assert.doesNotMatch(artifact.content, /Retrieved context considered:/);
+  assert.deepEqual(artifact.relatedRefs, sourceRefs.slice(1));
 });
 
 test('maps stored item rows back into review artifacts', () => {
@@ -63,7 +77,7 @@ test('maps stored item rows back into review artifacts', () => {
     type: 'SUMMARY',
     payloadJson: {
       action: 'explain',
-      title: 'Explain 2 source segments',
+      title: 'Explain 2 source passages',
       content: 'Explanation draft grounded in the selected source.',
     },
     sourceRefs,
@@ -73,7 +87,7 @@ test('maps stored item rows back into review artifacts', () => {
   assert.equal(artifact.id, 'item_1');
   assert.equal(artifact.type, 'explain');
   assert.equal(artifact.itemType, 'SUMMARY');
-  assert.equal(artifact.title, 'Explain 2 source segments');
+  assert.equal(artifact.title, 'Explain 2 source passages');
   assert.equal(artifact.content, 'Explanation draft grounded in the selected source.');
   assert.deepEqual(artifact.sourceRefs.map((ref) => ref.label), ['page 1 · seg_1', 'page 2 · seg_2']);
 });

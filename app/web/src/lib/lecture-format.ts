@@ -66,6 +66,13 @@ function getEmbeddingStatus(lecture: LectureApiRow) {
     };
   }
 
+  if (segmentCount === 0) {
+    return {
+      label: 'No passages yet',
+      needsVectorReindex: false,
+    };
+  }
+
   if (status === 'completed' && embeddedCount >= segmentCount) {
     return {
       label: 'Vector ready',
@@ -80,16 +87,9 @@ function getEmbeddingStatus(lecture: LectureApiRow) {
     };
   }
 
-  if (segmentCount > 0) {
-    return {
-      label: status === 'completed' ? 'Partial vectors' : 'Needs vector index',
-      needsVectorReindex: true,
-    };
-  }
-
   return {
-    label: 'No chunks yet',
-    needsVectorReindex: false,
+    label: status === 'completed' ? 'Partial vectors' : 'Needs vector index',
+    needsVectorReindex: true,
   };
 }
 

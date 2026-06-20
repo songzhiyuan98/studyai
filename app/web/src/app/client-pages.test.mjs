@@ -96,9 +96,11 @@ test('reader page uses product language for parsed passages', () => {
   assert.match(source, /passages extracted/);
   assert.match(source, /No readable passages yet/);
   assert.match(source, /Selected passages/);
+  assert.match(source, /Related context/);
   assert.doesNotMatch(source, /chunks extracted/);
   assert.doesNotMatch(source, /Selected chunks/);
   assert.doesNotMatch(source, /readable chunks/);
+  assert.doesNotMatch(source, /Retrieved context/);
 });
 
 test('secondary study surfaces use context language', () => {

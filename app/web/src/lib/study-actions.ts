@@ -125,7 +125,7 @@ export function getStudyAction(actionId: StudyActionId): StudyAction {
 }
 
 export function formatStudyActionTitle(actionId: StudyActionId, segmentCount: number): string {
-  const segmentLabel = segmentCount === 1 ? 'source segment' : 'source segments';
+  const segmentLabel = segmentCount === 1 ? 'source passage' : 'source passages';
   return `${titlePrefixes[actionId]} ${segmentCount} ${segmentLabel}`;
 }
 
@@ -159,7 +159,7 @@ export function buildPlaceholderArtifact({
     itemType: getStudyAction(action).itemType,
     title: formatStudyActionTitle(action, sourceRefs.length),
     content: compactRelatedPreview
-      ? `${placeholderIntros[action]} ${preview}\n\nRetrieved context considered: ${compactRelatedPreview}`
+      ? `${placeholderIntros[action]} ${preview}\n\nRelated context considered: ${compactRelatedPreview}`
       : `${placeholderIntros[action]} ${preview}`,
     sourceRefs,
     relatedRefs,
@@ -183,7 +183,7 @@ export function mapStoredItemToArtifact(item: StoredStudyItemRow): StudyArtifact
     title: typeof payloadTitle === 'string'
       ? payloadTitle
       : action === 'translate'
-        ? `Translation from ${sourceRefs.length} source ${sourceRefs.length === 1 ? 'segment' : 'segments'}`
+        ? `Translation from ${sourceRefs.length} source ${sourceRefs.length === 1 ? 'passage' : 'passages'}`
         : formatStudyActionTitle(action, sourceRefs.length),
     content: typeof payloadContent === 'string'
       ? payloadContent

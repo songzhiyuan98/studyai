@@ -300,7 +300,7 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
                     </div>
                     {artifact.relatedRefs?.length ? (
                       <div className="mt-3 border-t border-[#e5e5e5] pt-3">
-                        <p className="text-xs text-[#737373]">Retrieved context</p>
+                        <p className="text-xs text-[#737373]">Related context</p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {artifact.relatedRefs.map((ref) => (
                             <span key={`${artifact.id}-related-${ref.segmentId}`} className="status-pill status-muted">

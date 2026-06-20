@@ -93,3 +93,14 @@ test('formats vector indexing status for library rows', () => {
   assert.equal(failedItem.vectorStatus, 'Needs vector index');
   assert.equal(failedItem.needsVectorReindex, true);
 });
+
+test('formats empty source rows as passages instead of chunks', () => {
+  const item = mapLectureToLibraryItem({
+    ...apiLecture,
+    meta: { embeddingStatus: 'disabled', embeddedSegmentCount: 0 },
+    _count: { segments: 0 },
+  });
+
+  assert.equal(item.vectorStatus, 'No passages yet');
+  assert.notEqual(item.vectorStatus, 'No chunks yet');
+});
