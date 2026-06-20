@@ -429,6 +429,16 @@ test('chat send automatically asks for source confirmation on ambiguous auto sco
   assert.match(source, /retrieval\.strategy\.startsWith\('broad_'\)/);
 });
 
+test('chat source preview requires at least one selected material before sending', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+
+  assert.match(source, /const hasEmptySourcePreviewSelection/);
+  assert.match(source, /sourcePreview\?\.materials\.length/);
+  assert.match(source, /selectedPreviewLectureIds\.length === 0/);
+  assert.match(source, /Select at least one suggested material or hide the source preview first\./);
+  assert.match(source, /disabled=\{!message\.trim\(\) \|\| sending \|\| hasEmptySourcePreviewSelection\}/);
+});
+
 test('chat API loads recent session history before creating the next user message', () => {
   const source = readFileSync(resolve(root, 'src/app/api/chat/route.ts'), 'utf8');
   const historyIndex = source.indexOf('await prisma.chatMessage.findMany');

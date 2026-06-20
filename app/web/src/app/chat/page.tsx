@@ -445,6 +445,9 @@ export default function ChatPage() {
   const sourcePreviewReason = sourcePreview?.retrieval.plannerRationale
     || sourcePreview?.retrieval.libraryScope?.reason
     || '';
+  const hasEmptySourcePreviewSelection = Boolean(
+    sourcePreview?.materials.length && selectedPreviewLectureIds.length === 0,
+  );
 
   const loadSources = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) {
@@ -684,6 +687,11 @@ export default function ChatPage() {
     const trimmedMessage = message.trim();
 
     if (!trimmedMessage || sending || previewingSources) {
+      return;
+    }
+
+    if (hasEmptySourcePreviewSelection) {
+      setError('Select at least one suggested material or hide the source preview first.');
       return;
     }
 
@@ -1251,6 +1259,11 @@ export default function ChatPage() {
             ) : null}
 
             <div className="chat-input-shell">
+              {hasEmptySourcePreviewSelection ? (
+                <div className="chat-error-panel">
+                  Select at least one suggested material or hide the source preview first.
+                </div>
+              ) : null}
               <textarea
                 value={message}
                 onChange={(event) => updateDraftMessage(event.target.value)}
@@ -1279,7 +1292,7 @@ export default function ChatPage() {
                   >
                     {previewingSources ? 'Checking...' : 'Check sources'}
                   </button>
-                  <button type="submit" className="chat-send-button" disabled={!message.trim() || sending} aria-label="Send message">
+                  <button type="submit" className="chat-send-button" disabled={!message.trim() || sending || hasEmptySourcePreviewSelection} aria-label="Send message">
                     ↑
                   </button>
                 </div>
