@@ -865,7 +865,7 @@ export default function ChatPage() {
             </div>
             <h2>What do you want to study today?</h2>
             <p>
-              Ask freely or choose a quick action. StudyFlow will retrieve from your ready Library sources and keep citations attached.
+              Ask freely or choose a quick action. StudyFlow will organize the right Library context and keep citations attached.
             </p>
           </div>
 

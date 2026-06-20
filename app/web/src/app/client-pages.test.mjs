@@ -127,8 +127,10 @@ test('chat page defaults to auto scope instead of the first few sources', () => 
   assert.match(source, /Auto scope/);
   assert.match(source, /Using auto source search/);
   assert.match(source, /I will search all ready Library materials/);
+  assert.match(source, /organize the right Library context/);
   assert.match(source, /Lock all/);
   assert.doesNotMatch(source, /loadedSources\.slice\(0,\s*3\)/);
+  assert.doesNotMatch(source, /will retrieve from your ready Library sources/);
 });
 
 test('chat page requests server-side streaming responses', () => {

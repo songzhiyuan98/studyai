@@ -26,7 +26,7 @@ export default function ExamPage({ params }: { params: { id: string } }) {
         <p className="eyebrow">Assessment preview</p>
         <h1 className="page-title">Mini quiz from a study scope</h1>
         <p className="page-description">
-          Exam workflows are intentionally downstream from reliable source parsing and RAG. This preview shows how each question should stay attached to evidence. Route id: {params.id}.
+          Exam workflows are intentionally downstream from reliable source parsing, context selection, and citation validation. This preview shows how each question should stay attached to evidence. Route id: {params.id}.
         </p>
       </div>
 

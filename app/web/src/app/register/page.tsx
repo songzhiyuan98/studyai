@@ -79,7 +79,7 @@ export default function RegisterPage() {
           Build a study workspace around your own course files.
         </h1>
         <p className="auth-subtitle">
-          Start with a library, then let Chat retrieve from your lectures, notes, and saved source scopes.
+          Start with a library, then let Chat organize context from your lectures, notes, and saved source scopes.
         </p>
 
         <div className="auth-preview">
