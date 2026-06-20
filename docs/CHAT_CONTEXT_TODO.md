@@ -49,6 +49,7 @@ student asks what to study
   - mock exam and midterm requests use representative coverage across the selected course materials
 - Optional AI planner v1 is implemented. When a chat model is configured, the planner receives recent conversation plus a compact Library catalog summary, returns a validated structured plan, and falls back to deterministic planning if unavailable or invalid.
 - Full-lecture learning now uses a larger lecture-pack context budget and a higher segment prefetch limit than focused retrieval, so "teach this whole lecture" is not treated like a top-k passage query.
+- Saved outputs can continue back into Chat with a draft follow-up prompt and the original source lecture ids preselected when possible.
 - The core product model is agentic context orchestration, not a generic RAG chatbot. General explanations should use the model's normal tutoring ability; Library materials decide scope, order, course terminology, source-specific examples, and citations. Focused RAG is one context strategy, mostly for local questions, long documents, and precise source grounding.
 
 ## Milestone 1: Chat Product Surface
@@ -192,5 +193,6 @@ student asks what to study
 - Quick action pills are chat accelerators, not separate workflows.
 - Reader is the source inspection and precise selection surface.
 - Saved stores reusable generated outputs.
+- Saved can reopen a source-backed output in Chat so the student can keep learning from it.
 - Study is not a primary navigation surface; its fixed actions live in Chat pills and in the Reader's source-action panel.
 - Cheat sheet generation should build on the same chat/retrieval pipeline, not a separate one-off flow.

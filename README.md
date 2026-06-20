@@ -67,13 +67,13 @@ Initial actions:
 
 ### 6. Saved Citation-Backed Outputs
 
-Every generated artifact stores `sourceRefs` so students can jump back to the original lecture segment. The Saved area is the archive for reusable summaries, translations, quizzes, and future cheat sheets.
+Every generated artifact stores `sourceRefs` so students can jump back to the original lecture segment. The Saved area is the archive for reusable summaries, translations, quizzes, and future cheat sheets. Saved outputs can also reopen Chat with a draft prompt and the original source scope, so an archived result can become the next tutoring turn instead of a dead note.
 
 ## Agentic Context Architecture
 
 Current implementation status:
 
-- Implemented: real PDF/TXT parsing, page-aware source segments, selected source refs, optional AI planner, scope resolution from Library metadata, lecture-pack context for full-source learning, lexical/page-aware retrieval v0, optional OpenAI embedding generation, pgvector writes, hybrid Chat retrieval that merges vector and lexical results, optional OpenAI chat generation, server-side SSE streaming with local fallback streaming, and persisted chat sessions/messages.
+- Implemented: real PDF/TXT parsing, page-aware source segments, selected source refs, optional AI planner, scope resolution from Library metadata, lecture-pack context for full-source learning, lexical/page-aware retrieval v0, optional OpenAI embedding generation, pgvector writes, hybrid Chat retrieval that merges vector and lexical results, optional OpenAI chat generation, server-side SSE streaming with local fallback streaming, persisted chat sessions/messages, and Saved-to-Chat continuation for source-backed outputs.
 - Not implemented yet: reranking and deeper long-term chat memory.
 - Existing database direction: `Segment.embedding` is prepared for 1536-dimensional vectors.
 - Recommended embedding default: `text-embedding-3-small`, configurable through environment variables. It matches the existing 1536-dimensional schema and is the better default than the older `text-embedding-ada-002` for a student SaaS cost/quality profile.
@@ -129,7 +129,7 @@ Planned advanced context upgrades:
 - Parent-child retrieval: small passages for search, larger page/slide context for generation.
 - MMR deduplication to avoid repeated context.
 - Citation validation to detect unsupported generated claims.
-- Saved study scopes so a student can continue the same review session later.
+- Richer saved study packs so a student can continue the same review session later across multiple outputs and source scopes.
 - Conversational memory that stores user goals and selected study scopes without mixing unrelated courses.
 
 ## Future Cheat Sheet Feature

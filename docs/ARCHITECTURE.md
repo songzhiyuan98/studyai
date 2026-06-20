@@ -54,7 +54,7 @@ Supported scope types:
 
 ### Generated Artifact
 
-A generated artifact is an explanation, summary, translation, key-term list, quiz, flashcard, or future cheat sheet. It stores generated content plus `sourceRefs` pointing to the original source segments.
+A generated artifact is an explanation, summary, translation, key-term list, quiz, flashcard, or future cheat sheet. It stores generated content plus `sourceRefs` pointing to the original source segments. The Saved surface can reopen Chat with a draft prompt and the artifact's lecture scope, turning archived outputs back into active tutoring context.
 
 ### Study Chat
 
@@ -177,6 +177,7 @@ Conversation memory and retrieval memory are related but not identical. The assi
 - In auto scope, the current Chat UI automatically runs source preview before sending when the request matches multiple likely materials, then lets the student approve or adjust the recommended sources.
 - If the student chooses a scope manually, the assistant should not repeatedly ask for confirmation.
 - Each answer should expose the sources it used and offer to open them in the reader.
+- Saved answers should offer a continuation path back into Chat, prefilled with a useful follow-up prompt and locked to the original source scope when possible.
 - The chat surface should feel conversational, not like a retrieval dashboard. Engineering details such as retrieval strategy ids should stay in traces, while the UI uses natural language like "I found likely materials."
 - Streamed answers should be paced so they read like a live assistant response instead of instantly dumping a full generated block.
 - Assistant Markdown should render as readable headings, lists, inline code, and code blocks.

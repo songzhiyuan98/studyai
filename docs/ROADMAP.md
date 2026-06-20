@@ -12,7 +12,7 @@
 - Real PDF/TXT parsing into source-aware passages.
 - Library knowledge-base management with folders, list/grid/compact views, batch delete, and user-scoped cleanup.
 - Reader source inspection with selectable passages and citation jump links.
-- Saved archive for reusable generated outputs.
+- Saved archive for reusable generated outputs, with continuation back into Chat using the original source scope.
 
 ### Next
 
@@ -25,7 +25,7 @@
 
 **Goal:** Make the ChatGPT-like study assistant the core learning loop.
 
-- Implemented: `/chat` page with focused composer, conversation stream, quick action pills, source preview, citations, and reader links.
+- Implemented: `/chat` page with focused composer, conversation stream, quick action pills, source preview, citations, reader links, and Saved-to-Chat continuation drafts.
 - Implemented: Chat and Library as the primary post-login entries, with Saved as the secondary archive.
 - Implemented: persisted chat sessions/messages and recent chat sidebar.
 - Implemented: streaming answers through SSE with OpenAI chat generation when configured and local fallback streaming when not.
@@ -75,7 +75,7 @@
 - Flashcards generated from selected or retrieved passages.
 - Printable cheat sheet generation with user constraints.
 - Export to Markdown/PDF.
-- Saved history for generated explanations, translations, quizzes, and cheat sheets.
+- Saved history for generated explanations, translations, quizzes, and cheat sheets, plus richer multi-output study packs.
 
 ## Phase 5: Exam and Feedback
 
