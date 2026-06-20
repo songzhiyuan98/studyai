@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 
@@ -28,9 +28,13 @@ function isActiveNavItem(pathname: string, item: (typeof navItems)[number]) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const isChat = isActivePath(pathname, '/chat');
   const [showRouteSkeleton, setShowRouteSkeleton] = useState(false);
   const [recentChats, setRecentChats] = useState<RecentChat[]>([]);
+  const [chatToDelete, setChatToDelete] = useState<RecentChat | null>(null);
+  const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isChat) {
@@ -74,6 +78,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [session?.user, pathname]);
 
+  const deleteChatSession = async () => {
+    if (!chatToDelete || deletingChatId) return;
+
+    setDeletingChatId(chatToDelete.id);
+
+    try {
+      const response = await fetch(`/api/chat/sessions/${chatToDelete.id}`, {
+        method: 'DELETE',
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || 'Chat could not be deleted.');
+      }
+
+      setRecentChats((current) => current.filter((chat) => chat.id !== chatToDelete.id));
+      if (pathname === '/chat' && searchParams.get('sessionId') === chatToDelete.id) {
+        router.push('/chat');
+      }
+      window.dispatchEvent(new Event('studyflow:chat-sessions-changed'));
+      setChatToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete chat session:', error);
+    } finally {
+      setDeletingChatId(null);
+    }
+  };
+
   if (status === 'loading') {
     return (
       <div className="app-loading-shell">
@@ -112,14 +144,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="mt-3 space-y-1">
             {recentChats.length > 0 ? (
               recentChats.map((chat) => (
-                <Link
+                <article
                   key={chat.id}
-                  href={`/chat?sessionId=${chat.id}`}
                   className="app-recent-chat"
                 >
-                  <span className="truncate">{chat.title}</span>
-                  <span className="shrink-0 text-xs text-[#a3a3a3]">{chat.time}</span>
-                </Link>
+                  <Link href={`/chat?sessionId=${chat.id}`} className="app-recent-chat-link">
+                    <span className="truncate">{chat.title}</span>
+                    <span className="shrink-0 text-xs text-[#a3a3a3]">{chat.time}</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setChatToDelete(chat)}
+                    className="app-recent-chat-delete"
+                    aria-label={`Delete ${chat.title}`}
+                  >
+                    Delete
+                  </button>
+                </article>
               ))
             ) : (
               <p className="px-2 py-2 text-xs leading-5 text-[#a3a3a3]">
@@ -208,6 +249,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </main>
       </div>
+
+      {chatToDelete ? (
+        <div className="modal-backdrop">
+          <div className="modal-panel max-w-md">
+            <p className="text-xs uppercase tracking-normal text-[#737373]">Delete chat</p>
+            <h2 className="mt-2 text-xl font-normal text-[#000000]">Delete this chat?</h2>
+            <p className="mt-2 text-sm leading-6 text-[#737373]">
+              This removes the conversation, retrieved source trace, and saved message history for "{chatToDelete.title}".
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setChatToDelete(null)}
+                disabled={deletingChatId === chatToDelete.id}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={deleteChatSession}
+                disabled={deletingChatId === chatToDelete.id}
+                className="btn-primary bg-red-700 hover:bg-red-800"
+              >
+                {deletingChatId === chatToDelete.id ? 'Deleting...' : 'Delete chat'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

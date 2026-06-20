@@ -174,7 +174,19 @@
   }
 
   .app-recent-chat {
-    @apply flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-[13px] leading-5 text-[#737373] transition-colors hover:text-[#000000];
+    @apply flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] leading-5 text-[#737373] transition-colors hover:text-[#000000];
+  }
+
+  .app-recent-chat-link {
+    @apply flex min-w-0 flex-1 items-center justify-between gap-3 py-0.5;
+  }
+
+  .app-recent-chat-delete {
+    @apply shrink-0 rounded-full px-2 py-0.5 text-[11px] text-[#a3a3a3] opacity-0 transition-colors hover:bg-white hover:text-red-700 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-[#3b82f6];
+  }
+
+  .app-recent-chat:hover .app-recent-chat-delete {
+    @apply opacity-100;
   }
 
   .app-recent-chat-active {

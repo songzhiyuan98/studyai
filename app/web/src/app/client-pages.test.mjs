@@ -48,6 +48,14 @@ test('authenticated sidebar uses real recent chat sessions', () => {
   assert.doesNotMatch(source, /Mini quiz from lambda notes/);
 });
 
+test('authenticated sidebar can delete chat sessions', () => {
+  const source = readFileSync(resolve(root, 'src/components/app-shell.tsx'), 'utf8');
+  assert.match(source, /setChatToDelete\(chat\)/);
+  assert.match(source, /fetch\(`\/api\/chat\/sessions\/\$\{chatToDelete\.id\}`/);
+  assert.match(source, /Delete this chat\?/);
+  assert.match(source, /router\.push\('\/chat'\)/);
+});
+
 test('library page is positioned as knowledge base management', () => {
   const source = readFileSync(resolve(root, 'src/app/library/page.tsx'), 'utf8');
   assert.match(source, /Knowledge base/);

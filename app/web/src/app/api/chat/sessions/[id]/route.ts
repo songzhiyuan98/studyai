@@ -79,3 +79,56 @@ export async function GET(
     );
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 },
+      );
+    }
+
+    const chatSession = await prisma.chatSession.findFirst({
+      where: {
+        id: params.id,
+        userId: session.user.id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!chatSession) {
+      return NextResponse.json(
+        { success: false, error: 'Chat session not found' },
+        { status: 404 },
+      );
+    }
+
+    await prisma.chatSession.delete({
+      where: {
+        id: chatSession.id,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: chatSession.id,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to delete chat session:', error);
+
+    return NextResponse.json(
+      { success: false, error: 'Failed to delete chat session' },
+      { status: 500 },
+    );
+  }
+}
