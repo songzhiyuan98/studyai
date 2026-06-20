@@ -449,6 +449,7 @@ test('chat send automatically asks for source confirmation on ambiguous auto sco
   assert.match(source, /mode !== 'free' \|\| hasStudySignalForAutoScope\(trimmedMessage\)/);
   assert.match(source, /sourcePreviewChunkLabel/);
   assert.match(source, /retrieval\.strategy\.startsWith\('broad_'\)/);
+  assert.match(source, /const usePreviewMaterials = \(\) => \{[\s\S]*?setShowSourceScope\(false\);\n\s*void submitCurrentMessage\(\);/);
 });
 
 test('chat source preview explains assessment scope as representative coverage', () => {

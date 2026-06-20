@@ -704,10 +704,9 @@ export default function ChatPage() {
     if (!sourcePreview?.materials.length || selectedPreviewLectureIds.length === 0) return;
 
     setConfirmedSources(selectedPreviewLectureIds);
-    setSourcePreview(null);
-    setSelectedPreviewLectureIds([]);
     setSkipSourcePreviewOnce(false);
     setShowSourceScope(false);
+    void submitCurrentMessage();
   };
 
   const useAutoScopeFromPreview = () => {
@@ -727,7 +726,7 @@ export default function ChatPage() {
     }
   };
 
-  const submitCurrentMessage = async () => {
+  async function submitCurrentMessage() {
     const trimmedMessage = message.trim();
 
     if (!trimmedMessage || sending || previewingSources) {
@@ -933,7 +932,7 @@ export default function ChatPage() {
     } finally {
       setSending(false);
     }
-  };
+  }
 
   const sendMessage = (event: { preventDefault: () => void }) => {
     event.preventDefault();
