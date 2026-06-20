@@ -24,6 +24,7 @@ import {
   streamGroundedChatAnswer,
   type ChatHistoryTurn,
 } from '@/lib/chat-llm';
+import { CHAT_CONTEXT_SEGMENT_FETCH_LIMIT, getChatContextCharBudget } from '@/lib/chat-context-budget';
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 import { resolveLibraryScope } from '@/lib/library-catalog';
 import { buildLecturePackContext } from '@/lib/lecture-pack';
@@ -665,7 +666,7 @@ export async function POST(request: NextRequest) {
             { charStart: 'asc' },
             { createdAt: 'asc' },
           ],
-          take: 80,
+          take: CHAT_CONTEXT_SEGMENT_FETCH_LIMIT,
         },
       },
       take: 20,
@@ -756,6 +757,9 @@ export async function POST(request: NextRequest) {
     const usesBroadCoverage = chatPlan.retrievalBreadth === 'broad_assessment'
       || chatPlan.retrievalBreadth === 'broad_lesson'
       || effectiveContextStrategy === 'long_document_map';
+    const contextCharBudget = getChatContextCharBudget({
+      contextStrategy: effectiveContextStrategy,
+    });
     const broadCoverageResults = usesBroadCoverage && !usesLecturePack
       ? retrieveBroadCoverageContext({
         query: retrievalQuery,
@@ -803,7 +807,7 @@ export async function POST(request: NextRequest) {
     if (usesLecturePack) {
       const lecturePack = buildLecturePackContext({
         candidateSegments,
-        maxChars: 6000,
+        maxChars: contextCharBudget,
         lectureLabels,
       });
       lecturePackContextText = lecturePack.contextText;
@@ -853,7 +857,7 @@ export async function POST(request: NextRequest) {
       totalSegments: candidateSegments.length,
       includedSegments: context.length,
       truncated: context.length < candidateSegments.length,
-      maxChars: usesBroadCoverage ? 3800 : 1000,
+      maxChars: contextCharBudget,
     };
     const contextText = usesLecturePack
       ? lecturePackContextText

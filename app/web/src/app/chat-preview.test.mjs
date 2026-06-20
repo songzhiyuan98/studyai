@@ -52,6 +52,9 @@ test('chat source preview reports planner context strategy', () => {
   assert.match(routeSource, /lecture_pack_v0/);
   assert.match(routeSource, /long_document_map_v0/);
   assert.match(routeSource, /buildLecturePackContext/);
+  assert.match(routeSource, /CHAT_CONTEXT_SEGMENT_FETCH_LIMIT/);
+  assert.match(routeSource, /getChatContextCharBudget/);
+  assert.match(routeSource, /contextCharBudget/);
 });
 
 test('chat source preview lists the full resolved scope for range strategies', () => {

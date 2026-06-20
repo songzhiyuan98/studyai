@@ -16,6 +16,7 @@ import { resolveExplicitLectureScope } from '@/lib/source-scope';
 import { planChatTurnWithAi } from '@/lib/chat-planner';
 import { resolveLibraryScope } from '@/lib/library-catalog';
 import { buildLecturePackContext } from '@/lib/lecture-pack';
+import { CHAT_CONTEXT_SEGMENT_FETCH_LIMIT, getChatContextCharBudget } from '@/lib/chat-context-budget';
 
 const previewSchema = z.object({
   message: z.string().min(1).max(2000),
@@ -147,7 +148,7 @@ export async function POST(request: NextRequest) {
             { charStart: 'asc' },
             { createdAt: 'asc' },
           ],
-          take: 80,
+          take: CHAT_CONTEXT_SEGMENT_FETCH_LIMIT,
         },
       },
       take: 20,
@@ -217,6 +218,9 @@ export async function POST(request: NextRequest) {
     const usesBroadCoverage = previewPlan.retrievalBreadth === 'broad_assessment'
       || previewPlan.retrievalBreadth === 'broad_lesson'
       || effectiveContextStrategy === 'long_document_map';
+    const contextCharBudget = getChatContextCharBudget({
+      contextStrategy: effectiveContextStrategy,
+    });
     const broadCoverageResults = usesBroadCoverage && !usesLecturePack
       ? retrieveBroadCoverageContext({
         query: parsed.data.message,
@@ -263,7 +267,7 @@ export async function POST(request: NextRequest) {
     if (usesLecturePack) {
       const lecturePack = buildLecturePackContext({
         candidateSegments,
-        maxChars: 6000,
+        maxChars: contextCharBudget,
         lectureLabels,
       });
       lecturePackSummary = {
@@ -309,7 +313,7 @@ export async function POST(request: NextRequest) {
       totalSegments: candidateSegments.length,
       includedSegments: context.length,
       truncated: context.length < candidateSegments.length,
-      maxChars: usesBroadCoverage ? 3800 : 1000,
+      maxChars: contextCharBudget,
     };
     const lectureMap = new Map(activeLectures.map((lecture) => [lecture.id, lecture]));
     const sourceRefs = context.map(({ segment, score, reason }) => {
