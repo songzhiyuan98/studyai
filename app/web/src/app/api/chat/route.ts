@@ -95,6 +95,15 @@ function getPlannerTrace(chatPlan: ChatTurnPlan) {
   };
 }
 
+function isArtifactSaveTrace(retrieval: unknown) {
+  if (!retrieval || typeof retrieval !== 'object' || Array.isArray(retrieval)) {
+    return false;
+  }
+
+  const trace = retrieval as Record<string, unknown>;
+  return trace.strategy === 'tool_artifact_save_v0' || typeof trace.savedArtifactId === 'string';
+}
+
 async function getOrCreateChatSession({
   userId,
   sessionId,
@@ -365,6 +374,7 @@ export async function POST(request: NextRequest) {
           title: true,
           content: true,
           sourceRefs: true,
+          retrieval: true,
         },
         orderBy: { createdAt: 'desc' },
         take: 8,
@@ -374,7 +384,11 @@ export async function POST(request: NextRequest) {
           ...assistantMessage,
           sourceRefs: parseChatSourceRefs(assistantMessage.sourceRefs),
         }))
-        .find((assistantMessage) => assistantMessage.content.trim() && assistantMessage.sourceRefs.length > 0);
+        .find((assistantMessage) => (
+          assistantMessage.content.trim()
+          && assistantMessage.sourceRefs.length > 0
+          && !isArtifactSaveTrace(assistantMessage.retrieval)
+        ));
       const parsedSaveOutput = saveCandidate
         ? saveChatOutputSchema.safeParse({
           mode: saveCandidate.mode || 'free',
@@ -405,6 +419,7 @@ export async function POST(request: NextRequest) {
         ...getPlannerTrace(chatPlan),
         plannerCatalogCount: plannerCatalogLectures.length,
         toolResult: artifact ? 'saved' : 'no_candidate',
+        savedArtifactId: artifact?.id,
       };
 
       await prisma.chatMessage.create({

@@ -127,6 +127,9 @@ test('chat route can call the artifact save tool from planner intent', () => {
 
   assert.match(source, /chatPlan\.intent === 'save_request'/);
   assert.match(source, /parseChatSourceRefs/);
+  assert.match(source, /function isArtifactSaveTrace/);
+  assert.match(source, /retrieval: true/);
+  assert.match(source, /!isArtifactSaveTrace\(assistantMessage\.retrieval\)/);
   assert.match(source, /saveChatOutputSchema\.safeParse/);
   assert.match(source, /saveChatOutputAsArtifact/);
   assert.match(source, /tool_artifact_save_v0/);
