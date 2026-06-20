@@ -13,7 +13,7 @@ import {
 } from '@/lib/rag-context';
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 import { resolveExplicitLectureScope } from '@/lib/source-scope';
-import { planChatTurnWithAi } from '@/lib/chat-planner';
+import { formatLibraryCatalogForPlanner, planChatTurnWithAi } from '@/lib/chat-planner';
 import { resolveLibraryScope } from '@/lib/library-catalog';
 import { buildLecturePackContext } from '@/lib/lecture-pack';
 import { CHAT_CONTEXT_SEGMENT_FETCH_LIMIT, getChatContextCharBudget } from '@/lib/chat-context-budget';
@@ -210,6 +210,7 @@ export async function POST(request: NextRequest) {
       mode: parsed.data.mode,
       message: parsed.data.message,
       hasExplicitScope: Boolean(scopedLectureIds?.length),
+      libraryCatalog: formatLibraryCatalogForPlanner(lectures),
     });
     const effectiveContextStrategy = previewPlan.contextStrategy === 'lecture_pack' && activeSegmentCount > 80
       ? 'long_document_map'

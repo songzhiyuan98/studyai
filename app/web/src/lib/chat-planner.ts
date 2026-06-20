@@ -49,6 +49,19 @@ export type ChatTurnPlan = {
   plannerRationale?: string;
 };
 
+export type ChatPlannerCatalogItem = {
+  title: string;
+  originalName?: string | null;
+  courseId?: string | null;
+  type?: string | null;
+  folder?: {
+    name?: string | null;
+  } | null;
+  _count?: {
+    segments?: number;
+  };
+};
+
 const VALID_INTENTS: ChatPlannerIntent[] = [
   'casual_chat',
   'guided_learning',
@@ -62,6 +75,26 @@ const VALID_INTENTS: ChatPlannerIntent[] = [
 const VALID_RETRIEVAL_BREADTHS: ChatTurnPlan['retrievalBreadth'][] = ['focused', 'broad_lesson', 'broad_assessment'];
 const VALID_CONTEXT_STRATEGIES: ChatTurnPlan['contextStrategy'][] = ['focused_rag', 'broad_rag', 'lecture_pack', 'long_document_map'];
 const VALID_DELEGATED_AGENTS: ChatTurnPlan['delegatedAgent'][] = ['teaching_agent', 'assessment_agent', 'chat_agent', 'tool_agent'];
+
+export function formatLibraryCatalogForPlanner(items: ChatPlannerCatalogItem[]) {
+  if (items.length === 0) {
+    return 'No ready Library materials.';
+  }
+
+  return items.slice(0, 50).map((item, index) => {
+    const folder = item.folder?.name || 'Unfiled';
+    const course = item.courseId ? ` · course ${item.courseId}` : '';
+    const type = item.type ? ` · ${item.type}` : '';
+    const originalName = item.originalName && item.originalName !== item.title
+      ? ` · file ${item.originalName}`
+      : '';
+    const chunks = typeof item._count?.segments === 'number'
+      ? ` · ${item._count.segments} chunks`
+      : '';
+
+    return `${index + 1}. ${folder} / ${item.title}${originalName}${course}${type}${chunks}`;
+  }).join('\n');
+}
 
 function hasSaveIntent(message: string) {
   return /\b(save|收藏|保存|存一下|save this)\b/i.test(message);
@@ -327,11 +360,13 @@ export async function planChatTurnWithAi({
   message,
   history = [],
   hasExplicitScope = false,
+  libraryCatalog,
 }: {
   mode: ChatMode;
   message: string;
   history?: ChatHistoryTurn[];
   hasExplicitScope?: boolean;
+  libraryCatalog?: string;
 }): Promise<ChatTurnPlan> {
   const fallbackPlan = planChatTurn({
     mode,
@@ -380,6 +415,9 @@ export async function planChatTurnWithAi({
               'Recent history:',
               historyPreview,
               '',
+              'Library catalog observed via internal API:',
+              libraryCatalog?.trim() || 'No ready Library materials were supplied to the planner.',
+              '',
               'Allowed JSON schema:',
               '{',
               '  "intent": "casual_chat|guided_learning|retrieval_answer|assessment_generation|fixed_action|save_request|reader_navigation|library_operation",',
@@ -398,6 +436,8 @@ export async function planChatTurnWithAi({
               '- Use long_document_map for large papers or PDFs when full packing would be wasteful.',
               '- Use broad_rag for exam prep, course-wide review, or multiple-material synthesis.',
               '- Use focused_rag for specific questions.',
+              '- Use the Library catalog to infer likely folder, course, or file scope before retrieval.',
+              '- If the student names a course, folder, or lecture that appears in the catalog, prefer the matching scope instead of all materials.',
               '- Casual chat should not retrieve sources.',
             ].join('\n'),
           },

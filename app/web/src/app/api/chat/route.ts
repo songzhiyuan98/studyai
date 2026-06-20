@@ -14,7 +14,7 @@ import {
 } from '@/lib/rag-context';
 import { resolveExplicitLectureScope } from '@/lib/source-scope';
 import { buildCasualChatAnswer, buildChatAnswer, chatModeLabels } from '@/lib/chat-answer';
-import { planChatTurnWithAi, type ChatTurnPlan } from '@/lib/chat-planner';
+import { formatLibraryCatalogForPlanner, planChatTurnWithAi, type ChatTurnPlan } from '@/lib/chat-planner';
 import { parseChatSourceRefs, saveChatOutputAsArtifact, saveChatOutputSchema } from '@/lib/chat-save-artifact';
 import {
   buildHistoryAwareRetrievalQuery,
@@ -318,11 +318,36 @@ export async function POST(request: NextRequest) {
     });
     await touchChatSession(chatSession.id);
 
+    const plannerCatalogLectures = await prisma.lecture.findMany({
+      where: {
+        userId: session.user.id,
+        status: 'PROCESSED',
+      },
+      select: {
+        title: true,
+        originalName: true,
+        courseId: true,
+        type: true,
+        folder: {
+          select: {
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            segments: true,
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
     const chatPlan = await planChatTurnWithAi({
       mode: parsed.data.mode,
       message: parsed.data.message,
       history: recentHistory,
       hasExplicitScope: Boolean(scopedLectureIds?.length),
+      libraryCatalog: formatLibraryCatalogForPlanner(plannerCatalogLectures),
     });
     const shouldRetrieveSources = chatPlan.requiresRetrieval;
 

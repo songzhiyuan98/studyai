@@ -33,6 +33,8 @@ test('chat planner can use an AI planning agent with deterministic fallback', ()
 
   assert.match(source, /isChatModelConfigured/);
   assert.match(source, /StudyFlow Planner, an internal planning agent/);
+  assert.match(source, /Library catalog observed via internal API/);
+  assert.match(source, /libraryCatalog/);
   assert.match(source, /Return only a JSON object/);
   assert.match(source, /normalizeAiPlan/);
   assert.match(source, /fallbackPlan/);
@@ -96,6 +98,8 @@ test('chat route stores planner trace with retrieval metadata', () => {
   assert.match(source, /plannerSource: chatPlan\.plannerSource/);
   assert.match(source, /plannerModel: chatPlan\.plannerModel/);
   assert.match(source, /plannerRationale: chatPlan\.plannerRationale/);
+  assert.match(source, /plannerCatalogLectures/);
+  assert.match(source, /formatLibraryCatalogForPlanner\(plannerCatalogLectures\)/);
   assert.match(source, /resolvedScope/);
   assert.match(source, /libraryScope\.matchedLabels/);
   assert.match(source, /contextSummary/);
