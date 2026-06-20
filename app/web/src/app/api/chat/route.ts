@@ -837,6 +837,7 @@ export async function POST(request: NextRequest) {
         text: segment.text,
       })),
       delegatedAgent: chatPlan.delegatedAgent,
+      contextStrategy: effectiveContextStrategy,
       resolvedScope: {
         source: libraryScope.source,
         confidence: libraryScope.confidence,

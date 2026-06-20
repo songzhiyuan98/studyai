@@ -35,6 +35,7 @@ type ChatMessage = {
   sourceRefs?: SourceRef[];
   retrieval?: {
     strategy: string;
+    contextStrategy?: 'focused_rag' | 'broad_rag' | 'lecture_pack' | 'long_document_map';
     count: number;
     scopedLectureCount?: number;
     generation?: {

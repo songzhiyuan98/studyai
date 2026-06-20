@@ -90,6 +90,7 @@ test('builds prompts with planner-resolved library scope for the teaching agent'
     message: '我马上要考 114a，帮我整理模拟 midterm',
     contextText: 'Haskell functions and types are core course topics.',
     delegatedAgent: 'assessment_agent',
+    contextStrategy: 'broad_rag',
     resolvedScope: {
       source: 'course',
       confidence: 'high',
@@ -105,6 +106,7 @@ test('builds prompts with planner-resolved library scope for the teaching agent'
   });
 
   assert.match(prompt, /Delegated agent: assessment_agent/);
+  assert.match(prompt, /Context strategy: broad_rag/);
   assert.match(prompt, /Resolved Library scope from planner:/);
   assert.match(prompt, /Source: course/);
   assert.match(prompt, /Matched labels: CSE 114A/);

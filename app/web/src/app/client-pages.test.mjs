@@ -138,6 +138,7 @@ test('chat citations open the cited reader segment', () => {
 test('chat answers summarize the materials used for retrieval', () => {
   const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
 
+  assert.match(source, /contextStrategy\?:/);
   assert.match(source, /function getUsedMaterials/);
   assert.match(source, /Used materials/);
   assert.match(source, /material\.count\} chunks/);

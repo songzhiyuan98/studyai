@@ -33,6 +33,7 @@ type GenerateGroundedAnswerInput = {
   history?: ChatHistoryTurn[];
   sources: GroundedSource[];
   delegatedAgent?: 'teaching_agent' | 'assessment_agent' | 'chat_agent' | 'tool_agent';
+  contextStrategy?: 'focused_rag' | 'broad_rag' | 'lecture_pack' | 'long_document_map';
   resolvedScope?: {
     source: string;
     confidence: string;
@@ -165,6 +166,7 @@ export function buildGroundedPrompt({
   history,
   sources,
   delegatedAgent,
+  contextStrategy,
   resolvedScope,
 }: GenerateGroundedAnswerInput) {
   const sourceBlock = sources.length > 0
@@ -195,6 +197,7 @@ export function buildGroundedPrompt({
   return [
     `Mode: ${chatModeLabels[mode]}`,
     `Delegated agent: ${agentRole}`,
+    `Context strategy: ${contextStrategy || 'not_provided'}`,
     'Planner contract: the planner has already inspected Library metadata, resolved likely source scope, and retrieved source context when needed.',
     'Teaching posture: model_decides',
     `Teacher Mode hint: ${teacherModeHint ? 'likely' : 'not_forced'}`,
