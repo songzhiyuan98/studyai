@@ -39,6 +39,8 @@ student asks what to study
 - pgvector schema support exists through `Segment.embedding vector(1536)`.
 - Recommended MVP embedding model: `text-embedding-3-small`.
 - Chat source preview is implemented. Manual "Check sources" previews likely materials, and auto-scope sends now pause for confirmation when multiple candidate materials are found.
+- Teacher Mode prompt guidance is implemented as model-decided behavior with a deterministic hint/fallback. Beginner, from-scratch, and page-by-page learning requests should now produce fuller teacher-style explanations with examples.
+- Explicit lecture-title topic narrowing is implemented for Chat and source preview. Named topics such as "lambda" prefer the matching material before broader hybrid retrieval.
 
 ## Milestone 1: Chat Product Surface
 
@@ -129,6 +131,7 @@ student asks what to study
 
 - Hybrid vector + keyword retrieval. Implemented for Chat as `hybrid_vector_lexical_v0`.
 - Query rewriting for course terminology.
+- Model/tool-based intent classification for Teacher Mode and source selection. Current implementation provides prompt-level model judgment plus deterministic hints; future work should make this an explicit classifier/tool trace.
 - Parent-child retrieval:
   - small chunks for search
   - larger page/slide context for generation

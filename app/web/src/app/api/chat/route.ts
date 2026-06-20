@@ -10,12 +10,14 @@ import {
   retrieveContextForQuery,
   type RetrievedContext,
 } from '@/lib/rag-context';
-import { buildChatAnswer, chatModeLabels } from '@/lib/chat-answer';
+import { resolveExplicitLectureScope } from '@/lib/source-scope';
+import { buildCasualChatAnswer, buildChatAnswer, chatModeLabels } from '@/lib/chat-answer';
 import {
   buildHistoryAwareRetrievalQuery,
   chunkTextForLocalStream,
   generateGroundedChatAnswer,
   getChatModelConfig,
+  shouldUseStudyRetrieval,
   streamGroundedChatAnswer,
   type ChatHistoryTurn,
 } from '@/lib/chat-llm';
@@ -277,6 +279,176 @@ export async function POST(request: NextRequest) {
     });
     await touchChatSession(chatSession.id);
 
+    const shouldRetrieveSources = shouldUseStudyRetrieval({
+      mode: parsed.data.mode,
+      message: parsed.data.message,
+      history: recentHistory,
+      hasExplicitScope: Boolean(scopedLectureIds?.length),
+    });
+
+    if (!shouldRetrieveSources) {
+      const sourceRefs: never[] = [];
+      const retrievalTrace = {
+        strategy: 'no_retrieval_casual_chat_v0',
+        count: 0,
+        scopedLectureCount: 0,
+        historyCount: recentHistory.length,
+        query: 'not_requested',
+      };
+      const generationInput = {
+        mode: parsed.data.mode,
+        message: parsed.data.message,
+        contextText: '',
+        history: recentHistory,
+        sources: [],
+      };
+      const fallbackAnswerContent = buildCasualChatAnswer({ message: parsed.data.message });
+
+      if (parsed.data.stream) {
+        const stream = new ReadableStream({
+          async start(controller) {
+            let fullContent = '';
+            let generation = {
+              provider: 'local_fallback',
+              model: 'deterministic',
+            };
+
+            controller.enqueue(encodeSseEvent('metadata', {
+              message: {
+                sessionId: chatSession.id,
+                role: 'assistant',
+                title: chatModeLabels[parsed.data.mode],
+                sourceRefs,
+                retrieval: retrievalTrace,
+              },
+            }));
+
+            try {
+              let streamedFromModel = false;
+
+              for await (const delta of streamGroundedChatAnswer(generationInput)) {
+                streamedFromModel = true;
+                fullContent += delta;
+                await waitForChatStreamPace();
+                controller.enqueue(encodeSseEvent('delta', { delta }));
+              }
+
+              if (streamedFromModel) {
+                generation = {
+                  provider: 'openai_chat',
+                  model: getChatModelConfig().model,
+                };
+              }
+            } catch (generationError) {
+              console.error('Streaming casual chat generation failed, falling back locally:', generationError);
+              fullContent = '';
+            }
+
+            if (!fullContent) {
+              for (const delta of chunkTextForLocalStream(fallbackAnswerContent)) {
+                fullContent += delta;
+                await waitForChatStreamPace();
+                controller.enqueue(encodeSseEvent('delta', { delta }));
+              }
+            }
+
+            await prisma.chatMessage.create({
+              data: {
+                sessionId: chatSession.id,
+                userId: session.user.id,
+                role: 'ASSISTANT',
+                mode: parsed.data.mode,
+                title: chatModeLabels[parsed.data.mode],
+                content: fullContent,
+                sourceRefs,
+                retrieval: {
+                  ...retrievalTrace,
+                  generation,
+                },
+              },
+            });
+            await touchChatSession(chatSession.id);
+
+            controller.enqueue(encodeSseEvent('done', {
+              message: {
+                sessionId: chatSession.id,
+                role: 'assistant',
+                title: chatModeLabels[parsed.data.mode],
+                content: fullContent,
+                sourceRefs,
+                retrieval: {
+                  ...retrievalTrace,
+                  generation,
+                },
+              },
+            }));
+            controller.close();
+          },
+        });
+
+        return new Response(stream, {
+          headers: {
+            'Content-Type': 'text/event-stream; charset=utf-8',
+            'Cache-Control': 'no-cache, no-transform',
+            Connection: 'keep-alive',
+          },
+        });
+      }
+
+      let answerContent = fallbackAnswerContent;
+      let generation = {
+        provider: 'local_fallback',
+        model: 'deterministic',
+      };
+
+      try {
+        const generatedAnswer = await generateGroundedChatAnswer(generationInput);
+        if (generatedAnswer) {
+          answerContent = generatedAnswer.content;
+          generation = {
+            provider: generatedAnswer.provider,
+            model: generatedAnswer.model,
+          };
+        }
+      } catch (generationError) {
+        console.error('Casual chat generation failed, falling back locally:', generationError);
+      }
+
+      await prisma.chatMessage.create({
+        data: {
+          sessionId: chatSession.id,
+          userId: session.user.id,
+          role: 'ASSISTANT',
+          mode: parsed.data.mode,
+          title: chatModeLabels[parsed.data.mode],
+          content: answerContent,
+          sourceRefs,
+          retrieval: {
+            ...retrievalTrace,
+            generation,
+          },
+        },
+      });
+      await touchChatSession(chatSession.id);
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          message: {
+            sessionId: chatSession.id,
+            role: 'assistant',
+            title: chatModeLabels[parsed.data.mode],
+            content: answerContent,
+            sourceRefs,
+            retrieval: {
+              ...retrievalTrace,
+              generation,
+            },
+          },
+        },
+      });
+    }
+
     const lectures = await prisma.lecture.findMany({
       where: {
         userId: session.user.id,
@@ -305,7 +477,19 @@ export async function POST(request: NextRequest) {
       take: 20,
     });
 
-    const candidateSegments = lectures.flatMap((lecture) => (
+    const retrievalQuery = buildHistoryAwareRetrievalQuery({
+      message: parsed.data.message,
+      history: recentHistory,
+    });
+    const explicitScope = resolveExplicitLectureScope({
+      lectures,
+      query: retrievalQuery,
+    });
+    const activeLectures = explicitScope.lectures;
+    const retrievalLectureIds = explicitScope.narrowed
+      ? explicitScope.lectureIds
+      : scopedLectureIds;
+    const candidateSegments = activeLectures.flatMap((lecture) => (
       lecture.segments.map((segment) => ({
         id: segment.id,
         lectureId: lecture.id,
@@ -356,10 +540,6 @@ export async function POST(request: NextRequest) {
 
     let retrievalStrategy = 'lexical_page_aware_v0';
     let vectorResults: RetrievedContext[] = [];
-    const retrievalQuery = buildHistoryAwareRetrievalQuery({
-      message: parsed.data.message,
-      history: recentHistory,
-    });
     const lexicalResults = retrieveContextForQuery({
       query: retrievalQuery,
       candidateSegments,
@@ -370,7 +550,7 @@ export async function POST(request: NextRequest) {
       vectorResults = await retrieveVectorContext({
         query: retrievalQuery,
         userId: session.user.id,
-        lectureIds: scopedLectureIds,
+        lectureIds: retrievalLectureIds,
         limit: 8,
       });
     } catch (vectorError) {
@@ -400,7 +580,7 @@ export async function POST(request: NextRequest) {
     }));
     const context = retrieved.length > 0 ? retrieved : fallbackSegments;
     const contextText = compactContextText(context.map(({ segment }) => segment), 1000);
-    const lectureMap = new Map(lectures.map((lecture) => [lecture.id, lecture]));
+    const lectureMap = new Map(activeLectures.map((lecture) => [lecture.id, lecture]));
     const sourceRefs = context.map(({ segment, score, reason }) => {
       const lecture = lectureMap.get(segment.lectureId);
 
@@ -434,9 +614,10 @@ export async function POST(request: NextRequest) {
     const retrievalTrace = {
       strategy: retrievalStrategy,
       count: context.length,
-      scopedLectureCount: lectures.length,
+      scopedLectureCount: activeLectures.length,
       historyCount: recentHistory.length,
       query: recentHistory.length > 0 ? 'history_aware' : 'current_message',
+      sourceScope: explicitScope.narrowed ? 'explicit_topic' : scopedLectureIds?.length ? 'selected_sources' : 'auto',
     };
 
     if (parsed.data.stream) {
@@ -584,7 +765,7 @@ export async function POST(request: NextRequest) {
           retrieval: {
             strategy: retrievalStrategy,
             count: context.length,
-            scopedLectureCount: lectures.length,
+            scopedLectureCount: activeLectures.length,
             generation,
           },
         },

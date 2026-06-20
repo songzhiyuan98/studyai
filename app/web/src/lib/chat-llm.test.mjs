@@ -8,6 +8,7 @@ import {
   getChatModelConfig,
   isChatModelConfigured,
   parseChatCompletionStreamLine,
+  shouldUseStudyRetrieval,
 } from './chat-llm.ts';
 
 const originalApiKey = process.env.OPENAI_API_KEY;
@@ -100,9 +101,33 @@ test('builds prompts with recent conversation history for follow-up questions', 
   assert.match(prompt, /user: What is pattern matching\?/);
   assert.match(prompt, /assistant: Pattern matching checks values against ordered cases\./);
   assert.match(prompt, /Use recent conversation to resolve follow-up references/);
+  assert.match(prompt, /Teaching posture: model_decides/);
+  assert.match(prompt, /Decide the teaching posture from the user’s intent/);
   assert.match(prompt, /teach gradually like a patient tutor/);
   assert.match(prompt, /Do not generate quizzes, cheat sheets, or long fixed templates/);
   assert.match(prompt, /Can you continue from that example\?/);
+});
+
+test('builds teacher-mode prompt guidance for beginner page-by-page learning', () => {
+  const prompt = buildGroundedPrompt({
+    mode: 'free',
+    message: '我是小白，带我学会 lambda 每一页内容，用中文',
+    contextText: 'Lambda calculus focuses on function abstraction and application.',
+    sources: [
+      {
+        label: 'Lambda · Page 9',
+        text: 'Lambda calculus is based on functions.',
+      },
+    ],
+  });
+
+  assert.match(prompt, /Teacher Mode hint: likely/);
+  assert.match(prompt, /Use Teacher Mode when the student asks to learn/);
+  assert.match(prompt, /why the concept exists and what problem it solves/);
+  assert.match(prompt, /mental model\/worldview/);
+  assert.match(prompt, /examples are required/);
+  assert.match(prompt, /page-by-page requests/);
+  assert.match(prompt, /answer in the student’s language/);
 });
 
 test('builds history-aware retrieval queries for follow-up messages', () => {
@@ -146,6 +171,41 @@ test('keeps casual chat history out of retrieval queries', () => {
   });
 
   assert.equal(query, 'Can you explain Haskell functions now?');
+});
+
+test('detects when a chat turn should use study retrieval', () => {
+  assert.equal(shouldUseStudyRetrieval({
+    mode: 'free',
+    message: 'hi how are you?',
+    history: [],
+    hasExplicitScope: false,
+  }), false);
+
+  assert.equal(shouldUseStudyRetrieval({
+    mode: 'free',
+    message: 'Can you quiz me on that?',
+    history: [
+      {
+        role: 'user',
+        content: 'I am reviewing Haskell lambda expressions.',
+      },
+    ],
+    hasExplicitScope: false,
+  }), true);
+
+  assert.equal(shouldUseStudyRetrieval({
+    mode: 'mini_quiz',
+    message: 'make one for me',
+    history: [],
+    hasExplicitScope: false,
+  }), true);
+
+  assert.equal(shouldUseStudyRetrieval({
+    mode: 'free',
+    message: 'continue',
+    history: [],
+    hasExplicitScope: true,
+  }), true);
 });
 
 test('skips remote generation when chat model is not configured', async () => {

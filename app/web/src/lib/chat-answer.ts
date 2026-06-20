@@ -28,6 +28,24 @@ function bulletizeContext(contextText: string, limit = 4): string[] {
     .slice(0, limit);
 }
 
+function isTeacherLikeRequest(message: string) {
+  return /(\bteach\b|\blearn\b|\breview\b|\bfrom scratch\b|\bbeginner\b|\bwalk me through\b|\beach page\b|带我|教我|学会|从头|小白|没接触过|每一页|逐页|详细讲|听你的安排)/i.test(message);
+}
+
+export function buildCasualChatAnswer({ message }: { message: string }): string {
+  const normalized = message.trim().toLowerCase();
+
+  if (/^(hi|hello|hey|yo|你好|嗨)\b/.test(normalized)) {
+    return "Hi, I'm here. We can chat normally, and when you want to study I can pull in your Library sources.";
+  }
+
+  if (/\b(thanks|thank you|谢谢)\b/.test(normalized)) {
+    return "Of course. When you're ready, tell me what you want to study next.";
+  }
+
+  return "I can help with that. If you want to connect it to your course materials, mention the topic, lecture, or file and I'll bring the right sources in.";
+}
+
 export function buildChatAnswer({
   mode,
   message,
@@ -103,6 +121,22 @@ export function buildChatAnswer({
       `The source context suggests this idea: ${context}`,
       '',
       'How to study it: identify the definition, trace one example, then test yourself by explaining why the example works.',
+    ].join('\n');
+  }
+
+  if (isTeacherLikeRequest(message)) {
+    return [
+      '我们先把这个东西放到一张地图里理解。',
+      '',
+      `为什么要学它：${bullets.length > 0 ? bullets[0] : context}`,
+      '',
+      '怎么理解：先抓住它解决的问题，再看它在代码里长什么样，最后用一个小例子验证自己真的懂了。',
+      '',
+      bullets.length > 1
+        ? `材料里的下一个关键点是：${bullets[1]}`
+        : `你现在的问题是：${question}`,
+      '',
+      '小练习：你能用一句话说出这个概念是为了解决什么问题吗？',
     ].join('\n');
   }
 

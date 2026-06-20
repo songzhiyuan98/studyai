@@ -133,6 +133,7 @@ Conversation memory and retrieval memory are related but not identical. The assi
 - A selected pill controls the output format of the next assistant response.
 - Default free chat should feel like a teacher-led conversation: gradual explanation, short checks for what the student wants next, and no unsolicited quiz or cheat-sheet dump.
 - The local deterministic fallback should follow the same teacher-led default so degraded mode does not become a template generator.
+- The model should decide the teaching posture from the user's intent. When the student asks to learn from scratch, be taught page by page, or signals they are a beginner, the assistant should enter Teacher Mode: explain why the concept exists, build the mental model, teach details in order, give concrete examples, and end with a small understanding check.
 - The assistant may ask one short source-confirmation question before generation when the scope is ambiguous.
 - Source confirmation should be based on the internal retrieval/source-preview API or future tool calls, not a generic confirmation modal.
 - In auto scope, the current Chat UI automatically runs source preview before sending when the request matches multiple likely materials, then lets the student approve or adjust the recommended sources.
@@ -196,6 +197,7 @@ Current retrieval:
 - Retrieve pgvector nearest-neighbor results inside the authenticated user's lecture scope.
 - Retrieve lexical keyword matches from the same user-scoped candidate set.
 - Merge vector and lexical results into a hybrid ranked context and preserve each source ref's retrieval reason.
+- When the user explicitly names a material/topic that matches a lecture title, retrieval and source preview first narrow to that lecture set. This keeps requests such as "teach me lambda" from drifting into unrelated Typeclass or Types material unless the model needs them as clearly labeled background.
 - Fall back to lexical/page-aware retrieval when embeddings are unavailable or provider calls fail.
 
 Embedding retrieval constraints:

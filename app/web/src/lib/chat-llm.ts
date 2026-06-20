@@ -83,8 +83,47 @@ export function compactChatHistory(history: ChatHistoryTurn[] = [], maxTurns = 8
   return truncateText(historyBlock, maxChars);
 }
 
-function hasStudyRetrievalSignal(content: string) {
-  return /\b(quiz|test|exam|homework|assignment|lecture|slide|chapter|page|pdf|txt|notes?|sources?|materials?|haskell|lambda|functions?|types?|syntax|code|programming|definitions?|concepts?|terms?|examples?)\b/i.test(content);
+export function hasStudyRetrievalSignal(content: string) {
+  return /\b(study|learn|review|explain|teach|understand|quiz|test|exam|homework|assignment|lecture|slide|chapter|page|pdf|txt|notes?|sources?|materials?|haskell|lambda|functions?|types?|syntax|code|programming|definitions?|concepts?|terms?|examples?)\b/i.test(content);
+}
+
+function hasConcreteStudyRetrievalSignal(turn: ChatHistoryTurn) {
+  const content = turn.content.trim();
+  if (turn.role === 'assistant' && /\b(what would you like to study|when you want to study|tell me what you want to study)\b/i.test(content)) {
+    return false;
+  }
+
+  return hasStudyRetrievalSignal(content);
+}
+
+function isStudyFollowUp(content: string) {
+  return /\b(this|that|it|those|them|continue|more|again|next|quiz me|test me|summari[sz]e|explain|review)\b/i.test(content);
+}
+
+export function shouldUseStudyRetrieval({
+  mode,
+  message,
+  history = [],
+  hasExplicitScope = false,
+}: {
+  mode: ChatMode;
+  message: string;
+  history?: ChatHistoryTurn[];
+  hasExplicitScope?: boolean;
+}) {
+  if (mode !== 'free' || hasExplicitScope || hasStudyRetrievalSignal(message)) {
+    return true;
+  }
+
+  return isStudyFollowUp(message) && history.slice(-4).some((turn) => hasConcreteStudyRetrievalSignal(turn));
+}
+
+export function shouldUseTeacherMode(message: string, mode: ChatMode) {
+  if (mode === 'mini_quiz' || mode === 'cheat_sheet' || mode === 'key_terms') {
+    return false;
+  }
+
+  return /(\bteach\b|\blearn\b|\breview\b|\bfrom scratch\b|\bbeginner\b|\bnew to\b|\bwalk me through\b|\beach page\b|带我|教我|学会|从头|小白|没接触过|每一页|逐页|详细讲|听你的安排)/i.test(message);
 }
 
 export function buildHistoryAwareRetrievalQuery({
@@ -96,7 +135,7 @@ export function buildHistoryAwareRetrievalQuery({
 }) {
   const usefulHistory = history
     .slice(-4)
-    .filter((turn) => hasStudyRetrievalSignal(turn.content))
+    .filter((turn) => hasConcreteStudyRetrievalSignal(turn))
     .map((turn) => `${turn.role}: ${truncateText(turn.content, 260)}`)
     .join('\n');
 
@@ -122,9 +161,12 @@ export function buildGroundedPrompt({ mode, message, history, sources }: Generat
     )).join('\n\n')
     : 'No retrieved source context.';
   const historyBlock = compactChatHistory(history);
+  const teacherModeHint = shouldUseTeacherMode(message, mode);
 
   return [
     `Mode: ${chatModeLabels[mode]}`,
+    'Teaching posture: model_decides',
+    `Teacher Mode hint: ${teacherModeHint ? 'likely' : 'not_forced'}`,
     `Student request: ${message}`,
     '',
     'Recent conversation:',
@@ -137,7 +179,16 @@ export function buildGroundedPrompt({ mode, message, history, sources }: Generat
     '- Use the retrieved sources to understand the student’s course context, terminology, and likely intent.',
     '- Use recent conversation to resolve follow-up references like "this", "that", "continue", and "quiz me on it".',
     '- Answer like ChatGPT with full tutoring ability: explain, connect concepts, provide examples, and fill in basic background when helpful.',
+    '- Decide the teaching posture from the user’s intent, not from fixed keywords alone: quick answer, normal study chat, guided Teacher Mode, translation, quiz, or page-by-page lesson.',
     '- In free chat, teach gradually like a patient tutor: start with the core idea, check what the student wants next, and avoid dumping every possible artifact at once.',
+    '- Use Teacher Mode when the student asks to learn, review, be taught from the beginning, understand every page, or signals they are a beginner.',
+    '- If Teacher Mode is appropriate, do not respond with only a menu of topics. Take the lead like a teacher unless the student explicitly asks for choices.',
+    '- In Teacher Mode, first explain why the concept exists and what problem it solves, then build the mental model/worldview, then teach the details in a logical order.',
+    '- In Teacher Mode, examples are required. Use small concrete examples, preferably code examples for programming topics, and explain what each line means.',
+    '- In Teacher Mode for beginners, define jargon before using it heavily, use analogies sparingly, and check understanding with one small question or exercise at the end.',
+    '- In Teacher Mode for page-by-page requests, follow the retrieved source/page order. For each page, provide: translation or source gist, teaching explanation, example, and what to remember.',
+    '- In Teacher Mode, answer in the student’s language. If the student writes Chinese, teach in Chinese unless they ask otherwise.',
+    '- For broad beginner teaching requests, a useful answer is usually several short sections, not one or two sentences.',
     '- Do not generate quizzes, cheat sheets, or long fixed templates unless the student asks for them or the matching quick action mode is selected.',
     '- Mention source markers such as [S1] only when a specific sentence or bullet is directly grounded in a retrieved source.',
     '- Do not fabricate citations or claim the sources say something they do not say.',

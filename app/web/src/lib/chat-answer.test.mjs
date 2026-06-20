@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildChatAnswer, chatModeLabels } from './chat-answer.ts';
+import { buildCasualChatAnswer, buildChatAnswer, chatModeLabels } from './chat-answer.ts';
 
 const contextText = 'Haskell functions are first-class values. Pattern matching chooses the first matching equation. Top-level bindings name reusable values.';
 
@@ -57,4 +57,24 @@ test('builds free chat fallback like a gradual tutor response', () => {
   assert.doesNotMatch(answer, /mini quiz/i);
   assert.doesNotMatch(answer, /cheat sheet/i);
   assert.doesNotMatch(answer, /Here is a grounded study response/);
+});
+
+test('builds teacher-like fallback for beginner learning requests', () => {
+  const answer = buildChatAnswer({
+    mode: 'free',
+    message: '我是小白，带我学会 lambda 每一页内容',
+    contextText,
+  });
+
+  assert.match(answer, /为什么要学它/);
+  assert.match(answer, /小练习/);
+  assert.doesNotMatch(answer, /What part should we unpack next/);
+});
+
+test('builds casual fallback without pretending retrieval failed', () => {
+  const answer = buildCasualChatAnswer({ message: 'hi how are you?' });
+
+  assert.match(answer, /chat normally/);
+  assert.doesNotMatch(answer, /No matching context/);
+  assert.doesNotMatch(answer, /Upload a PDF/);
 });

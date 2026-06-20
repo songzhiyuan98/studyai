@@ -10,6 +10,7 @@ import {
   type RetrievedContext,
 } from '@/lib/rag-context';
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
+import { resolveExplicitLectureScope } from '@/lib/source-scope';
 
 const previewSchema = z.object({
   message: z.string().min(1).max(2000),
@@ -138,7 +139,15 @@ export async function POST(request: NextRequest) {
       take: 20,
     });
 
-    const candidateSegments = lectures.flatMap((lecture) => (
+    const explicitScope = resolveExplicitLectureScope({
+      lectures,
+      query: parsed.data.message,
+    });
+    const activeLectures = explicitScope.lectures;
+    const retrievalLectureIds = explicitScope.narrowed
+      ? explicitScope.lectureIds
+      : scopedLectureIds;
+    const candidateSegments = activeLectures.flatMap((lecture) => (
       lecture.segments.map((segment) => ({
         id: segment.id,
         lectureId: lecture.id,
@@ -159,7 +168,7 @@ export async function POST(request: NextRequest) {
           retrieval: {
             strategy: 'lexical_page_aware_v0',
             count: 0,
-            scopedLectureCount: lectures.length,
+            scopedLectureCount: activeLectures.length,
           },
         },
       });
@@ -177,7 +186,7 @@ export async function POST(request: NextRequest) {
       vectorResults = await retrieveVectorPreview({
         query: parsed.data.message,
         userId: session.user.id,
-        lectureIds: scopedLectureIds,
+        lectureIds: retrievalLectureIds,
         limit: 8,
       });
     } catch (vectorError) {
@@ -203,7 +212,7 @@ export async function POST(request: NextRequest) {
         score: 0,
         reason: 'lexical' as const,
       }));
-    const lectureMap = new Map(lectures.map((lecture) => [lecture.id, lecture]));
+    const lectureMap = new Map(activeLectures.map((lecture) => [lecture.id, lecture]));
     const sourceRefs = context.map(({ segment, score, reason }) => {
       const lecture = lectureMap.get(segment.lectureId);
 
@@ -251,7 +260,8 @@ export async function POST(request: NextRequest) {
         retrieval: {
           strategy: retrievalStrategy,
           count: context.length,
-          scopedLectureCount: lectures.length,
+          scopedLectureCount: activeLectures.length,
+          sourceScope: explicitScope.narrowed ? 'explicit_topic' : scopedLectureIds?.length ? 'selected_sources' : 'auto',
         },
       },
     });

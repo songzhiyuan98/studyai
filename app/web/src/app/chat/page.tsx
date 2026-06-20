@@ -78,6 +78,10 @@ const actionModes: Array<{ id: ActionMode; label: string; hint: string }> = [
   { id: 'cheat_sheet', label: 'Cheat sheet', hint: 'Printable draft' },
 ];
 
+function hasStudySignalForAutoScope(text: string) {
+  return /\b(study|learn|review|explain|teach|understand|quiz|test|exam|homework|assignment|lecture|slide|chapter|page|pdf|txt|notes?|sources?|materials?|haskell|lambda|functions?|types?|syntax|code|programming|definitions?|concepts?|terms?|examples?)\b/i.test(text);
+}
+
 function renderInlineMarkdown(text: string, keyPrefix: string) {
   const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).filter(Boolean);
 
@@ -511,7 +515,9 @@ export default function ChatPage() {
       return;
     }
 
-    const shouldConfirmSourcesBeforeSend = confirmedSources.length === 0 && !sourcePreview;
+    const shouldConfirmSourcesBeforeSend = confirmedSources.length === 0
+      && !sourcePreview
+      && (mode !== 'free' || hasStudySignalForAutoScope(trimmedMessage));
     if (shouldConfirmSourcesBeforeSend) {
       setPreviewingSources(true);
       setError('');
