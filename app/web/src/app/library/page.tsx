@@ -98,6 +98,21 @@ export default function LibraryPage() {
     loadLibrary();
   }, [loadLibrary]);
 
+  useEffect(() => {
+    if (!libraryAction) return;
+
+    if (libraryAction === 'upload') {
+      setNewItemMode('file');
+      setShowNewFolder(true);
+      return;
+    }
+
+    if (libraryTarget) {
+      setSearchQuery(libraryTarget);
+      setViewMode('list');
+    }
+  }, [libraryAction, libraryTarget]);
+
   const libraryItems = useMemo(
     () => lectures.map(mapLectureToLibraryItem),
     [lectures],

@@ -219,6 +219,12 @@ test('library page can surface chat requested operation intent from URL', () => 
   assert.match(source, /const libraryAction = searchParams\.get\('action'\)/);
   assert.match(source, /const libraryTarget = searchParams\.get\('target'\)/);
   assert.match(source, /const libraryDestination = searchParams\.get\('destination'\)/);
+  assert.match(source, /useEffect\(\(\) => \{/);
+  assert.match(source, /libraryAction === 'upload'/);
+  assert.match(source, /setNewItemMode\('file'\)/);
+  assert.match(source, /setShowNewFolder\(true\)/);
+  assert.match(source, /setSearchQuery\(libraryTarget\)/);
+  assert.match(source, /setViewMode\('list'\)/);
   assert.match(source, /Chat requested/);
   assert.match(source, /library-intent-banner/);
 });
