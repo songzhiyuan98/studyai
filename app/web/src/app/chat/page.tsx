@@ -745,14 +745,19 @@ export default function ChatPage() {
     const lectureIdsForMessage = sourcePreview?.materials.length && selectedPreviewLectureIds.length > 0
       ? selectedPreviewLectureIds
       : confirmedSources;
+    const modeForMessage = mode;
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       content: trimmedMessage,
+      mode: modeForMessage,
     };
 
     setMessages((current) => [...current, userMessage]);
     setMessage('');
+    if (modeForMessage !== 'free') {
+      setMode('free');
+    }
     setSourcePreview(null);
     setSelectedPreviewLectureIds([]);
     setSkipSourcePreviewOnce(false);
@@ -769,7 +774,7 @@ export default function ChatPage() {
         },
         body: JSON.stringify({
           message: trimmedMessage,
-          mode,
+          mode: modeForMessage,
           lectureIds: lectureIdsForMessage,
           sessionId: activeSessionId || undefined,
           stream: true,
@@ -795,7 +800,7 @@ export default function ChatPage() {
           {
             ...payload.data.message,
             id: assistantId,
-            mode,
+            mode: modeForMessage,
             isStreaming: false,
           },
         ]);
@@ -838,7 +843,7 @@ export default function ChatPage() {
                 content: '',
                 sourceRefs: streamEvent.data.message.sourceRefs,
                 retrieval: streamEvent.data.message.retrieval,
-                mode,
+                mode: modeForMessage,
                 isStreaming: true,
               },
             ]);

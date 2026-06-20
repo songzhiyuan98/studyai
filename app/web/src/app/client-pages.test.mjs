@@ -471,6 +471,15 @@ test('chat source preview can be bypassed once with explicit auto scope', () => 
   assert.match(source, /Use auto/);
 });
 
+test('chat quick action modes are one-shot after send', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+
+  assert.match(source, /const modeForMessage = mode/);
+  assert.match(source, /mode: modeForMessage/);
+  assert.match(source, /setMode\('free'\)/);
+  assert.match(source, /modeForMessage !== 'free'/);
+});
+
 test('chat API loads recent session history before creating the next user message', () => {
   const source = readFileSync(resolve(root, 'src/app/api/chat/route.ts'), 'utf8');
   const historyIndex = source.indexOf('await prisma.chatMessage.findMany');
