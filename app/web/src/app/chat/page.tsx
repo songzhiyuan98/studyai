@@ -61,6 +61,15 @@ type SourcePreview = {
     strategy: string;
     count: number;
     scopedLectureCount: number;
+    sourceScope?: 'selected_sources' | 'folder' | 'course' | 'lecture_title' | 'all_ready' | 'none';
+    libraryScope?: {
+      source: 'selected_sources' | 'folder' | 'course' | 'lecture_title' | 'all_ready' | 'none';
+      confidence: 'high' | 'medium' | 'low';
+      needsConfirmation: boolean;
+      reason: string;
+      matchedLabels: string[];
+      narrowed: boolean;
+    };
   };
 };
 
@@ -303,10 +312,19 @@ export default function ChatPage() {
   const sourcePreviewChunkLabel = sourcePreview?.retrieval.strategy.startsWith('broad_')
     ? 'coverage samples'
     : 'relevant chunks';
-  const sourcePreviewTitle = isBroadSourcePreview ? 'Suggested source range' : 'Suggested materials';
+  const sourceScopeLabel = sourcePreview?.retrieval.libraryScope?.matchedLabels?.length
+    ? sourcePreview.retrieval.libraryScope.matchedLabels.join(', ')
+    : sourcePreview?.retrieval.sourceScope === 'selected_sources'
+      ? 'Selected sources'
+      : sourcePreview?.retrieval.sourceScope === 'lecture_title'
+        ? 'Matching lecture'
+        : sourcePreview?.retrieval.sourceScope === 'all_ready'
+          ? 'All ready materials'
+          : 'Auto scope';
+  const sourcePreviewTitle = isBroadSourcePreview ? 'Suggested study scope' : 'Suggested materials';
   const sourcePreviewDescription = isBroadSourcePreview
-    ? `I will treat the selected materials as the study scope and use ${sourcePreview?.retrieval.count || 0} coverage samples to plan the answer.`
-    : `I found ${sourcePreview?.materials.length || 0} likely ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} · ${sourcePreview?.retrieval.count || 0} ${sourcePreviewChunkLabel}`;
+    ? `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} in scope · ${sourcePreview?.retrieval.count || 0} coverage samples for grounding`
+    : `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} likely ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} · ${sourcePreview?.retrieval.count || 0} ${sourcePreviewChunkLabel}`;
 
   const loadSources = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) {
