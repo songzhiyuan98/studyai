@@ -22,7 +22,7 @@ type SourceRef = {
   charStart?: number | null;
   charEnd?: number | null;
   score?: number;
-  reason?: 'lexical' | 'nearby';
+  reason?: 'lexical' | 'nearby' | 'vector' | 'hybrid';
 };
 
 type ChatMessage = {

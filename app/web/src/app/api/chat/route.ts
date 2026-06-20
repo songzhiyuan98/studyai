@@ -4,7 +4,12 @@ import { Prisma, prisma } from '@study-assistant/db';
 import { z } from 'zod';
 import { authOptions } from '@/lib/auth';
 import { formatSourceRef } from '@/lib/reader-format';
-import { retrieveContextForQuery, compactContextText } from '@/lib/rag-context';
+import {
+  compactContextText,
+  mergeHybridContext,
+  retrieveContextForQuery,
+  type RetrievedContext,
+} from '@/lib/rag-context';
 import { buildChatAnswer, chatModeLabels } from '@/lib/chat-answer';
 import {
   chunkTextForLocalStream,
@@ -140,7 +145,7 @@ async function retrieveVectorContext({
       charEnd: row.char_end,
     },
     score: Number(row.score),
-    reason: 'lexical' as const,
+    reason: 'vector' as const,
   }));
 }
 
@@ -324,30 +329,41 @@ export async function POST(request: NextRequest) {
     }
 
     let retrievalStrategy = 'lexical_page_aware_v0';
-    let retrieved = [];
+    let vectorResults: RetrievedContext[] = [];
+    const lexicalResults = retrieveContextForQuery({
+      query: parsed.data.message,
+      candidateSegments,
+      limit: 8,
+    });
 
     try {
-      retrieved = await retrieveVectorContext({
+      vectorResults = await retrieveVectorContext({
         query: parsed.data.message,
         userId: session.user.id,
         lectureIds: scopedLectureIds,
-        limit: 6,
+        limit: 8,
       });
-      if (retrieved.length > 0) {
-        retrievalStrategy = 'pgvector_embedding_v0';
-      }
     } catch (vectorError) {
       console.error('Vector retrieval failed, falling back to lexical:', vectorError);
     }
 
-    if (retrieved.length === 0) {
-      retrieved = retrieveContextForQuery({
-        query: parsed.data.message,
-        candidateSegments,
+    const retrieved = vectorResults.length > 0 && lexicalResults.length > 0
+      ? mergeHybridContext({
+        vectorResults,
+        lexicalResults,
         limit: 6,
-      });
+      })
+      : vectorResults.length > 0
+        ? vectorResults.slice(0, 6)
+        : lexicalResults.slice(0, 6);
+
+    if (vectorResults.length > 0 && lexicalResults.length > 0) {
+      retrievalStrategy = 'hybrid_vector_lexical_v0';
+    } else if (vectorResults.length > 0) {
+      retrievalStrategy = 'pgvector_embedding_v0';
     }
-    const fallbackSegments = candidateSegments.slice(0, 3).map((segment) => ({
+
+    const fallbackSegments: RetrievedContext[] = candidateSegments.slice(0, 3).map((segment) => ({
       segment,
       score: 0,
       reason: 'lexical' as const,

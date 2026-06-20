@@ -143,8 +143,8 @@ Upload file
 Current implementation note:
 
 - PDF and TXT parsing now create real source segments.
-- Current retrieval v0 is lexical/page-aware and stores selected `sourceRefs` plus retrieved `relatedRefs`.
-- Embeddings are not generated yet in the active upload path.
+- Upload processing can generate OpenAI embeddings when a real `OPENAI_API_KEY` is configured.
+- Current Chat retrieval uses hybrid vector + lexical ranking when embeddings exist, with lexical fallback when vectors are missing.
 - The schema already reserves `Segment.embedding` as a 1536-dimensional pgvector field.
 
 ## Chunking Strategy
@@ -173,19 +173,34 @@ This keeps RAG, citations, and source anchoring stable while supporting bilingua
 
 ## Retrieval Strategy
 
-Current retrieval v0:
+Current retrieval:
 
 - Filter by user and lecture.
-- Compare selected text to candidate segments with lexical overlap.
-- Expand nearby page context.
-- Store selected refs and retrieved context refs separately.
+- Generate a query embedding when embedding configuration is available.
+- Retrieve pgvector nearest-neighbor results inside the authenticated user's lecture scope.
+- Retrieve lexical keyword matches from the same user-scoped candidate set.
+- Merge vector and lexical results into a hybrid ranked context and preserve each source ref's retrieval reason.
+- Fall back to lexical/page-aware retrieval when embeddings are unavailable or provider calls fail.
 
-Embedding retrieval target:
+Embedding retrieval constraints:
 
 - Filter by user and study scope metadata.
 - Search `Segment.embedding` through pgvector.
 - Return top relevant segments with source metadata.
 - Pack context with source ids visible to the prompt.
+
+## Multi-Tenant RAG Isolation
+
+StudyFlow should not create a separate physical vector database for every student in the MVP. The product uses shared PostgreSQL + pgvector infrastructure with tenant-scoped rows and mandatory ownership filters.
+
+- `Folder`, `Lecture`, `Selection`, `ChatSession`, and `ChatMessage` are directly owned by `userId`.
+- `Segment.embedding` is stored on the segment row, and segment ownership is inherited through `Lecture.userId`.
+- Vector retrieval must join `segments` to `lectures` and filter `lectures.user_id = authenticated user id` before ordering by vector distance.
+- Upload object keys are namespaced as `uploads/{userId}/...` so stored source files are separated by owner.
+- Delete flows must remove the user-owned lecture, cascade its segments and embeddings, and remove the corresponding stored object.
+- Production hardening should add PostgreSQL row-level security, tests for all raw SQL retrieval paths, and direct tenant indexes if query volume requires them.
+
+Separate per-user vector databases are only justified for a future enterprise tier, regulatory hard isolation, or customer-managed storage. They are unnecessary overhead for the student SaaS MVP.
 
 Embedding model target:
 
@@ -195,7 +210,6 @@ Embedding model target:
 
 Advanced retrieval:
 
-- Hybrid keyword + vector search.
 - Parent-child retrieval.
 - Reranking.
 - MMR deduplication.

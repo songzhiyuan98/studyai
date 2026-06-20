@@ -114,7 +114,7 @@ Current behavior:
 
 Important next step:
 
-- Add embeddings and vector retrieval. Current ingestion can optionally generate OpenAI embeddings, write them to `Segment.embedding`, and let Chat try pgvector retrieval before falling back to lexical/page-aware retrieval.
+- Add embeddings and vector retrieval. Current ingestion can optionally generate OpenAI embeddings, write them to `Segment.embedding`, and let Chat merge pgvector retrieval with lexical/page-aware retrieval before falling back to lexical-only retrieval.
 - Upgrade PDF/PPTX ingestion to structure-aware chunking with page/slide layout anchors.
 
 ### List Lectures
@@ -222,14 +222,14 @@ Current behavior:
 - Automatically create a chat session when `sessionId` is omitted, or append to the existing owned session when `sessionId` is supplied.
 - Resolve explicit or inferred library scope.
 - Retrieve source segments with metadata filters.
-- Use embeddings through pgvector when available, with lexical/page-aware fallback.
+- Use hybrid retrieval through pgvector embeddings plus lexical/page-aware matching when available, with lexical fallback when vectors are missing or provider calls fail.
 - Stream the answer to the frontend.
 - Save user message, assistant answer, retrieved refs, final cited refs, and model metadata.
 
 Current RAG status:
 
 - Active implementation: lexical/page-aware retrieval v0 for reader micro actions.
-- Active when configured: optional OpenAI embeddings, pgvector retrieval, OpenAI chat generation, server-sent event chat streaming, and lexical/local-generation fallback.
+- Active when configured: optional OpenAI embeddings, hybrid pgvector + lexical retrieval, OpenAI chat generation, server-sent event chat streaming, and lexical/local-generation fallback.
 - Active maintenance endpoint: `POST /api/lectures/reindex` backfills missing embeddings for processed source segments owned by the current user.
 - Not active yet: reranking.
 - Recommended embedding default: `text-embedding-3-small`, stored as 1536-dimensional vectors in `Segment.embedding`.
@@ -341,8 +341,14 @@ Planned behavior:
 
 - Apply user and study-scope metadata filters.
 - Retrieve relevant `Segment` rows using pgvector.
-- Optionally combine keyword search and reranking later.
+- Combine vector results with lexical keyword retrieval when both are available.
 - Return source refs and packed context for generation.
+
+Tenant isolation requirement:
+
+- Retrieval must filter by authenticated user ownership before ranking.
+- Segment ownership is derived by joining `segments` to `lectures` and requiring `lectures.user_id` to match the current session user.
+- Saved chat outputs must re-verify that submitted source refs belong to the current user before creating artifacts.
 
 ## Source Reference Contract
 

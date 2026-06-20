@@ -72,7 +72,7 @@ Every generated artifact stores `sourceRefs` so students can jump back to the or
 
 Current implementation status:
 
-- Implemented: real PDF/TXT parsing, page-aware source segments, selected source refs, lexical/page-aware retrieval v0, optional OpenAI embedding generation, pgvector writes, vector-first Chat retrieval with lexical fallback, optional OpenAI chat generation, server-side SSE streaming with local fallback streaming, and persisted chat sessions/messages.
+- Implemented: real PDF/TXT parsing, page-aware source segments, selected source refs, lexical/page-aware retrieval v0, optional OpenAI embedding generation, pgvector writes, hybrid Chat retrieval that merges vector and lexical results, optional OpenAI chat generation, server-side SSE streaming with local fallback streaming, and persisted chat sessions/messages.
 - Not implemented yet: reranking and deeper long-term chat memory.
 - Existing database direction: `Segment.embedding` is prepared for 1536-dimensional vectors.
 - Recommended embedding default: `text-embedding-3-small`, configurable through environment variables. It matches the existing 1536-dimensional schema and is the better default than the older `text-embedding-ada-002` for a student SaaS cost/quality profile.
@@ -118,9 +118,16 @@ student action + selected study scope
   -> generation with source references
 ```
 
+Multi-tenant RAG isolation:
+
+- StudyFlow uses one physical PostgreSQL/pgvector database for the MVP, not one vector database per user.
+- Isolation is enforced at the data and query layer: folders, lectures, chat sessions, chat messages, selections, and uploaded object keys are owned by `userId`.
+- Segment embeddings inherit ownership through their lecture. Vector search joins `segments` to `lectures` and filters by the authenticated `user_id` before ranking.
+- Deleting a lecture deletes its segments and embeddings through cascade behavior, and removes the user-scoped stored file object.
+- Future production hardening should add PostgreSQL row-level security and direct tenant indexes where needed, but the product model should remain tenant-scoped shared infrastructure unless enterprise hard isolation is required.
+
 Planned advanced RAG upgrades:
 
-- Hybrid search with keyword and vector retrieval.
 - Parent-child retrieval: small chunks for retrieval, larger page/slide context for generation.
 - MMR deduplication to avoid repeated context.
 - Citation validation to detect unsupported generated claims.

@@ -105,8 +105,10 @@ student asks what to study
   - packed context
 - Retrieval strategy:
   - metadata filter first
-  - vector search when embeddings exist. Chat now attempts pgvector retrieval first when embeddings are configured.
-  - lexical fallback when vectors are missing
+  - vector search when embeddings exist
+  - lexical keyword retrieval over the same user-scoped candidates
+  - hybrid merge when both vector and lexical results are available
+  - lexical fallback when vectors are missing or provider calls fail
   - page/slide adjacency expansion
   - deduplication before context packing
 
@@ -121,13 +123,22 @@ student asks what to study
 
 ## Milestone 6: RAG Quality Upgrades
 
-- Hybrid vector + keyword retrieval.
+- Hybrid vector + keyword retrieval. Implemented for Chat as `hybrid_vector_lexical_v0`.
 - Query rewriting for course terminology.
 - Parent-child retrieval:
   - small chunks for search
   - larger page/slide context for generation
 - Reranking.
 - MMR or equivalent deduplication.
+
+## Multi-Tenant Isolation Checklist
+
+- Keep one shared PostgreSQL/pgvector database for MVP operations.
+- Require every retrieval path to filter by authenticated `userId` before ranking or generation.
+- Keep uploaded object keys user-scoped under `uploads/{userId}/...`.
+- Ensure deletes remove the user's lecture, cascade segment embeddings, and remove the stored source object.
+- Add regression tests around any new raw SQL vector query to prevent cross-user retrieval.
+- Consider PostgreSQL row-level security before production launch.
 - Citation validation after generation.
 - Evaluation set using uploaded lecture PDFs and expected source pages.
 

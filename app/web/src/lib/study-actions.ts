@@ -17,7 +17,7 @@ export type StudySourceRef = {
   charEnd: number | null;
   label: string;
   score?: number;
-  reason?: 'lexical' | 'nearby';
+  reason?: 'lexical' | 'nearby' | 'vector' | 'hybrid';
 };
 
 export type StudyArtifact = {
@@ -96,7 +96,12 @@ function parseSourceRefs(sourceRefs: unknown): StudySourceRef[] {
   return sourceRefs
     .filter((ref): ref is Record<string, unknown> => Boolean(ref) && typeof ref === 'object' && !Array.isArray(ref))
     .map((ref) => {
-      const reason: StudySourceRef['reason'] = ref.reason === 'lexical' || ref.reason === 'nearby'
+      const reason: StudySourceRef['reason'] = (
+        ref.reason === 'lexical'
+        || ref.reason === 'nearby'
+        || ref.reason === 'vector'
+        || ref.reason === 'hybrid'
+      )
         ? ref.reason
         : undefined;
 

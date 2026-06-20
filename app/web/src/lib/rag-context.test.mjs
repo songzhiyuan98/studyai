@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   compactContextText,
+  mergeHybridContext,
   retrieveContextForQuery,
   retrieveRelatedContext,
   tokenizeForRetrieval,
@@ -96,6 +97,29 @@ test('retrieves context directly from a user query', () => {
   assert.equal(results[0].segment.id, 'seg-2');
   assert.equal(results[0].reason, 'lexical');
   assert.ok(results.every((result) => result.score > 0));
+});
+
+test('merges vector and lexical retrieval into hybrid ranked context', () => {
+  const shared = { ...baseSegment, id: 'shared', page: 2, text: 'Polymorphic type variables can be generalized.' };
+  const vectorOnly = { ...baseSegment, id: 'vector', page: 3, text: 'A semantically close passage.' };
+  const lexicalOnly = { ...baseSegment, id: 'lexical', page: 4, text: 'A keyword-heavy passage.' };
+
+  const results = mergeHybridContext({
+    vectorResults: [
+      { segment: vectorOnly, score: 0.9, reason: 'vector' },
+      { segment: shared, score: 0.8, reason: 'vector' },
+    ],
+    lexicalResults: [
+      { segment: shared, score: 0.7, reason: 'lexical' },
+      { segment: lexicalOnly, score: 0.6, reason: 'lexical' },
+    ],
+    limit: 3,
+  });
+
+  assert.equal(results[0].segment.id, 'shared');
+  assert.equal(results[0].reason, 'hybrid');
+  assert.equal(results.some((result) => result.reason === 'vector'), true);
+  assert.equal(results.some((result) => result.reason === 'lexical'), true);
 });
 
 test('compacts retrieved context to a bounded string', () => {

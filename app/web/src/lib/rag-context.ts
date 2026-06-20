@@ -11,7 +11,7 @@ export type RetrievalSegment = {
 export type RetrievedContext = {
   segment: RetrievalSegment;
   score: number;
-  reason: 'lexical' | 'nearby';
+  reason: 'lexical' | 'nearby' | 'vector' | 'hybrid';
 };
 
 const STOP_WORDS = new Set([
@@ -154,6 +154,67 @@ export function retrieveRelatedContext({
       }
 
       return (first.segment.page || 0) - (second.segment.page || 0);
+    })
+    .slice(0, limit);
+}
+
+export function mergeHybridContext({
+  vectorResults,
+  lexicalResults,
+  limit = 6,
+}: {
+  vectorResults: RetrievedContext[];
+  lexicalResults: RetrievedContext[];
+  limit?: number;
+}): RetrievedContext[] {
+  const merged = new Map<string, {
+    segment: RetrievalSegment;
+    score: number;
+    vectorRank?: number;
+    lexicalRank?: number;
+  }>();
+
+  vectorResults.forEach((result, index) => {
+    merged.set(result.segment.id, {
+      segment: result.segment,
+      score: result.score + 1 / (index + 1),
+      vectorRank: index + 1,
+    });
+  });
+
+  lexicalResults.forEach((result, index) => {
+    const existing = merged.get(result.segment.id);
+    const lexicalBoost = result.score + 1 / (index + 1);
+
+    if (existing) {
+      existing.score += lexicalBoost;
+      existing.lexicalRank = index + 1;
+      return;
+    }
+
+    merged.set(result.segment.id, {
+      segment: result.segment,
+      score: lexicalBoost,
+      lexicalRank: index + 1,
+    });
+  });
+
+  return Array.from(merged.values())
+    .map((result) => ({
+      segment: result.segment,
+      score: Number(result.score.toFixed(6)),
+      reason: result.vectorRank && result.lexicalRank
+        ? 'hybrid'
+        : result.vectorRank
+          ? 'vector'
+          : 'lexical',
+    }) satisfies RetrievedContext)
+    .sort((first, second) => {
+      if (second.score !== first.score) {
+        return second.score - first.score;
+      }
+
+      return first.segment.id.localeCompare(second.segment.id);
     })
     .slice(0, limit);
 }

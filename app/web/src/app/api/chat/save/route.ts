@@ -14,7 +14,7 @@ const chatSourceRefSchema = z.object({
   charEnd: z.number().nullable().optional(),
   label: z.string().min(1),
   score: z.number().optional(),
-  reason: z.enum(['lexical', 'nearby']).optional(),
+  reason: z.enum(['lexical', 'nearby', 'vector', 'hybrid']).optional(),
 });
 
 const saveChatSchema = z.object({
