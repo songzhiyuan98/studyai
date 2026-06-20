@@ -88,6 +88,40 @@ test('builds source-aware prompts with source markers and general tutoring room'
   assert.match(prompt, /Explain pattern matching/);
 });
 
+test('puts the required response language before source context', () => {
+  const prompt = buildGroundedPrompt({
+    mode: 'free',
+    message: '我要学习一下cse114的lecture',
+    contextText: 'Type classes in Haskell provide generic interfaces.',
+    sources: [
+      {
+        label: 'typeclasses · page 1',
+        text: 'Type classes in Haskell provide generic interfaces.',
+      },
+    ],
+  });
+  const languageIndex = prompt.indexOf('Required response language: Chinese');
+  const contextIndex = prompt.indexOf('Study context package:');
+  const source = readFileSync(sourcePath, 'utf8');
+
+  assert.notEqual(languageIndex, -1);
+  assert.ok(languageIndex < contextIndex);
+  assert.match(prompt, /Answer in Chinese because the student wrote in Chinese/);
+  assert.match(source, /Required response language/);
+  assert.match(source, /Follow the Required response language field/);
+});
+
+test('keeps English requests in English', () => {
+  const prompt = buildGroundedPrompt({
+    mode: 'free',
+    message: 'Teach me Haskell type classes',
+    contextText: 'Type classes define shared behavior.',
+    sources: [],
+  });
+
+  assert.match(prompt, /Required response language: English/);
+});
+
 test('builds prompts with planner-resolved library scope for the teaching agent', () => {
   const prompt = buildGroundedPrompt({
     mode: 'mini_quiz',

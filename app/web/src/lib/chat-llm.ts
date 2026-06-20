@@ -228,6 +228,10 @@ function usesChinese(text: string) {
   return /[\u4e00-\u9fff]/.test(text);
 }
 
+function getRequiredResponseLanguage(message: string) {
+  return usesChinese(message) ? 'Chinese' : 'English';
+}
+
 function getResponseDepthContract({
   mode,
   message,
@@ -374,11 +378,16 @@ export function buildGroundedPrompt({
     contextStrategy,
     teacherModeHint,
   });
+  const requiredResponseLanguage = getRequiredResponseLanguage(message);
 
   return [
     `Mode: ${chatModeLabels[mode]}`,
     `Delegated agent: ${agentRole}`,
     `Context strategy: ${contextStrategy || 'not_provided'}`,
+    `Required response language: ${requiredResponseLanguage}`,
+    requiredResponseLanguage === 'Chinese'
+      ? 'Answer in Chinese because the student wrote in Chinese. Keep technical terms like Haskell, type class, lambda, and unification in English when that is clearer, but explain them in Chinese.'
+      : 'Answer in English because the student wrote in English unless they explicitly ask for another language.',
     'Planner contract: the planner has already inspected Library metadata, resolved likely source scope, and packaged study context when needed.',
     'Teaching posture: model_decides',
     `Teacher Mode hint: ${teacherModeHint ? 'likely' : 'not_forced'}`,
@@ -486,7 +495,7 @@ export async function generateGroundedChatAnswer(
       messages: [
         {
           role: 'system',
-          content: 'You are StudyFlow. Act as the delegated teaching agent inside a planner-led study product: natural like ChatGPT, strong as a tutor, and careful with citations.',
+          content: 'You are StudyFlow. Act as the delegated teaching agent inside a planner-led study product: natural like ChatGPT, strong as a tutor, and careful with citations. Follow the Required response language field exactly.',
         },
         {
           role: 'user',
@@ -542,7 +551,7 @@ export async function* streamGroundedChatAnswer(
       messages: [
         {
           role: 'system',
-          content: 'You are StudyFlow. Act as the delegated teaching agent inside a planner-led study product: natural like ChatGPT, strong as a tutor, and careful with citations.',
+          content: 'You are StudyFlow. Act as the delegated teaching agent inside a planner-led study product: natural like ChatGPT, strong as a tutor, and careful with citations. Follow the Required response language field exactly.',
         },
         {
           role: 'user',
