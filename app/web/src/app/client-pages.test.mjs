@@ -174,8 +174,10 @@ test('chat answers summarize the materials used for retrieval', () => {
   assert.match(source, /function getContextStrategyLabel/);
   assert.match(source, /function getPlannerSourceLabel/);
   assert.match(source, /Used materials/);
-  assert.match(source, /AI planner/);
-  assert.match(source, /deterministic fallback/);
+  assert.match(source, /AI selected/);
+  assert.match(source, /Auto selected/);
+  assert.doesNotMatch(source, /AI planner/);
+  assert.doesNotMatch(source, /deterministic fallback/);
   assert.match(source, /lecture pack/);
   assert.match(source, /document map/);
   assert.match(source, /material\.count\} chunks/);

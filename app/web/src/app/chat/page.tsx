@@ -310,14 +310,14 @@ function getContextStrategyLabel(strategy?: NonNullable<ChatMessage['retrieval']
 
 function getPlannerSourceLabel(source?: NonNullable<ChatMessage['retrieval']>['plannerSource']) {
   if (source === 'ai_planner') {
-    return 'AI planner';
+    return 'AI selected';
   }
 
   if (source === 'deterministic') {
-    return 'deterministic fallback';
+    return 'Auto selected';
   }
 
-  return 'planner pending';
+  return 'Auto scope';
 }
 
 export default function ChatPage() {
