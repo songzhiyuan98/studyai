@@ -428,6 +428,59 @@ export function expandRetrievedContextWithNeighbors({
     .slice(0, limit);
 }
 
+function tokenSetForSimilarity(text: string) {
+  return new Set(tokenizeForRetrieval(text));
+}
+
+function jaccardSimilarity(first: Set<string>, second: Set<string>) {
+  if (first.size === 0 || second.size === 0) {
+    return 0;
+  }
+
+  let overlap = 0;
+  first.forEach((token) => {
+    if (second.has(token)) {
+      overlap += 1;
+    }
+  });
+
+  return overlap / (first.size + second.size - overlap);
+}
+
+export function dedupeRetrievedContext({
+  results,
+  limit = 6,
+  similarityThreshold = 0.78,
+}: {
+  results: RetrievedContext[];
+  limit?: number;
+  similarityThreshold?: number;
+}): RetrievedContext[] {
+  const selected: Array<RetrievedContext & { tokens: Set<string> }> = [];
+  const ranked = [...results].sort((first, second) => {
+    if (second.score !== first.score) {
+      return second.score - first.score;
+    }
+
+    return first.segment.id.localeCompare(second.segment.id);
+  });
+
+  for (const result of ranked) {
+    if (selected.length >= limit) break;
+
+    const tokens = tokenSetForSimilarity(result.segment.text);
+    const duplicate = selected.some((existing) => (
+      jaccardSimilarity(existing.tokens, tokens) >= similarityThreshold
+    ));
+
+    if (!duplicate) {
+      selected.push({ ...result, tokens });
+    }
+  }
+
+  return selected.map(({ tokens, ...result }) => result);
+}
+
 export function compactContextText(segments: RetrievalSegment[], maxChars = 900): string {
   const joined = segments
     .map((segment) => segment.text.trim())

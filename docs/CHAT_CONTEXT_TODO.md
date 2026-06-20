@@ -173,7 +173,7 @@ student asks what to study
   - small passages for search
   - neighboring page/source-order context for generation
 - Reranking.
-- MMR or equivalent deduplication.
+- MMR or equivalent deduplication. Initial v0 is implemented for focused Chat retrieval seeds: high-scoring chunks are kept while near-identical token-overlap matches are skipped before neighbor expansion and context packing.
 
 ## Multi-Tenant Isolation Checklist
 

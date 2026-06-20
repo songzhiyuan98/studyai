@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   compactContextText,
+  dedupeRetrievedContext,
   extractRequestedPageNumber,
   expandRetrievedContextWithNeighbors,
   mergeHybridContext,
@@ -189,6 +190,31 @@ test('expands focused retrieval with neighboring source-order context', () => {
   assert.equal(results.find((result) => result.segment.id === 'seed')?.reason, 'lexical');
   assert.equal(results.find((result) => result.segment.id === 'before')?.reason, 'nearby');
   assert.equal(results.some((result) => result.segment.id === 'far'), false);
+});
+
+test('deduplicates near-identical focused retrieval seeds while keeping diverse concepts', () => {
+  const results = dedupeRetrievedContext({
+    results: [
+      {
+        segment: { ...baseSegment, id: 'pattern-a', page: 1, text: 'Pattern matching chooses the first matching equation.' },
+        score: 0.9,
+        reason: 'lexical',
+      },
+      {
+        segment: { ...baseSegment, id: 'pattern-b', page: 2, text: 'Pattern matching chooses the first matching equation.' },
+        score: 0.85,
+        reason: 'vector',
+      },
+      {
+        segment: { ...baseSegment, id: 'types', page: 3, text: 'Type inference assigns types to expressions.' },
+        score: 0.7,
+        reason: 'lexical',
+      },
+    ],
+    limit: 3,
+  });
+
+  assert.deepEqual(results.map((result) => result.segment.id), ['pattern-a', 'types']);
 });
 
 test('compacts retrieved context to a bounded string', () => {

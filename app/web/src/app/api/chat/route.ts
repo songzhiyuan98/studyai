@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/auth';
 import { formatSourceRef } from '@/lib/reader-format';
 import {
   compactContextText,
+  dedupeRetrievedContext,
   expandRetrievedContextWithNeighbors,
   mergeHybridContext,
   retrieveBroadCoverageContext,
@@ -949,12 +950,19 @@ export async function POST(request: NextRequest) {
       retrieved = lexicalResults.slice(0, 6);
     }
 
+    const dedupedRetrieved = effectiveContextStrategy === 'focused_rag'
+      ? dedupeRetrievedContext({
+        results: retrieved,
+        limit: 6,
+      })
+      : retrieved;
+    const dedupedContextCount = Math.max(0, retrieved.length - dedupedRetrieved.length);
     const fallbackSegments: RetrievedContext[] = candidateSegments.slice(0, 3).map((segment) => ({
       segment,
       score: 0,
       reason: 'lexical' as const,
     }));
-    const seedContext = retrieved.length > 0 ? retrieved : fallbackSegments;
+    const seedContext = dedupedRetrieved.length > 0 ? dedupedRetrieved : fallbackSegments;
     const context = effectiveContextStrategy === 'focused_rag'
       ? expandRetrievedContextWithNeighbors({
         retrieved: seedContext,
@@ -1029,6 +1037,7 @@ export async function POST(request: NextRequest) {
       contextStrategyAdjusted: effectiveContextStrategy !== chatPlan.contextStrategy,
       contextSummary,
       seedContextCount: seedContext.length,
+      dedupedContextCount,
       parentChildExpandedCount,
       contextCharBudget,
       candidateSegmentCount: candidateSegments.length,

@@ -113,6 +113,8 @@ test('chat route stores planner trace with retrieval metadata', () => {
   assert.match(source, /contextSummary/);
   assert.match(source, /lecturePackSummary/);
   assert.match(source, /buildLecturePackContext/);
+  assert.match(source, /dedupeRetrievedContext/);
+  assert.match(source, /dedupedContextCount/);
   assert.match(source, /expandRetrievedContextWithNeighbors/);
   assert.match(source, /parentChildExpandedCount/);
   assert.match(source, /CHAT_CONTEXT_SEGMENT_FETCH_LIMIT/);
