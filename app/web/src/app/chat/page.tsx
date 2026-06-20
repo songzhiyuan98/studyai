@@ -419,12 +419,15 @@ export default function ChatPage() {
       || sourcePreview?.retrieval.contextStrategy === 'lecture_pack'
       || sourcePreview?.retrieval.contextStrategy === 'long_document_map',
   );
+  const isAssessmentPreview = sourcePreview?.retrieval.strategy === 'broad_assessment_v0';
   const isLecturePackPreview = sourcePreview?.retrieval.contextStrategy === 'lecture_pack';
   const sourcePreviewChunkLabel = isSourceRangePreview
     ? 'coverage samples'
     : 'relevant passages';
   const sourcePreviewGroundingLabel = isLecturePackPreview
     ? 'lecture order'
+    : isAssessmentPreview
+      ? 'representative coverage'
     : sourcePreview?.retrieval.contextStrategy === 'long_document_map'
       ? 'document map coverage'
       : isSourceRangePreview
@@ -441,8 +444,11 @@ export default function ChatPage() {
           : 'Auto scope';
   const sourcePreviewTitle = isSourceRangePreview ? 'Suggested study scope' : 'Suggested materials';
   const sourcePreviewDescription = isSourceRangePreview
-    ? `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} in scope · ${sourcePreviewGroundingLabel} · ${getPlannerSourceLabel(sourcePreview?.retrieval.plannerSource)}`
+    ? `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} in ${isAssessmentPreview ? 'exam scope' : 'scope'} · ${sourcePreviewGroundingLabel} · ${getPlannerSourceLabel(sourcePreview?.retrieval.plannerSource)}`
     : `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} likely ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} · ${sourcePreview?.retrieval.count || 0} ${sourcePreviewChunkLabel} · ${getPlannerSourceLabel(sourcePreview?.retrieval.plannerSource)}`;
+  const sourcePreviewCoverageNote = isAssessmentPreview
+    ? 'I will use representative coverage across the selected materials, not just one or two passages.'
+    : '';
   const sourcePreviewReason = sourcePreview?.retrieval.plannerRationale
     || sourcePreview?.retrieval.libraryScope?.reason
     || '';
@@ -1213,6 +1219,11 @@ export default function ChatPage() {
                     {sourcePreviewReason ? (
                       <span className="mt-2 block">
                         Why this scope · {sourcePreviewReason}
+                      </span>
+                    ) : null}
+                    {sourcePreviewCoverageNote ? (
+                      <span className="mt-2 block">
+                        {sourcePreviewCoverageNote}
                       </span>
                     ) : null}
                   </div>

@@ -441,6 +441,15 @@ test('chat send automatically asks for source confirmation on ambiguous auto sco
   assert.match(source, /retrieval\.strategy\.startsWith\('broad_'\)/);
 });
 
+test('chat source preview explains assessment scope as representative coverage', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+
+  assert.match(source, /isAssessmentPreview/);
+  assert.match(source, /exam scope/i);
+  assert.match(source, /representative coverage/i);
+  assert.match(source, /not just one or two passages/i);
+});
+
 test('chat source preview requires at least one selected material before sending', () => {
   const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
 
