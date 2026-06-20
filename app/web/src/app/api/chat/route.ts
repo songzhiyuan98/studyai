@@ -13,12 +13,12 @@ import {
 } from '@/lib/rag-context';
 import { resolveExplicitLectureScope } from '@/lib/source-scope';
 import { buildCasualChatAnswer, buildChatAnswer, chatModeLabels } from '@/lib/chat-answer';
+import { planChatTurn } from '@/lib/chat-planner';
 import {
   buildHistoryAwareRetrievalQuery,
   chunkTextForLocalStream,
   generateGroundedChatAnswer,
   getChatModelConfig,
-  shouldUseStudyRetrieval,
   streamGroundedChatAnswer,
   type ChatHistoryTurn,
 } from '@/lib/chat-llm';
@@ -280,12 +280,13 @@ export async function POST(request: NextRequest) {
     });
     await touchChatSession(chatSession.id);
 
-    const shouldRetrieveSources = shouldUseStudyRetrieval({
+    const chatPlan = planChatTurn({
       mode: parsed.data.mode,
       message: parsed.data.message,
       history: recentHistory,
       hasExplicitScope: Boolean(scopedLectureIds?.length),
     });
+    const shouldRetrieveSources = chatPlan.requiresRetrieval;
 
     if (!shouldRetrieveSources) {
       const sourceRefs: never[] = [];
@@ -295,6 +296,7 @@ export async function POST(request: NextRequest) {
         scopedLectureCount: 0,
         historyCount: recentHistory.length,
         query: 'not_requested',
+        plan: chatPlan,
       };
       const generationInput = {
         mode: parsed.data.mode,
@@ -628,6 +630,7 @@ export async function POST(request: NextRequest) {
       historyCount: recentHistory.length,
       query: recentHistory.length > 0 ? 'history_aware' : 'current_message',
       sourceScope: explicitScope.narrowed ? 'explicit_topic' : scopedLectureIds?.length ? 'selected_sources' : 'auto',
+      plan: chatPlan,
     };
 
     if (parsed.data.stream) {
