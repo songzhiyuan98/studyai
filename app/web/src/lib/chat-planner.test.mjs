@@ -181,6 +181,8 @@ test('chat planner only opens reader for explicit navigation language', () => {
   assert.match(source, /hasReaderNavigationIntent/);
   assert.match(source, /explicitReaderOpen/);
   assert.match(source, /explicitCitationLookup/);
+  assert.match(source, /rawIntent === 'reader_navigation'/);
+  assert.match(source, /!hasReaderNavigationIntent\(message\)/);
   assert.doesNotMatch(source, /open\|show\|go to\|source\|citation\|reader\|打开\|跳到\|来源\|原文/);
 });
 

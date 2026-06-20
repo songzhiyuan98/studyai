@@ -309,23 +309,33 @@ function normalizeAiPlan({
   fallbackPlan,
   hasExplicitScope,
   model,
+  message,
 }: {
   aiPlan: Record<string, unknown>;
   fallbackPlan: ChatTurnPlan;
   hasExplicitScope: boolean;
   model: string;
+  message: string;
 }): ChatTurnPlan {
-  const intent = pickValid(aiPlan.intent, VALID_INTENTS, fallbackPlan.intent);
-  const retrievalBreadth = pickValid(aiPlan.retrievalBreadth, VALID_RETRIEVAL_BREADTHS, fallbackPlan.retrievalBreadth);
-  const contextStrategy = pickValid(aiPlan.contextStrategy, VALID_CONTEXT_STRATEGIES, fallbackPlan.contextStrategy);
-  const delegatedAgent = pickValid(aiPlan.delegatedAgent, VALID_DELEGATED_AGENTS, fallbackPlan.delegatedAgent);
-  const requestedPage = typeof aiPlan.requestedPage === 'number'
+  const rawIntent = pickValid(aiPlan.intent, VALID_INTENTS, fallbackPlan.intent);
+  const readerIntentRejected = rawIntent === 'reader_navigation' && !hasReaderNavigationIntent(message);
+  const intent = readerIntentRejected ? fallbackPlan.intent : rawIntent;
+  const retrievalBreadth = readerIntentRejected
+    ? fallbackPlan.retrievalBreadth
+    : pickValid(aiPlan.retrievalBreadth, VALID_RETRIEVAL_BREADTHS, fallbackPlan.retrievalBreadth);
+  const contextStrategy = readerIntentRejected
+    ? fallbackPlan.contextStrategy
+    : pickValid(aiPlan.contextStrategy, VALID_CONTEXT_STRATEGIES, fallbackPlan.contextStrategy);
+  const delegatedAgent = readerIntentRejected
+    ? fallbackPlan.delegatedAgent
+    : pickValid(aiPlan.delegatedAgent, VALID_DELEGATED_AGENTS, fallbackPlan.delegatedAgent);
+  const requestedPage = !readerIntentRejected && typeof aiPlan.requestedPage === 'number'
     ? aiPlan.requestedPage
     : fallbackPlan.requestedPage;
-  const requiresRetrieval = typeof aiPlan.requiresRetrieval === 'boolean'
+  const requiresRetrieval = !readerIntentRejected && typeof aiPlan.requiresRetrieval === 'boolean'
     ? aiPlan.requiresRetrieval
     : fallbackPlan.requiresRetrieval;
-  const teacherModeHint = typeof aiPlan.teacherModeHint === 'boolean'
+  const teacherModeHint = !readerIntentRejected && typeof aiPlan.teacherModeHint === 'boolean'
     ? aiPlan.teacherModeHint
     : fallbackPlan.teacherModeHint;
   const requiresConfirmation = typeof aiPlan.requiresConfirmation === 'boolean'
@@ -477,6 +487,7 @@ export async function planChatTurnWithAi({
       fallbackPlan,
       hasExplicitScope,
       model,
+      message,
     });
   } catch (error) {
     console.error('AI chat planner failed, falling back to deterministic planner:', error);
