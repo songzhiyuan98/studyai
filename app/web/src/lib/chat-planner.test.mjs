@@ -110,7 +110,8 @@ test('chat route stores planner trace with retrieval metadata', () => {
   const source = readFileSync(resolve(root, 'src/app/api/chat/route.ts'), 'utf8');
 
   assert.match(source, /planChatTurnWithAi/);
-  assert.match(source, /const chatPlan = await planChatTurnWithAi/);
+  assert.match(source, /const plannedChatTurn = await planChatTurnWithAi/);
+  assert.match(source, /const chatPlan = applyLessonMemoryToPlan/);
   assert.match(source, /shouldRetrieveSources = chatPlan\.requiresRetrieval/);
   assert.match(source, /plan: chatPlan/);
   assert.match(source, /function getPlannerTrace/);
@@ -127,7 +128,13 @@ test('chat route stores planner trace with retrieval metadata', () => {
   assert.match(source, /activeSegmentCount/);
   assert.match(source, /resolvedScope/);
   assert.match(source, /libraryScope\.matchedLabels/);
-  assert.match(source, /sourceMaterials: activeLectures\.map/);
+  assert.match(source, /const sourceMaterials = activeLectures\.map/);
+  assert.match(source, /sourceMaterials,/);
+  assert.match(source, /parseChatSessionMemory\(chatSession\.scopeJson\)/);
+  assert.match(source, /resolveInheritedLessonScope/);
+  assert.match(source, /effectiveScopedLectureIds/);
+  assert.match(source, /buildLessonMemoryFromRetrieval/);
+  assert.match(source, /scopeJson: nextLessonMemory/);
   assert.match(source, /contextSummary/);
   assert.match(source, /lecturePackSummary/);
   assert.match(source, /buildLecturePackContext/);

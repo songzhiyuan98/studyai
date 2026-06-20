@@ -36,6 +36,12 @@ import { resolveLibraryScope } from '@/lib/library-catalog';
 import { buildLecturePackContext, buildLongDocumentMapContext } from '@/lib/lecture-pack';
 import { inferLibraryOperationDraft } from '@/lib/chat-library-tools';
 import { scoreReaderLectureMatch } from '@/lib/chat-reader-tools';
+import {
+  applyLessonMemoryToPlan,
+  buildLessonMemoryFromRetrieval,
+  parseChatSessionMemory,
+  resolveInheritedLessonScope,
+} from '@/lib/chat-session-memory';
 const chatSchema = z.object({
   message: z.string().min(1).max(2000),
   mode: z.enum(['free', 'explain', 'summarize', 'key_terms', 'mini_quiz', 'cheat_sheet']).default('free'),
@@ -381,6 +387,13 @@ export async function POST(request: NextRequest) {
       message: parsed.data.message,
       lectureIds: scopedLectureIds,
     });
+    const sessionMemory = parseChatSessionMemory(chatSession.scopeJson);
+    const inheritedLessonScope = resolveInheritedLessonScope({
+      explicitLectureIds: scopedLectureIds,
+      memory: sessionMemory,
+      message: parsed.data.message,
+    });
+    const effectiveScopedLectureIds = inheritedLessonScope.lectureIds;
     const recentHistory: ChatHistoryTurn[] = (await prisma.chatMessage.findMany({
       where: {
         sessionId: chatSession.id,
@@ -434,12 +447,18 @@ export async function POST(request: NextRequest) {
       orderBy: { updatedAt: 'desc' },
       take: 50,
     });
-    const chatPlan = await planChatTurnWithAi({
+    const plannedChatTurn = await planChatTurnWithAi({
       mode: parsed.data.mode,
       message: parsed.data.message,
       history: recentHistory,
-      hasExplicitScope: Boolean(scopedLectureIds?.length),
+      hasExplicitScope: Boolean(effectiveScopedLectureIds?.length),
       libraryCatalog: formatLibraryCatalogForPlanner(plannerCatalogLectures),
+    });
+    const chatPlan = applyLessonMemoryToPlan({
+      plan: plannedChatTurn,
+      memory: sessionMemory,
+      message: parsed.data.message,
+      inheritedScope: inheritedLessonScope.inherited,
     });
     const shouldRetrieveSources = chatPlan.requiresRetrieval;
 
@@ -845,7 +864,7 @@ export async function POST(request: NextRequest) {
       where: {
         userId: session.user.id,
         status: 'PROCESSED',
-        ...(scopedLectureIds ? { id: { in: scopedLectureIds } } : {}),
+        ...(effectiveScopedLectureIds ? { id: { in: effectiveScopedLectureIds } } : {}),
       },
       select: {
         id: true,
@@ -900,7 +919,7 @@ export async function POST(request: NextRequest) {
     ]));
     const retrievalLectureIds = explicitScope.lectureIds.length > 0
       ? explicitScope.lectureIds
-      : scopedLectureIds;
+      : effectiveScopedLectureIds;
     const candidateSegments = activeLectures.flatMap((lecture) => (
       lecture.segments.map((segment) => ({
         id: segment.id,
@@ -1139,6 +1158,11 @@ export async function POST(request: NextRequest) {
       message: parsed.data.message,
       contextText,
     });
+    const sourceMaterials = activeLectures.map((lecture) => ({
+      title: lecture.title || lecture.originalName || 'Source',
+      detail: `${lecture.folder?.name || 'Library'} · ${lecture.type || 'Source'}`,
+      count: lecture._count?.segments || lecture.segments.length,
+    }));
     const generationInput = {
       mode: parsed.data.mode,
       message: parsed.data.message,
@@ -1148,11 +1172,7 @@ export async function POST(request: NextRequest) {
         label: sourceRefs[index]?.label || formatSourceRef(segment),
         text: segment.text,
       })),
-      sourceMaterials: activeLectures.map((lecture) => ({
-        title: lecture.title || lecture.originalName || 'Source',
-        detail: `${lecture.folder?.name || 'Library'} · ${lecture.type || 'Source'}`,
-        count: lecture._count?.segments || lecture.segments.length,
-      })),
+      sourceMaterials,
       delegatedAgent: chatPlan.delegatedAgent,
       contextStrategy: effectiveContextStrategy,
       contextSummary,
@@ -1189,7 +1209,19 @@ export async function POST(request: NextRequest) {
       plan: chatPlan,
       ...getPlannerTrace(chatPlan),
       plannerCatalogCount: plannerCatalogLectures.length,
+      lessonMemoryInherited: inheritedLessonScope.inherited,
+      inheritedLessonScopeReason: inheritedLessonScope.reason,
     };
+    const nextLessonMemory = buildLessonMemoryFromRetrieval({
+      previousMemory: sessionMemory,
+      message: parsed.data.message,
+      retrieval: {
+        ...retrievalTrace,
+        retrievalBreadth: chatPlan.retrievalBreadth,
+      },
+      lectureIds: activeLectures.map((lecture) => lecture.id),
+      sourceMaterials,
+    });
 
     if (parsed.data.stream) {
       const stream = new ReadableStream({
@@ -1254,7 +1286,13 @@ export async function POST(request: NextRequest) {
               },
             },
           });
-          await touchChatSession(chatSession.id);
+          await prisma.chatSession.update({
+            where: { id: chatSession.id },
+            data: {
+              updatedAt: new Date(),
+              scopeJson: nextLessonMemory,
+            },
+          });
 
           controller.enqueue(encodeSseEvent('done', {
             message: {
@@ -1322,7 +1360,13 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-    await touchChatSession(chatSession.id);
+    await prisma.chatSession.update({
+      where: { id: chatSession.id },
+      data: {
+        updatedAt: new Date(),
+        scopeJson: nextLessonMemory,
+      },
+    });
 
     return NextResponse.json({
       success: true,

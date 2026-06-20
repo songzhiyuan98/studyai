@@ -210,6 +210,8 @@ test('builds prompts with recent conversation history for follow-up questions', 
   assert.match(prompt, /Teaching posture: model_decides/);
   assert.match(prompt, /Decide the teaching posture from the user’s intent/);
   assert.match(prompt, /teach gradually like a patient tutor/);
+  assert.match(prompt, /For continuation turns, continue from the latest assistant teaching point/);
+  assert.match(prompt, /do not restart the lesson overview/);
   assert.match(prompt, /Do not generate quizzes, cheat sheets, or long fixed templates/);
   assert.match(prompt, /Can you continue from that example\?/);
 });

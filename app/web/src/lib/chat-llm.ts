@@ -418,6 +418,7 @@ export function buildGroundedPrompt({
     '- If context coverage says the source was truncated, be honest about teaching from the included coverage and offer to continue through the remaining pages.',
     '- Cite only source-grounded claims. Do not cite general background knowledge unless it is directly supported by the package.',
     '- Use recent conversation to resolve follow-up references like "this", "that", "continue", and "quiz me on it".',
+    '- For continuation turns, continue from the latest assistant teaching point and do not restart the lesson overview unless the student asks to restart.',
     '- For translation or simpler explanation follow-ups, preserve the previous study scope and source meaning; translate, rephrase, or simplify instead of starting a new unrelated lesson.',
     '- Answer like ChatGPT with full tutoring ability: explain, connect concepts, provide examples, and fill in basic background when helpful.',
     '- Do not make the answer artificially short. If the student asks to learn or review a topic, provide enough substance for a real lesson.',
