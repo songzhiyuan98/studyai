@@ -439,6 +439,17 @@ test('chat source preview requires at least one selected material before sending
   assert.match(source, /disabled=\{!message\.trim\(\) \|\| sending \|\| hasEmptySourcePreviewSelection\}/);
 });
 
+test('chat source preview can be bypassed once with explicit auto scope', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+
+  assert.match(source, /skipSourcePreviewOnce/);
+  assert.match(source, /useAutoScopeFromPreview/);
+  assert.match(source, /setSkipSourcePreviewOnce\(true\)/);
+  assert.match(source, /!skipSourcePreviewOnce/);
+  assert.match(source, /setSkipSourcePreviewOnce\(false\)/);
+  assert.match(source, /Use auto/);
+});
+
 test('chat API loads recent session history before creating the next user message', () => {
   const source = readFileSync(resolve(root, 'src/app/api/chat/route.ts'), 'utf8');
   const historyIndex = source.indexOf('await prisma.chatMessage.findMany');

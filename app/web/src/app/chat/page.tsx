@@ -402,6 +402,7 @@ export default function ChatPage() {
   const [showSourceScope, setShowSourceScope] = useState(false);
   const [sourcePreview, setSourcePreview] = useState<SourcePreview | null>(null);
   const [selectedPreviewLectureIds, setSelectedPreviewLectureIds] = useState<string[]>([]);
+  const [skipSourcePreviewOnce, setSkipSourcePreviewOnce] = useState(false);
   const [previewingSources, setPreviewingSources] = useState(false);
   const [error, setError] = useState('');
 
@@ -672,7 +673,17 @@ export default function ChatPage() {
     setConfirmedSources(selectedPreviewLectureIds);
     setSourcePreview(null);
     setSelectedPreviewLectureIds([]);
+    setSkipSourcePreviewOnce(false);
     setShowSourceScope(false);
+  };
+
+  const useAutoScopeFromPreview = () => {
+    setConfirmedSources([]);
+    setSourcePreview(null);
+    setSelectedPreviewLectureIds([]);
+    setSkipSourcePreviewOnce(true);
+    setShowSourceScope(false);
+    setError('');
   };
 
   const updateDraftMessage = (nextMessage: string) => {
@@ -697,6 +708,7 @@ export default function ChatPage() {
 
     const shouldConfirmSourcesBeforeSend = confirmedSources.length === 0
       && !sourcePreview
+      && !skipSourcePreviewOnce
       && (mode !== 'free' || hasStudySignalForAutoScope(trimmedMessage));
     if (shouldConfirmSourcesBeforeSend) {
       setPreviewingSources(true);
@@ -729,6 +741,7 @@ export default function ChatPage() {
     setMessage('');
     setSourcePreview(null);
     setSelectedPreviewLectureIds([]);
+    setSkipSourcePreviewOnce(false);
     setShowSourceScope(false);
     setSending(true);
     setError('');
@@ -1212,6 +1225,9 @@ export default function ChatPage() {
                     </button>
                     <button type="button" onClick={clearPreviewMaterials} className="chat-message-action">
                       Clear
+                    </button>
+                    <button type="button" onClick={useAutoScopeFromPreview} className="chat-message-action">
+                      Use auto
                     </button>
                     <button
                       type="button"
