@@ -224,6 +224,51 @@ function appendRetrievalHints(query: string, message: string, history: ChatHisto
   ].join('\n');
 }
 
+function usesChinese(text: string) {
+  return /[\u4e00-\u9fff]/.test(text);
+}
+
+function getResponseDepthContract({
+  mode,
+  message,
+  agentRole,
+  contextStrategy,
+  teacherModeHint,
+}: {
+  mode: ChatMode;
+  message: string;
+  agentRole: NonNullable<GenerateGroundedAnswerInput['delegatedAgent']>;
+  contextStrategy?: GenerateGroundedAnswerInput['contextStrategy'];
+  teacherModeHint: boolean;
+}) {
+  if (agentRole === 'assessment_agent' || mode === 'mini_quiz') {
+    return 'Target response depth: generate a complete but reviewable assessment artifact with representative coverage, concise answer guidance, and source-aware scope notes.';
+  }
+
+  if (
+    agentRole === 'teaching_agent'
+    || teacherModeHint
+    || contextStrategy === 'lecture_pack'
+    || contextStrategy === 'long_document_map'
+  ) {
+    const lengthTarget = usesChinese(message)
+      ? '600-1000 Chinese characters'
+      : '350-650 English words';
+
+    return [
+      `Target response depth: ${lengthTarget} for the first teaching turn unless the student asks for a very short answer.`,
+      'teach one coherent first step, not an outline-only menu: explain why the topic exists, build the mental model, work through one concrete example, and end with one small check question.',
+      'If the source is long or truncated, teach from the current package and say you can continue through the next pages/sections after this step.',
+    ].join('\n');
+  }
+
+  if (mode === 'summarize' || mode === 'key_terms' || mode === 'cheat_sheet') {
+    return 'Target response depth: produce the requested artifact clearly and compactly, with enough detail to study from.';
+  }
+
+  return 'Target response depth: answer naturally like ChatGPT; be concise for casual chat and fuller when the student asks to study.';
+}
+
 export function shouldUseStudyRetrieval({
   mode,
   message,
@@ -322,6 +367,13 @@ export function buildGroundedPrompt({
       `${index + 1}. ${material.title} · ${material.detail} · ${material.count} indexed passages`
     )).join('\n')
     : 'No selected material manifest was provided.';
+  const responseDepthContract = getResponseDepthContract({
+    mode,
+    message,
+    agentRole,
+    contextStrategy,
+    teacherModeHint,
+  });
 
   return [
     `Mode: ${chatModeLabels[mode]}`,
@@ -346,6 +398,8 @@ export function buildGroundedPrompt({
     '',
     'Study context package:',
     sourceBlock,
+    '',
+    responseDepthContract,
     '',
     'Answer requirements:',
     '- Use the study context package to understand the student’s course context, terminology, source order, and likely intent.',

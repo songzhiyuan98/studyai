@@ -248,6 +248,9 @@ test('builds teacher-mode prompt guidance for beginner page-by-page learning', (
   assert.match(prompt, /first real lesson step/);
   assert.match(prompt, /not terse/);
   assert.match(prompt, /translation or simpler explanation/);
+  assert.match(prompt, /Target response depth:/);
+  assert.match(prompt, /600-1000 Chinese characters/);
+  assert.match(prompt, /teach one coherent first step/);
   assert.doesNotMatch(prompt, /Keep the tone natural, concise, and useful for studying/);
 });
 
