@@ -1120,6 +1120,11 @@ export async function POST(request: NextRequest) {
         label: sourceRefs[index]?.label || formatSourceRef(segment),
         text: segment.text,
       })),
+      sourceMaterials: activeLectures.map((lecture) => ({
+        title: lecture.title || lecture.originalName || 'Source',
+        detail: `${lecture.folder?.name || 'Library'} · ${lecture.type || 'Source'}`,
+        count: lecture._count?.segments || lecture.segments.length,
+      })),
       delegatedAgent: chatPlan.delegatedAgent,
       contextStrategy: effectiveContextStrategy,
       contextSummary,

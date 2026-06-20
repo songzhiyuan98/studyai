@@ -20,6 +20,12 @@ type GroundedSource = {
   text: string;
 };
 
+type SourceMaterial = {
+  title: string;
+  detail: string;
+  count: number;
+};
+
 export type ChatHistoryTurn = {
   role: 'user' | 'assistant';
   content: string;
@@ -32,6 +38,7 @@ type GenerateGroundedAnswerInput = {
   contextText: string;
   history?: ChatHistoryTurn[];
   sources: GroundedSource[];
+  sourceMaterials?: SourceMaterial[];
   delegatedAgent?: 'teaching_agent' | 'assessment_agent' | 'chat_agent' | 'tool_agent';
   contextStrategy?: 'focused_rag' | 'broad_rag' | 'lecture_pack' | 'long_document_map';
   contextSummary?: {
@@ -277,6 +284,7 @@ export function buildGroundedPrompt({
   contextStrategy,
   contextSummary,
   resolvedScope,
+  sourceMaterials = [],
 }: GenerateGroundedAnswerInput) {
   const sourceBlock = sources.length > 0
     ? sources.map((source, index) => (
@@ -309,6 +317,11 @@ export function buildGroundedPrompt({
       `Truncated: ${contextSummary.truncated ? 'yes' : 'no'}`,
     ].join('\n')
     : 'No context summary was provided.';
+  const materialScopeBlock = sourceMaterials.length > 0
+    ? sourceMaterials.map((material, index) => (
+      `${index + 1}. ${material.title} · ${material.detail} · ${material.count} indexed passages`
+    )).join('\n')
+    : 'No selected material manifest was provided.';
 
   return [
     `Mode: ${chatModeLabels[mode]}`,
@@ -325,6 +338,9 @@ export function buildGroundedPrompt({
     'Resolved Library scope from planner:',
     scopeBlock,
     '',
+    'Selected Library materials:',
+    materialScopeBlock,
+    '',
     'Context coverage from planner:',
     contextSummaryBlock,
     '',
@@ -333,6 +349,7 @@ export function buildGroundedPrompt({
     '',
     'Answer requirements:',
     '- Use the study context package to understand the student’s course context, terminology, source order, and likely intent.',
+    '- The selected materials are the intended learning scope; the packaged passages are only the current context window used for this turn.',
     '- Use general model knowledge for universal concepts, definitions, mental models, and examples.',
     '- The source package is for scope, course-specific wording, examples, and citations; it is not the full boundary of your intelligence unless the student asks to stay within the files.',
     '- If context coverage says the source was truncated, be honest about teaching from the included coverage and offer to continue through the remaining pages.',

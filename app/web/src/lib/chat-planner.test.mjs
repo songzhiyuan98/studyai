@@ -127,6 +127,7 @@ test('chat route stores planner trace with retrieval metadata', () => {
   assert.match(source, /activeSegmentCount/);
   assert.match(source, /resolvedScope/);
   assert.match(source, /libraryScope\.matchedLabels/);
+  assert.match(source, /sourceMaterials: activeLectures\.map/);
   assert.match(source, /contextSummary/);
   assert.match(source, /lecturePackSummary/);
   assert.match(source, /buildLecturePackContext/);

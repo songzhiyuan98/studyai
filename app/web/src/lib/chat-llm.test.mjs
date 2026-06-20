@@ -107,6 +107,18 @@ test('builds prompts with planner-resolved library scope for the teaching agent'
       matchedLabels: ['CSE 114A'],
       reason: 'The planner matched the request against Library folders and course labels before retrieval.',
     },
+    sourceMaterials: [
+      {
+        title: 'lambda',
+        detail: 'CSE 114A · PDF',
+        count: 100,
+      },
+      {
+        title: 'types',
+        detail: 'CSE 114A · PDF',
+        count: 59,
+      },
+    ],
     sources: [
       {
         label: 'lambda · page 1',
@@ -124,6 +136,11 @@ test('builds prompts with planner-resolved library scope for the teaching agent'
   assert.match(prompt, /Resolved Library scope from planner:/);
   assert.match(prompt, /Source: course/);
   assert.match(prompt, /Matched labels: CSE 114A/);
+  assert.match(prompt, /Selected Library materials:/);
+  assert.match(prompt, /lambda · CSE 114A · PDF · 100 indexed passages/);
+  assert.match(prompt, /types · CSE 114A · PDF · 59 indexed passages/);
+  assert.match(prompt, /selected materials are the intended learning scope/i);
+  assert.match(prompt, /packaged passages are only the current context window/i);
   assert.match(prompt, /Agent boundary: planner coordinates intent, scope, and tools/);
   assert.match(prompt, /Agent freedom: adapt the teaching path to the student/);
   assert.match(prompt, /If context coverage says the source was truncated/);
