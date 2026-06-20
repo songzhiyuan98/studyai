@@ -88,7 +88,8 @@ test('chat page can refresh ready library sources after uploads finish indexing'
 test('chat page defaults to auto scope instead of the first few sources', () => {
   const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
   assert.match(source, /Auto scope/);
-  assert.match(source, /auto across ready sources/);
+  assert.match(source, /auto searches all ready sources/);
+  assert.match(source, /Lock all sources/);
   assert.doesNotMatch(source, /loadedSources\.slice\(0,\s*3\)/);
 });
 
@@ -124,4 +125,14 @@ test('chat answers summarize the materials used for retrieval', () => {
   assert.match(source, /Used materials/);
   assert.match(source, /material\.count\} chunks/);
   assert.match(source, /chat-used-source-pill/);
+});
+
+test('chat page can preview suggested sources before generation', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+
+  assert.match(source, /\/api\/chat\/preview/);
+  assert.match(source, /Check sources/);
+  assert.match(source, /Suggested materials/);
+  assert.match(source, /Use these/);
+  assert.match(source, /setConfirmedSources\(sourcePreview\.materials\.map/);
 });

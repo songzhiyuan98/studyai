@@ -46,6 +46,23 @@ type ChatMessage = {
   isStreaming?: boolean;
 };
 
+type SourcePreviewMaterial = {
+  lectureId: string;
+  title: string;
+  detail: string;
+  count: number;
+};
+
+type SourcePreview = {
+  materials: SourcePreviewMaterial[];
+  sourceRefs: SourceRef[];
+  retrieval: {
+    strategy: string;
+    count: number;
+    scopedLectureCount: number;
+  };
+};
+
 type ChatStreamEvent =
   | { event: 'metadata'; data: { message: Partial<ChatMessage> } }
   | { event: 'delta'; data: { delta: string } }
@@ -128,6 +145,8 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [savingMessageId, setSavingMessageId] = useState<string | null>(null);
   const [showSourceScope, setShowSourceScope] = useState(false);
+  const [sourcePreview, setSourcePreview] = useState<SourcePreview | null>(null);
+  const [previewingSources, setPreviewingSources] = useState(false);
   const [error, setError] = useState('');
 
   const selectedMode = useMemo(
@@ -267,6 +286,47 @@ export default function ChatPage() {
 
   const clearSources = () => {
     setConfirmedSources([]);
+    setSourcePreview(null);
+  };
+
+  const previewSources = async () => {
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage || previewingSources || sending) return;
+
+    setPreviewingSources(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/chat/preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          message: trimmedMessage,
+          lectureIds: confirmedSources,
+        }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || 'Could not preview source context.');
+      }
+
+      setSourcePreview(payload.data as SourcePreview);
+    } catch (previewError) {
+      setError(previewError instanceof Error ? previewError.message : 'Could not preview source context.');
+    } finally {
+      setPreviewingSources(false);
+    }
+  };
+
+  const usePreviewMaterials = () => {
+    if (!sourcePreview?.materials.length) return;
+
+    setConfirmedSources(sourcePreview.materials.map((material) => material.lectureId));
+    setShowSourceScope(true);
   };
 
   const sendMessage = async (event: React.FormEvent) => {
@@ -285,6 +345,7 @@ export default function ChatPage() {
 
     setMessages((current) => [...current, userMessage]);
     setMessage('');
+    setSourcePreview(null);
     setSending(true);
     setError('');
 
@@ -550,14 +611,14 @@ export default function ChatPage() {
                       </div>
                       <div>retrieval: hybrid vector + lexical when available</div>
                       <div>mode: {selectedMode.label}</div>
-                      <div>scope: {confirmedSources.length > 0 ? `${confirmedSources.length} selected` : 'auto across ready sources'}</div>
+                      <div>scope: {confirmedSources.length > 0 ? `${confirmedSources.length} selected and locked` : 'auto searches all ready sources'}</div>
                     </div>
                     <div className="chat-source-tools">
                       <button type="button" onClick={() => loadSources()} className="chat-message-action">
                         Refresh sources
                       </button>
                       <button type="button" onClick={selectAllSources} disabled={sources.length === 0} className="chat-message-action">
-                        Select all
+                        Lock all sources
                       </button>
                       <button type="button" onClick={clearSources} className="chat-message-action">
                         Auto scope
@@ -722,6 +783,47 @@ export default function ChatPage() {
               ))}
             </div>
 
+            {sourcePreview ? (
+              <div className="chat-source-preview">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p>Suggested materials</p>
+                    <span>
+                      {sourcePreview.retrieval.strategy} · {sourcePreview.retrieval.count} chunks from {sourcePreview.retrieval.scopedLectureCount} scoped sources
+                    </span>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <button type="button" onClick={usePreviewMaterials} className="chat-message-action">
+                      Use these
+                    </button>
+                    <button type="button" onClick={() => setSourcePreview(null)} className="chat-message-action">
+                      Hide
+                    </button>
+                  </div>
+                </div>
+                <div className="chat-source-preview-list">
+                  {sourcePreview.materials.length > 0 ? (
+                    sourcePreview.materials.map((material) => (
+                      <button
+                        key={material.lectureId}
+                        type="button"
+                        onClick={() => {
+                          setConfirmedSources([material.lectureId]);
+                          setShowSourceScope(true);
+                        }}
+                        className="chat-source-preview-item"
+                      >
+                        <span className="truncate">{material.title}</span>
+                        <span>{material.count} chunks · {material.detail}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <span className="text-sm text-[#737373]">No ready matching sources yet.</span>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
             <div className="chat-input-shell">
               <textarea
                 value={message}
@@ -732,9 +834,19 @@ export default function ChatPage() {
               />
               <div className="chat-composer-footer">
                 <span>{selectedMode.label} · {sourceLabel}</span>
-                <button type="submit" className="chat-send-button" disabled={!message.trim() || sending} aria-label="Send message">
-                  ↑
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={previewSources}
+                    className="chat-preview-button"
+                    disabled={!message.trim() || previewingSources || sending}
+                  >
+                    {previewingSources ? 'Checking...' : 'Check sources'}
+                  </button>
+                  <button type="submit" className="chat-send-button" disabled={!message.trim() || sending} aria-label="Send message">
+                    ↑
+                  </button>
+                </div>
               </div>
             </div>
           </div>

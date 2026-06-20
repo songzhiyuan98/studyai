@@ -1116,6 +1116,31 @@
     @apply border-[#000000] bg-[#000000] text-white hover:border-[#000000] hover:text-white;
   }
 
+  .chat-source-preview {
+    @apply mb-3 rounded-2xl border border-[#e5e5e5] bg-white/95 px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)] backdrop-blur;
+  }
+
+  .chat-source-preview p {
+    @apply text-sm font-medium text-[#000000];
+  }
+
+  .chat-source-preview span {
+    @apply text-xs text-[#737373];
+  }
+
+  .chat-source-preview-list {
+    @apply mt-3 flex gap-2 overflow-x-auto pb-1;
+    scrollbar-width: none;
+  }
+
+  .chat-source-preview-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chat-source-preview-item {
+    @apply flex min-w-48 max-w-64 shrink-0 flex-col items-start rounded-md border border-[#e5e5e5] bg-white px-3 py-2 text-left transition-colors hover:border-[#000000];
+  }
+
   .chat-input-shell {
     @apply rounded-[28px] border border-[#e5e5e5] bg-white transition-all duration-150 focus-within:border-[#000000] focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.08)];
   }
@@ -1126,6 +1151,10 @@
 
   .chat-composer-footer {
     @apply flex items-center justify-between gap-3 border-t border-[#e5e5e5] px-3 py-2 text-xs text-[#737373] sm:px-4;
+  }
+
+  .chat-preview-button {
+    @apply hidden rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-medium text-[#525252] transition-colors hover:border-[#000000] hover:text-[#000000] disabled:cursor-not-allowed disabled:opacity-40 sm:inline-flex;
   }
 
   .chat-send-button {
