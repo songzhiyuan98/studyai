@@ -1171,18 +1171,24 @@ export default function LibraryPage() {
             <p className="mt-2 text-sm leading-6 text-[#737373]">
               Move "{moveTarget.title}" to another folder. The source passages, vectors, citations, and saved outputs stay attached to this file.
             </p>
-            <select
-              value={moveFolderId}
-              onChange={(event) => setMoveFolderId(event.target.value)}
-              className="input-field mt-5"
-              autoFocus
-            >
-              {folders.map((folder) => (
-                <option key={folder.id} value={folder.id}>
-                  {folder.name}
-                </option>
-              ))}
-            </select>
+            {folders.length === 0 ? (
+              <div className="mt-5 rounded-2xl border border-[#e5e5e5] bg-[#fafafa] px-4 py-4 text-sm leading-6 text-[#737373]">
+                No folders available yet. Create a folder before moving files.
+              </div>
+            ) : (
+              <select
+                value={moveFolderId}
+                onChange={(event) => setMoveFolderId(event.target.value)}
+                className="input-field mt-5"
+                autoFocus
+              >
+                {folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </option>
+                ))}
+              </select>
+            )}
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
@@ -1198,7 +1204,7 @@ export default function LibraryPage() {
               <button
                 type="button"
                 onClick={confirmMove}
-                disabled={moving || !moveFolderId || moveFolderId === moveTarget.folderId}
+                disabled={moving || folders.length === 0 || !moveFolderId || moveFolderId === moveTarget.folderId}
                 className="btn-primary"
               >
                 {moving ? 'Moving...' : 'Move file'}

@@ -287,6 +287,8 @@ test('library page supports moving files with a confirmation modal', () => {
   assert.match(source, /Move is ready for review/);
   assert.match(source, /libraryAction === 'move'/);
   assert.match(source, /matchedDestinationFolder/);
+  assert.match(source, /No folders available yet/);
+  assert.match(source, /Create a folder before moving files/);
 });
 
 test('library page uses modal confirmation for folder deletes', () => {
