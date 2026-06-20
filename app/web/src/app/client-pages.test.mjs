@@ -478,6 +478,7 @@ test('chat quick action modes are one-shot after send', () => {
   assert.match(source, /mode: modeForMessage/);
   assert.match(source, /setMode\('free'\)/);
   assert.match(source, /modeForMessage !== 'free'/);
+  assert.doesNotMatch(source, /mode,\s*\n\s*isStreaming/);
 });
 
 test('chat API loads recent session history before creating the next user message', () => {

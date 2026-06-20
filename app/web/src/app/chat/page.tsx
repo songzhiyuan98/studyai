@@ -858,7 +858,7 @@ export default function ChatPage() {
                   id: assistantId,
                   role: 'assistant',
                   content: '',
-                  mode,
+                  mode: modeForMessage,
                   isStreaming: true,
                 },
               ]);
@@ -881,7 +881,7 @@ export default function ChatPage() {
                 ? {
                     ...streamEvent.data.message,
                     id: assistantId,
-                    mode,
+                    mode: modeForMessage,
                     isStreaming: false,
                   }
                 : item
@@ -902,7 +902,7 @@ export default function ChatPage() {
               ? {
                   ...streamEvent.data.message,
                   id: assistantId,
-                  mode,
+                  mode: modeForMessage,
                   isStreaming: false,
                 }
               : item
@@ -919,7 +919,7 @@ export default function ChatPage() {
           title: 'Could not answer',
           content: 'I could not generate a response from your library right now. Please try again in a moment.',
           sourceRefs: [],
-          mode,
+          mode: modeForMessage,
         },
       ]);
     } finally {
