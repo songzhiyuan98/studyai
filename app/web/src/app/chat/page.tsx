@@ -312,6 +312,22 @@ function getLibraryOperationDraft(chatMessage: ChatMessage) {
   return chatMessage.retrieval?.operationDraft;
 }
 
+function buildLibraryOperationHref(chatMessage: ChatMessage) {
+  const operationDraft = getLibraryOperationDraft(chatMessage);
+  if (!operationDraft) {
+    return '/library';
+  }
+
+  const libraryParams = new URLSearchParams();
+  libraryParams.set('action', operationDraft.action);
+  libraryParams.set('target', operationDraft.targetLabel);
+  if (operationDraft.destinationLabel) {
+    libraryParams.set('destination', operationDraft.destinationLabel);
+  }
+
+  return `/library?${libraryParams.toString()}`;
+}
+
 function isArtifactSaveMessage(chatMessage: ChatMessage) {
   return chatMessage.retrieval?.strategy === 'tool_artifact_save_v0';
 }
@@ -1005,7 +1021,7 @@ export default function ChatPage() {
                       </div>
                     ) : null}
                     <div className="chat-message-actions">
-                      <Link href="/library" className="chat-message-action">
+                      <Link href={buildLibraryOperationHref(chatMessage)} className="chat-message-action">
                         Open Library
                       </Link>
                     </div>

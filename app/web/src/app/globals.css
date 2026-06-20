@@ -1354,6 +1354,18 @@
     @apply mb-4 flex w-fit max-w-full items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-2 text-sm text-[#525252] shadow-[0_10px_30px_rgba(0,0,0,0.05)];
   }
 
+  .library-intent-banner {
+    @apply mb-4 flex max-w-2xl items-center justify-between gap-4 rounded-xl border border-[#e5e5e5] bg-white px-4 py-3 text-sm text-[#525252] shadow-[0_10px_30px_rgba(0,0,0,0.05)];
+  }
+
+  .library-intent-banner p {
+    @apply text-xs font-medium uppercase tracking-normal text-[#737373];
+  }
+
+  .library-intent-banner span {
+    @apply mt-1 block max-w-lg truncate text-[#171717];
+  }
+
   .indexing-dot {
     @apply h-2 w-2 rounded-full bg-[#315cff];
     animation: pulse-soft 1.4s ease-in-out infinite;

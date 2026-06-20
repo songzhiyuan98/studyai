@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   type LectureApiRow,
   hasIndexingLectures,
@@ -39,6 +40,10 @@ function formatSourceStatus(status: string) {
 }
 
 export default function LibraryPage() {
+  const searchParams = useSearchParams();
+  const libraryAction = searchParams.get('action');
+  const libraryTarget = searchParams.get('target');
+  const libraryDestination = searchParams.get('destination');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [lectures, setLectures] = useState<LectureApiRow[]>([]);
@@ -471,6 +476,22 @@ export default function LibraryPage() {
           {actionMessage ? (
             <div className="mb-4 border-l-2 border-[#ff7759] bg-[#ffad9b]/20 px-4 py-3 text-sm text-[#000000]">
               {actionMessage}
+            </div>
+          ) : null}
+
+          {libraryAction ? (
+            <div className="library-intent-banner" role="status">
+              <div>
+                <p>Chat requested</p>
+                <span>
+                  {libraryAction}
+                  {libraryTarget ? ` · ${libraryTarget}` : ''}
+                  {libraryDestination ? ` -> ${libraryDestination}` : ''}
+                </span>
+              </div>
+              <button type="button" onClick={() => setShowNewFolder(true)} className="text-link">
+                Review in Library
+              </button>
             </div>
           ) : null}
 

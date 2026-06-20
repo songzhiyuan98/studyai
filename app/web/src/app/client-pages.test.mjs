@@ -199,13 +199,28 @@ test('chat page surfaces safe actions for library operation replies', () => {
   assert.match(source, /tool_library_manage_v0/);
   assert.match(source, /type LibraryOperationDraft/);
   assert.match(source, /function getLibraryOperationDraft/);
+  assert.match(source, /function buildLibraryOperationHref/);
   assert.match(source, /operationDraft/);
   assert.match(source, /Library draft/);
   assert.match(source, /Action/);
   assert.match(source, /Target/);
   assert.match(source, /Destination/);
-  assert.match(source, /href="\/library"/);
+  assert.match(source, /libraryParams\.set\('action'/);
+  assert.match(source, /libraryParams\.set\('target'/);
+  assert.match(source, /libraryParams\.set\('destination'/);
+  assert.match(source, /href=\{buildLibraryOperationHref\(chatMessage\)\}/);
   assert.match(source, /Open Library/);
+});
+
+test('library page can surface chat requested operation intent from URL', () => {
+  const source = readFileSync(resolve(root, 'src/app/library/page.tsx'), 'utf8');
+
+  assert.match(source, /useSearchParams/);
+  assert.match(source, /const libraryAction = searchParams\.get\('action'\)/);
+  assert.match(source, /const libraryTarget = searchParams\.get\('target'\)/);
+  assert.match(source, /const libraryDestination = searchParams\.get\('destination'\)/);
+  assert.match(source, /Chat requested/);
+  assert.match(source, /library-intent-banner/);
 });
 
 test('chat page surfaces saved-output tool replies without resaving them', () => {
