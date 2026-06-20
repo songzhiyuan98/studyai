@@ -14,9 +14,72 @@ type CountRow = {
   count: bigint | number;
 };
 
+type LectureEmbeddingStatsRow = {
+  id: string;
+  total_segment_count: bigint | number;
+  embedded_segment_count: bigint | number;
+};
+
 function readCount(rows: CountRow[]) {
   const value = rows[0]?.count || 0;
   return typeof value === 'bigint' ? Number(value) : Number(value);
+}
+
+function readNumber(value: bigint | number) {
+  return typeof value === 'bigint' ? Number(value) : Number(value);
+}
+
+async function syncLectureEmbeddingMeta(userId: string) {
+  const stats = await prisma.$queryRaw<LectureEmbeddingStatsRow[]>`
+    SELECT
+      l.id,
+      COUNT(s.id)::bigint as total_segment_count,
+      COUNT(s.embedding)::bigint as embedded_segment_count
+    FROM lectures l
+    LEFT JOIN segments s ON s.lecture_id = l.id
+    WHERE l.user_id = ${userId}
+      AND l.status = 'PROCESSED'
+    GROUP BY l.id
+  `;
+  const lectures = await prisma.lecture.findMany({
+    where: {
+      userId,
+      status: 'PROCESSED',
+      id: {
+        in: stats.map((row) => row.id),
+      },
+    },
+    select: {
+      id: true,
+      meta: true,
+    },
+  });
+  const lectureMetaById = new Map(lectures.map((lecture) => [lecture.id, lecture.meta]));
+
+  await Promise.all(stats.map((row) => {
+    const totalSegmentCount = readNumber(row.total_segment_count);
+    const embeddedSegmentCount = readNumber(row.embedded_segment_count);
+    const existingMeta = lectureMetaById.get(row.id);
+    const embeddingStatus = totalSegmentCount > 0 && embeddedSegmentCount >= totalSegmentCount
+      ? 'completed'
+      : embeddedSegmentCount > 0
+        ? 'partial'
+        : 'failed';
+
+    return prisma.lecture.update({
+      where: { id: row.id },
+      data: {
+        meta: {
+          ...(existingMeta && typeof existingMeta === 'object' && !Array.isArray(existingMeta) ? existingMeta : {}),
+          embeddingStatus,
+          embeddingModel: process.env.OPENAI_MODEL_EMBEDDING || 'text-embedding-3-small',
+          embeddedSegmentCount,
+        },
+      },
+    });
+  }));
+
+  return stats.length;
 }
 
 export async function POST() {
@@ -63,6 +126,7 @@ export async function POST() {
         text: segment.text,
       })),
     );
+    const syncedLectureCount = await syncLectureEmbeddingMeta(session.user.id);
     const remainingCountRows = await prisma.$queryRaw<CountRow[]>`
       SELECT COUNT(*)::bigint as count
       FROM segments s
@@ -78,6 +142,7 @@ export async function POST() {
         ...result,
         totalMissingSegmentCount,
         remainingSegmentCount: readCount(remainingCountRows),
+        syncedLectureCount,
       },
     });
   } catch (error) {
