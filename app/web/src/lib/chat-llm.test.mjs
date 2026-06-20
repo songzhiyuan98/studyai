@@ -79,6 +79,9 @@ test('builds source-aware prompts with source markers and general tutoring room'
 
   assert.match(prompt, /\[S1\] haskell · page 2/);
   assert.match(prompt, /understand the student’s course context/);
+  assert.match(prompt, /Study context package:/);
+  assert.match(prompt, /Use general model knowledge for universal concepts/);
+  assert.match(prompt, /The source package is for scope, course-specific wording, examples, and citations/);
   assert.match(prompt, /Answer like ChatGPT with full tutoring ability/);
   assert.match(prompt, /Do not fabricate citations/);
   assert.match(prompt, /Explain pattern matching/);
