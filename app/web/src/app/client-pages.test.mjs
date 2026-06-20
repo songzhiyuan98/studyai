@@ -61,6 +61,10 @@ test('library page is positioned as knowledge base management', () => {
   assert.match(source, /Knowledge base/);
   assert.match(source, /Organize lecture files and folders/);
   assert.match(source, /'list', 'grid', 'compact'/);
+  assert.match(source, /needsVectorReindex/);
+  assert.match(source, /Reindex vectors/);
+  assert.match(source, /\/api\/lectures\/reindex/);
+  assert.match(source, /Vector ready/);
 });
 
 test('saved page supports selecting and deleting saved outputs', () => {

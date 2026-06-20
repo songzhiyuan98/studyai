@@ -17,6 +17,10 @@ const apiLecture = {
   createdAt: '2026-06-19T19:00:00.000Z',
   folderId: 'folder_ml',
   folder: { id: 'folder_ml', name: 'Machine Learning' },
+  meta: {
+    embeddingStatus: 'completed',
+    embeddedSegmentCount: 12,
+  },
   _count: { segments: 12 },
 };
 
@@ -31,6 +35,8 @@ test('formats lecture API rows for the library UI', () => {
     folderId: 'folder_ml',
     folderName: 'Machine Learning',
     segments: 12,
+    vectorStatus: 'Vector ready',
+    needsVectorReindex: false,
     uploadedAt: 'Jun 19, 2026',
   });
 });
@@ -65,4 +71,25 @@ test('detects lectures that still need indexing refreshes', () => {
   assert.equal(hasIndexingLectures([{ ...apiLecture, status: 'PENDING' }]), true);
   assert.equal(hasIndexingLectures([{ ...apiLecture, status: 'PROCESSING' }]), true);
   assert.equal(hasIndexingLectures([{ ...apiLecture, status: 'FAILED' }]), false);
+});
+
+test('formats vector indexing status for library rows', () => {
+  assert.equal(mapLectureToLibraryItem({
+    ...apiLecture,
+    meta: { embeddingStatus: 'disabled', embeddedSegmentCount: 0 },
+  }).vectorStatus, 'Lexical ready');
+
+  const partialItem = mapLectureToLibraryItem({
+    ...apiLecture,
+    meta: { embeddingStatus: 'completed', embeddedSegmentCount: 4 },
+  });
+  assert.equal(partialItem.vectorStatus, 'Partial vectors');
+  assert.equal(partialItem.needsVectorReindex, true);
+
+  const failedItem = mapLectureToLibraryItem({
+    ...apiLecture,
+    meta: { embeddingStatus: 'failed', embeddedSegmentCount: 0 },
+  });
+  assert.equal(failedItem.vectorStatus, 'Needs vector index');
+  assert.equal(failedItem.needsVectorReindex, true);
 });

@@ -11,6 +11,10 @@ export type LectureApiRow = {
     id: string;
     name: string;
   } | null;
+  meta?: {
+    embeddingStatus?: string;
+    embeddedSegmentCount?: number;
+  } | null;
   _count?: {
     segments?: number;
   };
@@ -26,6 +30,8 @@ export type LibraryItem = {
   folderId: string;
   folderName: string;
   segments: number;
+  vectorStatus: string;
+  needsVectorReindex: boolean;
   uploadedAt: string;
 };
 
@@ -48,7 +54,48 @@ export function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function getEmbeddingStatus(lecture: LectureApiRow) {
+  const status = lecture.meta?.embeddingStatus;
+  const segmentCount = lecture._count?.segments || 0;
+  const embeddedCount = lecture.meta?.embeddedSegmentCount || 0;
+
+  if (lecture.status !== 'PROCESSED') {
+    return {
+      label: 'Not indexed yet',
+      needsVectorReindex: false,
+    };
+  }
+
+  if (status === 'completed' && embeddedCount >= segmentCount) {
+    return {
+      label: 'Vector ready',
+      needsVectorReindex: false,
+    };
+  }
+
+  if (status === 'disabled') {
+    return {
+      label: 'Lexical ready',
+      needsVectorReindex: false,
+    };
+  }
+
+  if (segmentCount > 0) {
+    return {
+      label: status === 'completed' ? 'Partial vectors' : 'Needs vector index',
+      needsVectorReindex: true,
+    };
+  }
+
+  return {
+    label: 'No chunks yet',
+    needsVectorReindex: false,
+  };
+}
+
 export function mapLectureToLibraryItem(lecture: LectureApiRow): LibraryItem {
+  const embeddingStatus = getEmbeddingStatus(lecture);
+
   return {
     id: lecture.id,
     title: lecture.title,
@@ -59,6 +106,8 @@ export function mapLectureToLibraryItem(lecture: LectureApiRow): LibraryItem {
     folderId: lecture.folderId,
     folderName: lecture.folder?.name || 'Unfiled',
     segments: lecture._count?.segments || 0,
+    vectorStatus: embeddingStatus.label,
+    needsVectorReindex: embeddingStatus.needsVectorReindex,
     uploadedAt: new Intl.DateTimeFormat('en', {
       month: 'short',
       day: 'numeric',

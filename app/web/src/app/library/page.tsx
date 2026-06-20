@@ -53,6 +53,7 @@ export default function LibraryPage() {
   const [selectedLectureIds, setSelectedLectureIds] = useState<string[]>([]);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [reindexingVectors, setReindexingVectors] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -97,6 +98,7 @@ export default function LibraryPage() {
     [lectures],
   );
   const hasIndexingSources = hasIndexingLectures(lectures);
+  const hasVectorReindexSources = libraryItems.some((item) => item.needsVectorReindex);
 
   const activeFolder = selectedFolder === 'root' ? null : folders.find((folder) => folder.id === selectedFolder) || null;
   const currentFolders = useMemo(
@@ -355,6 +357,34 @@ export default function LibraryPage() {
     Array.from(files).forEach(uploadFile);
   };
 
+  const reindexVectors = async () => {
+    if (reindexingVectors) return;
+
+    setReindexingVectors(true);
+    setActionMessage('');
+
+    try {
+      const response = await fetch('/api/lectures/reindex', {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Could not reindex vectors.');
+      }
+
+      setActionMessage(
+        `Vector reindex complete: ${result.data.embeddedSegmentCount} embedded, ${result.data.remainingSegmentCount} remaining.`,
+      );
+      await loadLibrary({ silent: true });
+    } catch (reindexError) {
+      setActionMessage(reindexError instanceof Error ? reindexError.message : 'Could not reindex vectors.');
+    } finally {
+      setReindexingVectors(false);
+    }
+  };
+
   return (
     <div className="tool-shell">
       <header className="kb-hero">
@@ -448,6 +478,16 @@ export default function LibraryPage() {
             <div className="indexing-banner" role="status">
               <span className="indexing-dot" aria-hidden="true" />
               <span>Indexing source files. Chat will pick them up when they are ready.</span>
+            </div>
+          ) : null}
+
+          {hasVectorReindexSources ? (
+            <div className="indexing-banner" role="status">
+              <span className="indexing-dot" aria-hidden="true" />
+              <span>Some ready sources need vector indexing. Chat can still use lexical search.</span>
+              <button type="button" onClick={reindexVectors} disabled={reindexingVectors} className="text-link">
+                {reindexingVectors ? 'Reindexing...' : 'Reindex vectors'}
+              </button>
             </div>
           ) : null}
 
@@ -546,8 +586,13 @@ export default function LibraryPage() {
                       </div>
                     </Link>
                     <span className="text-sm text-[#737373]">{document.type}</span>
-                    <span className={document.status === 'Processed' ? 'status-pill status-ready' : 'status-pill'}>
-                      {formatSourceStatus(document.status)} · {document.segments} chunks
+                    <span className="flex min-w-0 flex-wrap gap-2">
+                      <span className={document.status === 'Processed' ? 'status-pill status-ready' : 'status-pill'}>
+                        {formatSourceStatus(document.status)} · {document.segments} chunks
+                      </span>
+                      <span className={document.vectorStatus === 'Vector ready' ? 'status-pill status-ready' : 'status-pill status-muted'}>
+                        {document.vectorStatus}
+                      </span>
                     </span>
                     <span className="text-sm text-[#737373]">{document.uploadedAt}</span>
                     <span className="drive-action-group">
@@ -607,6 +652,9 @@ export default function LibraryPage() {
                         {formatSourceStatus(document.status)}
                       </span>
                       <span className="status-pill status-muted">{document.segments} chunks</span>
+                      <span className={document.vectorStatus === 'Vector ready' ? 'status-pill status-ready' : 'status-pill status-muted'}>
+                        {document.vectorStatus}
+                      </span>
                     </div>
                     <div className="mt-5 flex items-center justify-between gap-3 border-t border-[#e5e5e5] pt-3">
                       <span className="min-w-0 truncate text-xs text-[#737373]">{document.folderName}</span>
@@ -660,6 +708,7 @@ export default function LibraryPage() {
                     <span className={document.status === 'Processed' ? 'status-pill status-ready' : 'status-pill'}>
                       {formatSourceStatus(document.status)}
                     </span>
+                    <span className="hidden text-xs text-[#737373] lg:inline">{document.vectorStatus}</span>
                     <span className="drive-action-group">
                       <button type="button" onClick={() => renameLecture(document.id, document.title)} className="text-link">
                         Rename
