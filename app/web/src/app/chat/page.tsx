@@ -107,7 +107,7 @@ export default function ChatPage() {
     [mode],
   );
   const sourceLabel = confirmedSources.length === 0
-    ? 'All ready sources'
+    ? 'Auto scope'
     : `${confirmedSources.length} ${confirmedSources.length === 1 ? 'source' : 'sources'}`;
 
   const loadSources = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -135,7 +135,7 @@ export default function ChatPage() {
       setSources(loadedSources);
       setConfirmedSources((current) => {
         if (!hasHydratedSourcesRef.current) {
-          return loadedSources.slice(0, 3).map((source) => source.id);
+          return [];
         }
 
         return current.filter((sourceId) => loadedIds.has(sourceId));
@@ -492,8 +492,8 @@ export default function ChatPage() {
                     <p className="text-sm font-medium text-[#000000]">Source scope</p>
                     <p className="mt-1 text-xs text-[#737373]">
                       {confirmedSources.length === 0
-                        ? 'Searching all ready Library sources.'
-                        : `Searching ${sourceLabel} from your Library.`}
+                        ? 'Auto-selecting relevant context from all ready Library sources.'
+                        : `Searching only ${sourceLabel} from your Library.`}
                     </p>
                   </div>
                   <button
@@ -520,9 +520,9 @@ export default function ChatPage() {
                         <span className="bg-[#ffbd2e]" />
                         <span className="bg-[#27c93f]" />
                       </div>
-                      <div>retrieval: embedding when available, lexical fallback</div>
+                      <div>retrieval: hybrid vector + lexical when available</div>
                       <div>mode: {selectedMode.label}</div>
-                      <div>scope: {confirmedSources.length > 0 ? `${confirmedSources.length} selected` : 'all ready sources'}</div>
+                      <div>scope: {confirmedSources.length > 0 ? `${confirmedSources.length} selected` : 'auto across ready sources'}</div>
                     </div>
                     <div className="chat-source-tools">
                       <button type="button" onClick={() => loadSources()} className="chat-message-action">
@@ -532,7 +532,7 @@ export default function ChatPage() {
                         Select all
                       </button>
                       <button type="button" onClick={clearSources} className="chat-message-action">
-                        Search all
+                        Auto scope
                       </button>
                     </div>
                     <div className="mt-3 divide-y divide-[#e5e5e5]">

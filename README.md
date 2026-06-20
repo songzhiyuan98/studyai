@@ -41,6 +41,7 @@ The primary AI surface should feel like a focused study chat, not a one-shot gen
 - The assistant opens with a lightweight prompt such as "What do you want to study today?"
 - Students can ask natural questions like "help me review Haskell functions for tomorrow's quiz".
 - StudyFlow resolves the intended course, lecture, chapter, page range, or folder from the library.
+- The default chat scope is automatic across all ready Library sources; manual source selection is available when the student wants a strict scope.
 - RAG retrieves relevant source segments and pages, then streams a conversational answer with citations.
 - Fixed-output actions appear as small pills above the composer, so students can quickly request Explain, Summarize, Key terms, Mini quiz, or Cheat sheet without leaving chat.
 - When the source scope is ambiguous, the assistant confirms the intended folder, lecture, or pages before generating.

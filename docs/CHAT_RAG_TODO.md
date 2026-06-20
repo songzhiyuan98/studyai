@@ -55,7 +55,7 @@ student asks what to study
   - Mini quiz
   - Cheat sheet
 - Add scope chips:
-  - all library
+  - auto scope across all ready Library sources. Implemented as the default Chat behavior.
   - folder/course
   - lecture
   - current reader segment
