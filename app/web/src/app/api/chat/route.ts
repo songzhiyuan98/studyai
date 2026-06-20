@@ -47,6 +47,26 @@ type VectorSearchRow = {
   score: number;
 };
 
+function getChatSourceVectorStatus(lecture: {
+  status: string;
+  meta?: unknown;
+  _count?: {
+    segments?: number;
+  };
+}) {
+  const meta = lecture.meta && typeof lecture.meta === 'object' && !Array.isArray(lecture.meta)
+    ? lecture.meta as { embeddingStatus?: string; embeddedSegmentCount?: number }
+    : {};
+  const segmentCount = lecture._count?.segments || 0;
+  const embeddedCount = meta.embeddedSegmentCount || 0;
+
+  if (lecture.status !== 'PROCESSED') return 'Not indexed yet';
+  if (meta.embeddingStatus === 'completed' && embeddedCount >= segmentCount) return 'Vector ready';
+  if (meta.embeddingStatus === 'disabled') return 'Lexical ready';
+  if (segmentCount > 0) return meta.embeddingStatus === 'completed' ? 'Partial vectors' : 'Needs vector index';
+  return 'No chunks yet';
+}
+
 const streamEncoder = new TextEncoder();
 const CHAT_STREAM_DELAY_MS = 28;
 
@@ -187,6 +207,8 @@ export async function GET() {
       select: {
         id: true,
         title: true,
+        status: true,
+        meta: true,
         originalName: true,
         courseId: true,
         type: true,
@@ -214,7 +236,8 @@ export async function GET() {
         sources: lectures.map((lecture) => ({
           id: lecture.id,
           label: lecture.title,
-          detail: `${lecture.folder?.name || 'Library'} · ${lecture.type} · ${lecture._count.segments} chunks`,
+          detail: `${lecture.folder?.name || 'Library'} · ${lecture.type} · ${lecture._count.segments} chunks · ${getChatSourceVectorStatus(lecture)}`,
+          vectorStatus: getChatSourceVectorStatus(lecture),
           segments: lecture._count.segments,
         })),
       },

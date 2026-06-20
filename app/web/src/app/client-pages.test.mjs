@@ -87,9 +87,15 @@ test('lecture reindex API can backfill missing segment embeddings', () => {
 
 test('chat page can refresh ready library sources after uploads finish indexing', () => {
   const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+  const routeSource = readFileSync(resolve(root, 'src/app/api/chat/route.ts'), 'utf8');
+
   assert.match(source, /Refresh/);
   assert.match(source, /visibilitychange/);
   assert.match(source, /hasHydratedSourcesRef/);
+  assert.match(source, /vectorStatus\?: string/);
+  assert.match(routeSource, /getChatSourceVectorStatus/);
+  assert.match(routeSource, /Vector ready/);
+  assert.match(routeSource, /Lexical ready/);
 });
 
 test('chat page defaults to auto scope instead of the first few sources', () => {

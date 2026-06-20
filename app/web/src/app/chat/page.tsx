@@ -11,6 +11,7 @@ type ChatSource = {
   id: string;
   label: string;
   detail: string;
+  vectorStatus?: string;
   segments: number;
 };
 
