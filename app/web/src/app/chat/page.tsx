@@ -288,6 +288,10 @@ function shouldShowMessageTitle(chatMessage: ChatMessage) {
   return Boolean(chatMessage.title && chatMessage.title !== 'Study answer');
 }
 
+function isLibraryActionMessage(chatMessage: ChatMessage) {
+  return chatMessage.retrieval?.strategy === 'tool_library_manage_v0';
+}
+
 function getContextStrategyLabel(strategy?: NonNullable<ChatMessage['retrieval']>['contextStrategy']) {
   if (strategy === 'lecture_pack') {
     return 'lesson context';
@@ -940,6 +944,14 @@ export default function ChatPage() {
                     </button>
                     <Link href="/saved" className="chat-message-action">
                       Saved
+                    </Link>
+                  </div>
+                ) : null}
+
+                {chatMessage.role === 'assistant' && !chatMessage.isStreaming && isLibraryActionMessage(chatMessage) ? (
+                  <div className="chat-message-actions">
+                    <Link href="/library" className="chat-message-action">
+                      Open Library
                     </Link>
                   </div>
                 ) : null}

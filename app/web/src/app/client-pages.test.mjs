@@ -162,6 +162,15 @@ test('chat page can continue an existing chat session', () => {
   assert.match(source, /studyflow:chat-sessions-changed/);
 });
 
+test('chat page surfaces safe actions for library operation replies', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+
+  assert.match(source, /function isLibraryActionMessage/);
+  assert.match(source, /tool_library_manage_v0/);
+  assert.match(source, /href="\/library"/);
+  assert.match(source, /Open Library/);
+});
+
 test('chat citations open the cited reader segment', () => {
   const chatSource = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
   const readerSource = readFileSync(resolve(root, 'src/app/documents/[id]/page.tsx'), 'utf8');
