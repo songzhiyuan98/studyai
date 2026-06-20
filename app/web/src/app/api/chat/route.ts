@@ -25,6 +25,7 @@ import {
   type ChatHistoryTurn,
 } from '@/lib/chat-llm';
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
+import { resolveLibraryScope } from '@/lib/library-catalog';
 
 const chatSchema = z.object({
   message: z.string().min(1).max(2000),
@@ -185,9 +186,12 @@ export async function GET() {
       select: {
         id: true,
         title: true,
+        originalName: true,
+        courseId: true,
         type: true,
         folder: {
           select: {
+            id: true,
             name: true,
           },
         },
@@ -448,6 +452,7 @@ export async function POST(request: NextRequest) {
         contextText: '',
         history: recentHistory,
         sources: [],
+        delegatedAgent: chatPlan.delegatedAgent,
       };
       const fallbackAnswerContent = buildCasualChatAnswer({ message: parsed.data.message });
 
@@ -628,12 +633,20 @@ export async function POST(request: NextRequest) {
       message: parsed.data.message,
       history: recentHistory,
     });
-    const explicitScope = resolveExplicitLectureScope({
+    const libraryScope = resolveLibraryScope({
       lectures,
       query: retrievalQuery,
+      explicitLectureIds: scopedLectureIds,
     });
+    const titleScope = libraryScope.narrowed
+      ? null
+      : resolveExplicitLectureScope({
+        lectures,
+        query: retrievalQuery,
+      });
+    const explicitScope = titleScope || libraryScope;
     const activeLectures = explicitScope.lectures;
-    const retrievalLectureIds = explicitScope.narrowed
+    const retrievalLectureIds = explicitScope.lectureIds.length > 0
       ? explicitScope.lectureIds
       : scopedLectureIds;
     const candidateSegments = activeLectures.flatMap((lecture) => (
@@ -784,6 +797,7 @@ export async function POST(request: NextRequest) {
         label: sourceRefs[index]?.label || formatSourceRef(segment),
         text: segment.text,
       })),
+      delegatedAgent: chatPlan.delegatedAgent,
     };
     const retrievalTrace = {
       strategy: retrievalStrategy,
@@ -791,7 +805,10 @@ export async function POST(request: NextRequest) {
       scopedLectureCount: activeLectures.length,
       historyCount: recentHistory.length,
       query: recentHistory.length > 0 ? 'history_aware' : 'current_message',
-      sourceScope: explicitScope.narrowed ? 'explicit_topic' : scopedLectureIds?.length ? 'selected_sources' : 'auto',
+      sourceScope: libraryScope.source === 'all_ready' && titleScope?.narrowed
+        ? 'lecture_title'
+        : libraryScope.source,
+      libraryScope,
       plan: chatPlan,
     };
 
@@ -938,9 +955,7 @@ export async function POST(request: NextRequest) {
           content: answerContent,
           sourceRefs,
           retrieval: {
-            strategy: retrievalStrategy,
-            count: context.length,
-            scopedLectureCount: activeLectures.length,
+            ...retrievalTrace,
             generation,
           },
         },

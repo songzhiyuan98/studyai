@@ -32,6 +32,7 @@ type GenerateGroundedAnswerInput = {
   contextText: string;
   history?: ChatHistoryTurn[];
   sources: GroundedSource[];
+  delegatedAgent?: 'teaching_agent' | 'assessment_agent' | 'chat_agent' | 'tool_agent';
 };
 
 export type GeneratedChatAnswer = {
@@ -151,7 +152,13 @@ export function buildHistoryAwareRetrievalQuery({
   ].join('\n'), 850);
 }
 
-export function buildGroundedPrompt({ mode, message, history, sources }: GenerateGroundedAnswerInput) {
+export function buildGroundedPrompt({
+  mode,
+  message,
+  history,
+  sources,
+  delegatedAgent,
+}: GenerateGroundedAnswerInput) {
   const sourceBlock = sources.length > 0
     ? sources.map((source, index) => (
       [
@@ -162,9 +169,17 @@ export function buildGroundedPrompt({ mode, message, history, sources }: Generat
     : 'No retrieved source context.';
   const historyBlock = compactChatHistory(history);
   const teacherModeHint = shouldUseTeacherMode(message, mode);
+  const inferredAgentRole = mode === 'mini_quiz'
+    ? 'assessment_agent'
+    : teacherModeHint || mode === 'explain' || mode === 'summarize' || mode === 'key_terms' || mode === 'cheat_sheet'
+      ? 'teaching_agent'
+      : 'chat_agent';
+  const agentRole = delegatedAgent || inferredAgentRole;
 
   return [
     `Mode: ${chatModeLabels[mode]}`,
+    `Delegated agent: ${agentRole}`,
+    'Planner contract: the planner has already inspected Library metadata, resolved likely source scope, and retrieved source context when needed.',
     'Teaching posture: model_decides',
     `Teacher Mode hint: ${teacherModeHint ? 'likely' : 'not_forced'}`,
     `Student request: ${message}`,
@@ -177,18 +192,23 @@ export function buildGroundedPrompt({ mode, message, history, sources }: Generat
     '',
     'Answer requirements:',
     '- Use the retrieved sources to understand the student’s course context, terminology, and likely intent.',
+    '- Treat retrieved context as grounding, not as your full intelligence. You may use general tutoring knowledge to explain, connect ideas, and create examples, but cite only source-grounded claims.',
     '- Use recent conversation to resolve follow-up references like "this", "that", "continue", and "quiz me on it".',
     '- Answer like ChatGPT with full tutoring ability: explain, connect concepts, provide examples, and fill in basic background when helpful.',
+    '- Do not make the answer artificially short. If the student asks to learn or review a topic, provide enough substance for a real lesson.',
     '- Decide the teaching posture from the user’s intent, not from fixed keywords alone: quick answer, normal study chat, guided Teacher Mode, translation, quiz, or page-by-page lesson.',
     '- In free chat, teach gradually like a patient tutor: start with the core idea, check what the student wants next, and avoid dumping every possible artifact at once.',
     '- Use Teacher Mode when the student asks to learn, review, be taught from the beginning, understand every page, or signals they are a beginner.',
     '- If Teacher Mode is appropriate, do not respond with only a menu of topics. Take the lead like a teacher unless the student explicitly asks for choices.',
     '- In Teacher Mode, first explain why the concept exists and what problem it solves, then build the mental model/worldview, then teach the details in a logical order.',
     '- In Teacher Mode, examples are required. Use small concrete examples, preferably code examples for programming topics, and explain what each line means.',
+    '- Agent boundary: planner coordinates intent, scope, and tools; you own the teaching experience. Do not expose internal tool steps unless useful to the student.',
+    '- Agent freedom: adapt the teaching path to the student. The following lesson shape is a default, not a script: why this exists, mental model, core mechanics, concrete example, common confusion, small check question.',
     '- In Teacher Mode for beginners, define jargon before using it heavily, use analogies sparingly, and check understanding with one small question or exercise at the end.',
     '- In Teacher Mode for page-by-page requests, follow the retrieved source/page order. For each page, provide: translation or source gist, teaching explanation, example, and what to remember.',
     '- In Teacher Mode, answer in the student’s language. If the student writes Chinese, teach in Chinese unless they ask otherwise.',
     '- For broad beginner teaching requests, a useful answer is usually several short sections, not one or two sentences.',
+    '- For exam or mock-test requests, first infer the intended course/material scope from the provided sources, then generate representative questions across the scope instead of overfitting to one chunk.',
     '- Do not generate quizzes, cheat sheets, or long fixed templates unless the student asks for them or the matching quick action mode is selected.',
     '- Mention source markers such as [S1] only when a specific sentence or bullet is directly grounded in a retrieved source.',
     '- Do not fabricate citations or claim the sources say something they do not say.',
@@ -249,7 +269,7 @@ export async function generateGroundedChatAnswer(
       messages: [
         {
           role: 'system',
-          content: 'You are StudyFlow, a source-grounded study assistant for students. Be helpful, precise, and citation-aware.',
+          content: 'You are StudyFlow. Act as the delegated teaching agent inside a planner-led study product: natural like ChatGPT, strong as a tutor, and careful with citations.',
         },
         {
           role: 'user',
@@ -305,7 +325,7 @@ export async function* streamGroundedChatAnswer(
       messages: [
         {
           role: 'system',
-          content: 'You are StudyFlow, a source-grounded study assistant for students. Be helpful, precise, and citation-aware.',
+          content: 'You are StudyFlow. Act as the delegated teaching agent inside a planner-led study product: natural like ChatGPT, strong as a tutor, and careful with citations.',
         },
         {
           role: 'user',

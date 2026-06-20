@@ -7,9 +7,12 @@ import {
 import { extractRequestedPageNumber } from './rag-context';
 
 export type ChatPlannerToolName =
+  | 'library.catalog'
+  | 'scope.resolve'
   | 'chat.respond'
   | 'source.preview'
   | 'rag.retrieve'
+  | 'agent.teach'
   | 'artifact.save'
   | 'reader.open'
   | 'library.manage';
@@ -34,6 +37,7 @@ export type ChatTurnPlan = {
   requiresRetrieval: boolean;
   retrievalBreadth: 'focused' | 'broad_lesson' | 'broad_assessment';
   teacherModeHint: boolean;
+  delegatedAgent: 'teaching_agent' | 'assessment_agent' | 'chat_agent' | 'tool_agent';
   requestedPage: number | null;
   requiresConfirmation: boolean;
   tools: ChatPlannerToolCall[];
@@ -83,29 +87,45 @@ export function planChatTurn({
   const tools: ChatPlannerToolCall[] = [];
   let intent: ChatPlannerIntent = 'casual_chat';
   let requiresConfirmation = false;
+  let delegatedAgent: ChatTurnPlan['delegatedAgent'] = 'chat_agent';
 
   if (hasLibraryOperationIntent(message)) {
     intent = 'library_operation';
+    delegatedAgent = 'tool_agent';
     requiresConfirmation = true;
     tools.push({ name: 'library.manage', reason: 'The student is asking to change or organize Library files.' });
   } else if (hasSaveIntent(message)) {
     intent = 'save_request';
+    delegatedAgent = 'tool_agent';
     requiresConfirmation = true;
     tools.push({ name: 'artifact.save', reason: 'The student is asking to save a useful output.' });
   } else if (hasReaderNavigationIntent(message)) {
     intent = 'reader_navigation';
+    delegatedAgent = 'tool_agent';
     tools.push({ name: 'reader.open', reason: 'The student is asking to inspect the cited source or original material.' });
   } else if (retrievalBreadth === 'broad_assessment') {
     intent = 'assessment_generation';
+    delegatedAgent = 'assessment_agent';
   } else if (mode !== 'free') {
     intent = 'fixed_action';
+    delegatedAgent = mode === 'mini_quiz' ? 'assessment_agent' : 'teaching_agent';
   } else if (teacherModeHint) {
     intent = 'guided_learning';
+    delegatedAgent = 'teaching_agent';
   } else if (requiresRetrieval) {
     intent = 'retrieval_answer';
+    delegatedAgent = 'teaching_agent';
   }
 
   if (requiresRetrieval) {
+    tools.push({
+      name: 'library.catalog',
+      reason: 'Inspect the student’s Library folders and files before deciding source scope.',
+    });
+    tools.push({
+      name: 'scope.resolve',
+      reason: 'Resolve the source scope from Library metadata before retrieving chunks.',
+    });
     if (!hasExplicitScope) {
       tools.push({ name: 'source.preview', reason: 'The source scope may need recommendation or confirmation.' });
     }
@@ -121,6 +141,15 @@ export function planChatTurn({
     });
   }
 
+  if (delegatedAgent === 'teaching_agent' || delegatedAgent === 'assessment_agent') {
+    tools.push({
+      name: delegatedAgent === 'assessment_agent' ? 'agent.teach' : 'agent.teach',
+      reason: delegatedAgent === 'assessment_agent'
+        ? 'Delegate final response to the teaching agent with assessment formatting.'
+        : 'Delegate final response to the teaching agent for explanation, examples, and follow-up.',
+    });
+  }
+
   tools.push({ name: 'chat.respond', reason: 'Stream a conversational assistant response.' });
 
   return {
@@ -128,6 +157,7 @@ export function planChatTurn({
     requiresRetrieval,
     retrievalBreadth,
     teacherModeHint,
+    delegatedAgent,
     requestedPage,
     requiresConfirmation,
     tools,

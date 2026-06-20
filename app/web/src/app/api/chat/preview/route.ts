@@ -14,6 +14,7 @@ import {
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 import { resolveExplicitLectureScope } from '@/lib/source-scope';
 import { planChatTurn } from '@/lib/chat-planner';
+import { resolveLibraryScope } from '@/lib/library-catalog';
 
 const previewSchema = z.object({
   message: z.string().min(1).max(2000),
@@ -124,9 +125,12 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         title: true,
+        originalName: true,
+        courseId: true,
         type: true,
         folder: {
           select: {
+            id: true,
             name: true,
           },
         },
@@ -143,12 +147,20 @@ export async function POST(request: NextRequest) {
       take: 20,
     });
 
-    const explicitScope = resolveExplicitLectureScope({
+    const libraryScope = resolveLibraryScope({
       lectures,
       query: parsed.data.message,
+      explicitLectureIds: scopedLectureIds,
     });
+    const titleScope = libraryScope.narrowed
+      ? null
+      : resolveExplicitLectureScope({
+        lectures,
+        query: parsed.data.message,
+      });
+    const explicitScope = titleScope || libraryScope;
     const activeLectures = explicitScope.lectures;
-    const retrievalLectureIds = explicitScope.narrowed
+    const retrievalLectureIds = explicitScope.lectureIds.length > 0
       ? explicitScope.lectureIds
       : scopedLectureIds;
     const candidateSegments = activeLectures.flatMap((lecture) => (
@@ -294,7 +306,10 @@ export async function POST(request: NextRequest) {
           strategy: retrievalStrategy,
           count: context.length,
           scopedLectureCount: activeLectures.length,
-          sourceScope: explicitScope.narrowed ? 'explicit_topic' : scopedLectureIds?.length ? 'selected_sources' : 'auto',
+          sourceScope: libraryScope.source === 'all_ready' && titleScope?.narrowed
+            ? 'lecture_title'
+            : libraryScope.source,
+          libraryScope,
           plan: previewPlan,
         },
       },

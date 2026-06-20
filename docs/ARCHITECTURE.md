@@ -132,15 +132,20 @@ StudyFlow should evolve from a single LLM call into a planner-led chat loop. The
 
 Initial internal tool surface:
 
+- `library.catalog`: inspect the authenticated student's folder/file catalog, including folder names, course labels, file titles, file names, status, and chunk counts.
+- `scope.resolve`: decide the likely study scope from Library metadata before any chunk retrieval runs.
 - `source.preview`: recommend likely folders, lectures, pages, or chunks for the current request.
 - `rag.retrieve`: retrieve grounded context with user, folder, lecture, and page filters.
+- `agent.teach`: delegate the final explanation, examples, quiz, or review flow to the teaching agent.
 - `artifact.save`: save useful assistant outputs into Saved when the user asks or confirms.
 - `library.manage`: future upload, move, rename, delete, and AI-assisted filing operations.
 - `reader.open`: future deep link into a cited source/page/segment.
 
-The MVP can implement this planner deterministically with prompt-level model judgment and typed helper functions. Future versions can split it into specialized agents: planner, retrieval specialist, teacher, artifact curator, and library operator. The interface should remain tool-call shaped so this migration is incremental.
+The MVP can implement this planner deterministically with prompt-level model judgment and typed helper functions. The important product boundary is not a rigid execution script: the planner coordinates intent, Library scope, and internal tools, while the teaching agent owns the natural learning experience. Future versions can split it into specialized agents: planner, retrieval specialist, teacher, assessment coach, artifact curator, and library operator. The interface should remain tool-call shaped so this migration is incremental.
 
 StudyFlow Chat should be source-aware, not source-imprisoned. Retrieved RAG context helps the model understand the student's course materials, terminology, and citation targets; it is not a hard ceiling on the model's tutoring ability. The assistant should answer naturally like ChatGPT, using general model knowledge to explain concepts, provide examples, connect ideas, and fill in basic background when helpful. Source markers such as `[S1]` are reserved for specific source-supported claims, and the UI keeps a citation trace attached to the answer. The assistant must not fabricate citations or imply that general knowledge came from the student's files.
+
+Source scope should be catalog-first, then RAG. The planner should not use embedding search to infer which files exist or which course the user means. It should first inspect the user's Library catalog and resolve likely folders/files from metadata such as `CSE 114A`, `lambda.pdf`, or manually selected sources. RAG then runs inside that resolved scope to retrieve page/chunk evidence. For broad requests like "help me review 114A for a midterm," the scope is usually the whole relevant course folder, while the retrieved chunks are representative samples for grounding.
 
 Conversation memory and retrieval memory are related but not identical. The assistant may use casual conversation history to sound natural and understand user preferences, but RAG retrieval should only expand the query with recent turns that contain concrete learning, source, file, concept, or assessment signals. This prevents greetings or unrelated chat from polluting source ranking while still supporting follow-up requests like "quiz me on that" after a Haskell discussion.
 

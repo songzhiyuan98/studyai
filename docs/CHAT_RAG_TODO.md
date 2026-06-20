@@ -128,12 +128,17 @@ student asks what to study
 - Add a lightweight planner before generation. It should infer whether the user needs casual chat, Teacher Mode, source preview, retrieval, save, quiz, cheat sheet, or library/file management.
 - Planner should decide retrieval breadth: focused chunks for specific questions, broad lesson coverage for learning a section/lecture, and broad assessment coverage for exams.
 - Represent internal product capabilities as typed tools:
+  - `library.catalog`. Initial deterministic catalog inspection is implemented for chat scope resolution.
+  - `scope.resolve`. Initial deterministic folder/course/file-title scope resolution is implemented before retrieval.
   - `source.preview`
   - `rag.retrieve`
+  - `agent.teach`. Current implementation delegates final model behavior through a teaching-agent prompt boundary.
   - `artifact.save`. Initial planner-backed save request handling is implemented for recent source-grounded assistant outputs.
   - `library.manage`
   - `reader.open`. Initial planner-backed reader link handling is implemented for recent cited source refs.
 - Store planner/tool traces on chat messages or sessions so failures can be debugged and evaluated.
+- Keep agent roles bounded but not over-scripted. The planner coordinates intent, Library scope, and internal API/tool use; the teaching agent has freedom to choose the lesson shape, examples, pacing, and follow-up style.
+- Resolve scope from Library catalog before RAG. Course/folder labels like `CSE 114A`, file titles like `lambda`, and manual selected sources should decide the retrieval scope before embedding or lexical chunk search runs.
 - Let the model decide Teacher Mode intent, with deterministic hints as fallback.
 - Let the planner ask one concise confirmation question before calling tools that change state, such as save, delete, upload, move, or AI-assisted filing.
 - Future upgrade: split planner, retrieval specialist, teacher, artifact curator, and library operator into separate agents while keeping the same internal tool contracts.
