@@ -26,6 +26,7 @@ import {
 } from '@/lib/chat-llm';
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 import { resolveLibraryScope } from '@/lib/library-catalog';
+import { buildLecturePackContext } from '@/lib/lecture-pack';
 
 const chatSchema = z.object({
   message: z.string().min(1).max(2000),
@@ -610,10 +611,18 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         title: true,
+        originalName: true,
+        courseId: true,
         type: true,
         folder: {
           select: {
+            id: true,
             name: true,
+          },
+        },
+        _count: {
+          select: {
+            segments: true,
           },
         },
         segments: {
@@ -660,6 +669,12 @@ export async function POST(request: NextRequest) {
         charEnd: segment.charEnd,
       }))
     ));
+    const activeSegmentCount = activeLectures.reduce((count, lecture) => (
+      count + (lecture._count?.segments || lecture.segments.length)
+    ), 0);
+    const effectiveContextStrategy = chatPlan.contextStrategy === 'lecture_pack' && activeSegmentCount > 80
+      ? 'long_document_map'
+      : chatPlan.contextStrategy;
 
     if (candidateSegments.length === 0) {
       const noSourcesContent = 'I could not find processed source chunks in your Library yet. Upload a PDF or TXT file in Library first, then come back and ask me to study it with you.';
@@ -700,9 +715,11 @@ export async function POST(request: NextRequest) {
 
     let retrievalStrategy = 'lexical_page_aware_v0';
     let vectorResults: RetrievedContext[] = [];
+    const usesLecturePack = effectiveContextStrategy === 'lecture_pack';
     const usesBroadCoverage = chatPlan.retrievalBreadth === 'broad_assessment'
-      || chatPlan.retrievalBreadth === 'broad_lesson';
-    const broadCoverageResults = usesBroadCoverage
+      || chatPlan.retrievalBreadth === 'broad_lesson'
+      || effectiveContextStrategy === 'long_document_map';
+    const broadCoverageResults = usesBroadCoverage && !usesLecturePack
       ? retrieveBroadCoverageContext({
         query: retrievalQuery,
         candidateSegments,
@@ -710,18 +727,22 @@ export async function POST(request: NextRequest) {
         limit: chatPlan.retrievalBreadth === 'broad_lesson' ? 20 : 16,
       })
       : [];
-    const pageResults = retrieveContextForPageRequest({
-      query: retrievalQuery,
-      candidateSegments,
-      limit: 8,
-    });
-    const lexicalResults = retrieveContextForQuery({
-      query: retrievalQuery,
-      candidateSegments,
-      limit: 8,
-    });
+    const pageResults = usesLecturePack
+      ? []
+      : retrieveContextForPageRequest({
+        query: retrievalQuery,
+        candidateSegments,
+        limit: 8,
+      });
+    const lexicalResults = usesLecturePack
+      ? []
+      : retrieveContextForQuery({
+        query: retrievalQuery,
+        candidateSegments,
+        limit: 8,
+      });
 
-    if (pageResults.length === 0 && broadCoverageResults.length === 0) {
+    if (!usesLecturePack && pageResults.length === 0 && broadCoverageResults.length === 0) {
       try {
         vectorResults = await retrieveVectorContext({
           query: retrievalQuery,
@@ -735,9 +756,22 @@ export async function POST(request: NextRequest) {
     }
 
     let retrieved: RetrievedContext[];
-    if (broadCoverageResults.length > 0) {
+    if (usesLecturePack) {
+      const lecturePack = buildLecturePackContext({
+        candidateSegments,
+        maxChars: 6000,
+      });
+      retrieved = lecturePack.segments.map((segment, index) => ({
+        segment,
+        score: 1 - index * 0.001,
+        reason: 'nearby' as const,
+      }));
+      retrievalStrategy = 'lecture_pack_v0';
+    } else if (broadCoverageResults.length > 0) {
       retrieved = broadCoverageResults;
-      retrievalStrategy = chatPlan.retrievalBreadth === 'broad_lesson'
+      retrievalStrategy = effectiveContextStrategy === 'long_document_map'
+        ? 'long_document_map_v0'
+        : chatPlan.retrievalBreadth === 'broad_lesson'
         ? 'broad_lesson_v0'
         : 'broad_assessment_v0';
     } else if (pageResults.length > 0) {
@@ -763,10 +797,15 @@ export async function POST(request: NextRequest) {
       reason: 'lexical' as const,
     }));
     const context = retrieved.length > 0 ? retrieved : fallbackSegments;
-    const contextText = compactContextText(
-      context.map(({ segment }) => segment),
-      usesBroadCoverage ? 3800 : 1000,
-    );
+    const contextText = usesLecturePack
+      ? buildLecturePackContext({
+        candidateSegments: context.map(({ segment }) => segment),
+        maxChars: 6000,
+      }).contextText
+      : compactContextText(
+        context.map(({ segment }) => segment),
+        usesBroadCoverage ? 3800 : 1000,
+      );
     const lectureMap = new Map(activeLectures.map((lecture) => [lecture.id, lecture]));
     const sourceRefs = context.map(({ segment, score, reason }) => {
       const lecture = lectureMap.get(segment.lectureId);
@@ -811,6 +850,7 @@ export async function POST(request: NextRequest) {
       scopedLectureCount: activeLectures.length,
       historyCount: recentHistory.length,
       query: recentHistory.length > 0 ? 'history_aware' : 'current_message',
+      contextStrategy: effectiveContextStrategy,
       sourceScope: libraryScope.source === 'all_ready' && titleScope?.narrowed
         ? 'lecture_title'
         : libraryScope.source,

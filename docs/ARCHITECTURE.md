@@ -135,7 +135,8 @@ Initial internal tool surface:
 - `library.catalog`: inspect the authenticated student's folder/file catalog, including folder names, course labels, file titles, file names, status, and chunk counts.
 - `scope.resolve`: decide the likely study scope from Library metadata before any chunk retrieval runs.
 - `source.preview`: recommend likely folders, lectures, pages, or chunks for the current request.
-- `rag.retrieve`: retrieve grounded context with user, folder, lecture, and page filters.
+- `rag.retrieve`: retrieve grounded context with user, folder, lecture, and page filters when focused or representative retrieval is the right context strategy.
+- `context.pack`: package selected lecture/page content in source order when the student wants to learn a full lecture, every page, or a short complete source.
 - `agent.teach`: delegate the final explanation, examples, quiz, or review flow to the teaching agent.
 - `artifact.save`: save useful assistant outputs into Saved when the user asks or confirms.
 - `library.manage`: future upload, move, rename, delete, and AI-assisted filing operations.
@@ -145,7 +146,14 @@ The MVP can implement this planner deterministically with prompt-level model jud
 
 StudyFlow Chat should be source-aware, not source-imprisoned. Retrieved RAG context helps the model understand the student's course materials, terminology, and citation targets; it is not a hard ceiling on the model's tutoring ability. The assistant should answer naturally like ChatGPT, using general model knowledge to explain concepts, provide examples, connect ideas, and fill in basic background when helpful. Source markers such as `[S1]` are reserved for specific source-supported claims, and the UI keeps a citation trace attached to the answer. The assistant must not fabricate citations or imply that general knowledge came from the student's files.
 
-Source scope should be catalog-first, then RAG. The planner should not use embedding search to infer which files exist or which course the user means. It should first inspect the user's Library catalog and resolve likely folders/files from metadata such as `CSE 114A`, `lambda.pdf`, or manually selected sources. RAG then runs inside that resolved scope to retrieve page/chunk evidence. For broad requests like "help me review 114A for a midterm," the scope is usually the whole relevant course folder, while the retrieved chunks are representative samples for grounding.
+Source scope should be catalog-first, then strategy-specific context loading. The planner should not use embedding search to infer which files exist or which course the user means. It should first inspect the user's Library catalog and resolve likely folders/files from metadata such as `CSE 114A`, `lambda.pdf`, or manually selected sources. After scope is resolved, the planner chooses a context strategy:
+
+- `lecture_pack`: for full-lecture, page-by-page, or short complete-source learning. The backend packs selected segments in document order so the model can teach the source coherently instead of seeing only a few similar chunks.
+- `focused_rag`: for specific questions, page references, definitions, or local confusion.
+- `broad_rag`: for exams, quizzes, and broad review across a course/folder.
+- `long_document_map`: for long papers or large PDFs where full packing would exceed useful context. The system uses representative coverage and later can add section-map summarization.
+
+RAG runs inside the resolved scope only when the chosen strategy needs retrieval. For broad requests like "help me review 114A for a midterm," the scope is usually the whole relevant course folder, while retrieved chunks are representative samples for grounding. For "teach me every page of this lecture," the preferred strategy is `lecture_pack`, not top-k retrieval.
 
 Conversation memory and retrieval memory are related but not identical. The assistant may use casual conversation history to sound natural and understand user preferences, but RAG retrieval should only expand the query with recent turns that contain concrete learning, source, file, concept, or assessment signals. This prevents greetings or unrelated chat from polluting source ranking while still supporting follow-up requests like "quiz me on that" after a Haskell discussion.
 
@@ -222,7 +230,7 @@ Current retrieval:
 - Merge vector and lexical results into a hybrid ranked context and preserve each source ref's retrieval reason.
 - When the user explicitly names a material/topic that matches a lecture title, retrieval and source preview first narrow to that lecture set. This keeps requests such as "teach me lambda" from drifting into unrelated Typeclass or Types material unless the model needs them as clearly labeled background.
 - When the user asks for a specific page, exact page retrieval should take priority over semantic retrieval inside the selected or inferred lecture scope.
-- Retrieval breadth is an explicit planner decision. Focused factual questions use top relevant chunks. Lesson, lecture, chapter, beginner, page-by-page, and exam-prep requests use broad coverage across the selected material so the assistant can teach or assess the whole scope instead of overfitting to a few chunks.
+- Context strategy is an explicit planner decision. Focused factual questions use top relevant chunks. Exam-prep requests use broad coverage across the selected material. Full-lecture, short-source, and page-by-page learning requests use lecture packing so the assistant can follow the source order instead of overfitting to a few chunks. Long documents fall back to document-map style retrieval rather than blind full-source packing.
 - Fall back to lexical/page-aware retrieval when embeddings are unavailable or provider calls fail.
 
 Embedding retrieval constraints:

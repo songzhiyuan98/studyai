@@ -20,6 +20,7 @@ test('chat planner exposes internal tool-shaped planning decisions', () => {
   assert.match(source, /'library\.manage'/);
   assert.match(source, /teacherModeHint/);
   assert.match(source, /delegatedAgent/);
+  assert.match(source, /contextStrategy/);
   assert.match(source, /retrievalBreadth/);
   assert.match(source, /requestedPage/);
   assert.match(source, /requiresConfirmation/);
@@ -32,9 +33,22 @@ test('chat planner models broad assessment generation separately from focused re
   assert.match(source, /hasAssessmentIntent/);
   assert.match(source, /broad_assessment/);
   assert.match(source, /broad_lesson/);
+  assert.match(source, /lecture_pack/);
+  assert.match(source, /focused_rag/);
+  assert.match(source, /broad_rag/);
+  assert.match(source, /long_document_map/);
   assert.match(source, /要考\|备考/);
   assert.match(source, /representative coverage across the selected course materials/);
   assert.match(source, /broad coverage across the selected lecture or topic/);
+});
+
+test('chat planner treats full lecture learning as lecture pack context', () => {
+  const source = readFileSync(resolve(root, 'src/lib/chat-planner.ts'), 'utf8');
+
+  assert.match(source, /hasFullLectureLearningIntent/);
+  assert.match(source, /contextStrategy: ChatTurnPlan\['contextStrategy'\]/);
+  assert.match(source, /teacherModeHint && hasFullLectureLearningIntent\(message\)/);
+  assert.match(source, /\? 'lecture_pack'/);
 });
 
 test('chat planner resolves library scope before retrieval and agent response', () => {
@@ -54,6 +68,11 @@ test('chat route stores planner trace with retrieval metadata', () => {
   assert.match(source, /plan: chatPlan/);
   assert.match(source, /resolvedScope/);
   assert.match(source, /libraryScope\.matchedLabels/);
+  assert.match(source, /buildLecturePackContext/);
+  assert.match(source, /contextStrategy: effectiveContextStrategy/);
+  assert.match(source, /effectiveContextStrategy/);
+  assert.match(source, /long_document_map/);
+  assert.match(source, /_count/);
 });
 
 test('chat route can call the artifact save tool from planner intent', () => {

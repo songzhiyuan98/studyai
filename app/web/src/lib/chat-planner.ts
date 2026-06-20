@@ -36,6 +36,7 @@ export type ChatTurnPlan = {
   intent: ChatPlannerIntent;
   requiresRetrieval: boolean;
   retrievalBreadth: 'focused' | 'broad_lesson' | 'broad_assessment';
+  contextStrategy: 'focused_rag' | 'broad_rag' | 'lecture_pack' | 'long_document_map';
   teacherModeHint: boolean;
   delegatedAgent: 'teaching_agent' | 'assessment_agent' | 'chat_agent' | 'tool_agent';
   requestedPage: number | null;
@@ -59,6 +60,11 @@ function hasAssessmentIntent(message: string, mode: ChatMode) {
   return mode === 'mini_quiz' && /\b(midterm|final|exam|mock|practice test|test)\b/i.test(message)
     || /\b(midterm|final|exam|mock|practice test)\b/i.test(message)
     || /(期中|期末|考试|要考|备考|模拟|测试|卷子|试卷|114a)/i.test(message);
+}
+
+function hasFullLectureLearningIntent(message: string) {
+  return /\b(entire|whole|full|all pages?|page by page|walk me through|from beginning|complete lecture)\b/i.test(message)
+    || /(整份|整个|全部|全篇|每一页|逐页|一页一页|从头|完整|带我学会|带我学|讲完|学完整)/i.test(message);
 }
 
 export function planChatTurn({
@@ -85,6 +91,13 @@ export function planChatTurn({
     : teacherModeHint && !requestedPage
       ? 'broad_lesson'
       : 'focused';
+  let contextStrategy: ChatTurnPlan['contextStrategy'] = hasAssessmentIntent(message, mode)
+    ? 'broad_rag'
+    : teacherModeHint && hasFullLectureLearningIntent(message)
+      ? 'lecture_pack'
+      : retrievalBreadth === 'broad_lesson'
+        ? 'broad_rag'
+        : 'focused_rag';
   const tools: ChatPlannerToolCall[] = [];
   let intent: ChatPlannerIntent = 'casual_chat';
   let requiresConfirmation = false;
@@ -132,7 +145,9 @@ export function planChatTurn({
     }
     tools.push({
       name: 'rag.retrieve',
-      reason: retrievalBreadth === 'broad_assessment'
+      reason: contextStrategy === 'lecture_pack'
+        ? 'Pack the selected lecture in source order instead of retrieving only a few chunks.'
+        : retrievalBreadth === 'broad_assessment'
         ? 'Retrieve representative coverage across the selected course materials for assessment generation.'
         : retrievalBreadth === 'broad_lesson'
           ? 'Retrieve broad coverage across the selected lecture or topic for guided learning.'
@@ -157,6 +172,7 @@ export function planChatTurn({
     intent,
     requiresRetrieval,
     retrievalBreadth,
+    contextStrategy,
     teacherModeHint,
     delegatedAgent,
     requestedPage,
