@@ -443,6 +443,7 @@ export async function planChatTurnWithAi({
               '- Use focused_rag for specific questions.',
               '- Use the Library catalog to infer likely folder, course, or file scope before retrieval.',
               '- If the student names a course, folder, or lecture that appears in the catalog, prefer the matching scope instead of all materials.',
+              '- Only use library_operation for explicit Library changes such as upload, rename, delete, move, folder creation, or filing. If the student says "file" or "library" while asking to learn, retrieve sources instead.',
               '- Casual chat should not retrieve sources.',
             ].join('\n'),
           },

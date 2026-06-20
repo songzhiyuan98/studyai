@@ -36,6 +36,7 @@ test('chat planner can use an AI planning agent with deterministic fallback', ()
   assert.match(source, /Library catalog observed via internal API/);
   assert.match(source, /libraryCatalog/);
   assert.match(source, /Return only a JSON object/);
+  assert.match(source, /Only use library_operation for explicit Library changes/);
   assert.match(source, /normalizeAiPlan/);
   assert.match(source, /fallbackPlan/);
   assert.match(source, /plannerSource: 'ai_planner'/);
