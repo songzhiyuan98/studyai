@@ -379,6 +379,9 @@ export default function ChatPage() {
   const sourcePreviewDescription = isSourceRangePreview
     ? `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} in scope · ${sourcePreviewGroundingLabel} · ${getPlannerSourceLabel(sourcePreview?.retrieval.plannerSource)}`
     : `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} likely ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} · ${sourcePreview?.retrieval.count || 0} ${sourcePreviewChunkLabel} · ${getPlannerSourceLabel(sourcePreview?.retrieval.plannerSource)}`;
+  const sourcePreviewReason = sourcePreview?.retrieval.plannerRationale
+    || sourcePreview?.retrieval.libraryScope?.reason
+    || '';
 
   const loadSources = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) {
@@ -1062,6 +1065,11 @@ export default function ChatPage() {
                       {sourcePreviewDescription}
                       {sourcePreview.materials.length > 0 ? ` · ${selectedPreviewLectureIds.length} selected` : ''}
                     </span>
+                    {sourcePreviewReason ? (
+                      <span className="mt-2 block">
+                        Why this scope · {sourcePreviewReason}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
                     <button type="button" onClick={usePreviewMaterials} disabled={selectedPreviewLectureIds.length === 0} className="chat-message-action">

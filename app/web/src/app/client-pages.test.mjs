@@ -200,6 +200,10 @@ test('chat page can preview suggested sources before generation', () => {
   assert.match(source, /source-order lecture pack/);
   assert.match(source, /indexed chunks/);
   assert.match(source, /sourcePreviewDescription/);
+  assert.match(source, /sourcePreviewReason/);
+  assert.match(source, /Why this scope/);
+  assert.match(source, /sourcePreview\?\.retrieval\.plannerRationale/);
+  assert.match(source, /sourcePreview\?\.retrieval\.libraryScope\?\.reason/);
   assert.match(source, /plannerSource\?:/);
   assert.match(source, /getPlannerSourceLabel\(sourcePreview\?\.retrieval\.plannerSource\)/);
   assert.match(source, /selectedPreviewLectureIds/);
