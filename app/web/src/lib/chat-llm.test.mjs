@@ -208,6 +208,22 @@ test('detects when a chat turn should use study retrieval', () => {
   }), true);
 });
 
+test('detects Chinese learning requests as teacher mode hints', () => {
+  const prompt = buildGroundedPrompt({
+    mode: 'free',
+    message: '我想学习 lambda 这个 lecture',
+    contextText: 'Lambda calculus focuses on functions.',
+    sources: [
+      {
+        label: 'Lambda · Page 1',
+        text: 'Lambda calculus focuses on functions.',
+      },
+    ],
+  });
+
+  assert.match(prompt, /Teacher Mode hint: likely/);
+});
+
 test('skips remote generation when chat model is not configured', async () => {
   process.env.OPENAI_API_KEY = '';
 

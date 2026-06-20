@@ -4,6 +4,7 @@ import {
   compactContextText,
   extractRequestedPageNumber,
   mergeHybridContext,
+  retrieveBroadCoverageContext,
   retrieveContextForPageRequest,
   retrieveContextForQuery,
   retrieveRelatedContext,
@@ -121,6 +122,28 @@ test('retrieves exact page context before lexical fallback', () => {
 
   assert.deepEqual(results.map((result) => result.segment.id), ['p9a', 'p9b']);
   assert.equal(results[0].reason, 'nearby');
+});
+
+test('retrieves broad assessment coverage across lectures', () => {
+  const results = retrieveBroadCoverageContext({
+    query: 'make a mock midterm for CSE 114A',
+    candidateSegments: [
+      { id: 'lambda-1', lectureId: 'lambda', text: 'lambda abstraction and application', page: 1, slide: null, charStart: 0, charEnd: 20 },
+      { id: 'lambda-50', lectureId: 'lambda', text: 'beta reduction examples', page: 50, slide: null, charStart: 0, charEnd: 20 },
+      { id: 'types-1', lectureId: 'types', text: 'type inference basics', page: 1, slide: null, charStart: 0, charEnd: 20 },
+      { id: 'types-50', lectureId: 'types', text: 'polymorphic types', page: 50, slide: null, charStart: 0, charEnd: 20 },
+      { id: 'classes-1', lectureId: 'typeclasses', text: 'typeclass constraints', page: 1, slide: null, charStart: 0, charEnd: 20 },
+      { id: 'classes-50', lectureId: 'typeclasses', text: 'functor examples', page: 50, slide: null, charStart: 0, charEnd: 20 },
+    ],
+    perLecture: 2,
+    limit: 6,
+  });
+
+  assert.deepEqual(
+    Array.from(new Set(results.map((result) => result.segment.lectureId))).sort(),
+    ['lambda', 'typeclasses', 'types'],
+  );
+  assert.equal(results.length, 6);
 });
 
 test('merges vector and lexical retrieval into hybrid ranked context', () => {

@@ -6,12 +6,14 @@ import { authOptions } from '@/lib/auth';
 import { formatSourceRef } from '@/lib/reader-format';
 import {
   mergeHybridContext,
+  retrieveBroadCoverageContext,
   retrieveContextForPageRequest,
   retrieveContextForQuery,
   type RetrievedContext,
 } from '@/lib/rag-context';
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 import { resolveExplicitLectureScope } from '@/lib/source-scope';
+import { planChatTurn } from '@/lib/chat-planner';
 
 const previewSchema = z.object({
   message: z.string().min(1).max(2000),
@@ -177,6 +179,21 @@ export async function POST(request: NextRequest) {
 
     let retrievalStrategy = 'lexical_page_aware_v0';
     let vectorResults: RetrievedContext[] = [];
+    const previewPlan = planChatTurn({
+      mode: 'free',
+      message: parsed.data.message,
+      hasExplicitScope: Boolean(scopedLectureIds?.length),
+    });
+    const usesBroadCoverage = previewPlan.retrievalBreadth === 'broad_assessment'
+      || previewPlan.retrievalBreadth === 'broad_lesson';
+    const broadCoverageResults = usesBroadCoverage
+      ? retrieveBroadCoverageContext({
+        query: parsed.data.message,
+        candidateSegments,
+        perLecture: previewPlan.retrievalBreadth === 'broad_lesson' ? 6 : 4,
+        limit: previewPlan.retrievalBreadth === 'broad_lesson' ? 20 : 16,
+      })
+      : [];
     const pageResults = retrieveContextForPageRequest({
       query: parsed.data.message,
       candidateSegments,
@@ -188,7 +205,7 @@ export async function POST(request: NextRequest) {
       limit: 8,
     });
 
-    if (pageResults.length === 0) {
+    if (pageResults.length === 0 && broadCoverageResults.length === 0) {
       try {
         vectorResults = await retrieveVectorPreview({
           query: parsed.data.message,
@@ -202,7 +219,12 @@ export async function POST(request: NextRequest) {
     }
 
     let retrieved: RetrievedContext[];
-    if (pageResults.length > 0) {
+    if (broadCoverageResults.length > 0) {
+      retrieved = broadCoverageResults;
+      retrievalStrategy = previewPlan.retrievalBreadth === 'broad_lesson'
+        ? 'broad_lesson_v0'
+        : 'broad_assessment_v0';
+    } else if (pageResults.length > 0) {
       retrieved = pageResults.slice(0, 6);
       retrievalStrategy = 'exact_page_v0';
     } else if (vectorResults.length > 0 && lexicalResults.length > 0) {
@@ -272,6 +294,7 @@ export async function POST(request: NextRequest) {
           count: context.length,
           scopedLectureCount: activeLectures.length,
           sourceScope: explicitScope.narrowed ? 'explicit_topic' : scopedLectureIds?.length ? 'selected_sources' : 'auto',
+          plan: previewPlan,
         },
       },
     });

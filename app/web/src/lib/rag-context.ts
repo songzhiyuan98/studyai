@@ -171,6 +171,91 @@ export function retrieveContextForPageRequest({
     }));
 }
 
+function selectDiverseSegments(segments: RetrievalSegment[], count: number) {
+  if (segments.length <= count) {
+    return segments;
+  }
+
+  const selected: RetrievalSegment[] = [];
+  const usedIds = new Set<string>();
+  const orderedByPage = [...segments].sort((first, second) => {
+    const pageDiff = (first.page || 0) - (second.page || 0);
+    if (pageDiff !== 0) return pageDiff;
+    return (first.charStart || 0) - (second.charStart || 0);
+  });
+
+  for (let index = 0; index < count; index += 1) {
+    const sampleIndex = Math.min(
+      orderedByPage.length - 1,
+      Math.round((index * (orderedByPage.length - 1)) / Math.max(1, count - 1)),
+    );
+    const segment = orderedByPage[sampleIndex];
+    if (!usedIds.has(segment.id)) {
+      selected.push(segment);
+      usedIds.add(segment.id);
+    }
+  }
+
+  for (const segment of orderedByPage) {
+    if (selected.length >= count) break;
+    if (!usedIds.has(segment.id)) {
+      selected.push(segment);
+      usedIds.add(segment.id);
+    }
+  }
+
+  return selected;
+}
+
+export function retrieveBroadCoverageContext({
+  query,
+  candidateSegments,
+  perLecture = 4,
+  limit = 16,
+}: {
+  query: string;
+  candidateSegments: RetrievalSegment[];
+  perLecture?: number;
+  limit?: number;
+}): RetrievedContext[] {
+  const groupedByLecture = new Map<string, RetrievalSegment[]>();
+  candidateSegments.forEach((segment) => {
+    const current = groupedByLecture.get(segment.lectureId) || [];
+    current.push(segment);
+    groupedByLecture.set(segment.lectureId, current);
+  });
+
+  const selected: RetrievedContext[] = [];
+  groupedByLecture.forEach((segments) => {
+    const lexical = retrieveContextForQuery({
+      query,
+      candidateSegments: segments,
+      limit: perLecture,
+    });
+    const usedIds = new Set(lexical.map((result) => result.segment.id));
+    const diverse = selectDiverseSegments(
+      segments.filter((segment) => !usedIds.has(segment.id)),
+      Math.max(0, perLecture - lexical.length),
+    ).map((segment, index) => ({
+      segment,
+      score: 0.5 - index * 0.01,
+      reason: 'nearby' as const,
+    }));
+
+    selected.push(...lexical, ...diverse);
+  });
+
+  return selected
+    .sort((first, second) => {
+      const lectureDiff = first.segment.lectureId.localeCompare(second.segment.lectureId);
+      if (lectureDiff !== 0) return lectureDiff;
+      const pageDiff = (first.segment.page || 0) - (second.segment.page || 0);
+      if (pageDiff !== 0) return pageDiff;
+      return (first.segment.charStart || 0) - (second.segment.charStart || 0);
+    })
+    .slice(0, limit);
+}
+
 function nearbyScore(selectedSegments: RetrievalSegment[], segment: RetrievalSegment): number {
   const samePage = selectedSegments.some((selected) => (
     selected.page !== null

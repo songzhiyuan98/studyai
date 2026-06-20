@@ -16,8 +16,20 @@ test('chat planner exposes internal tool-shaped planning decisions', () => {
   assert.match(source, /'reader\.open'/);
   assert.match(source, /'library\.manage'/);
   assert.match(source, /teacherModeHint/);
+  assert.match(source, /retrievalBreadth/);
   assert.match(source, /requestedPage/);
   assert.match(source, /requiresConfirmation/);
+});
+
+test('chat planner models broad assessment generation separately from focused retrieval', () => {
+  const source = readFileSync(resolve(root, 'src/lib/chat-planner.ts'), 'utf8');
+
+  assert.match(source, /assessment_generation/);
+  assert.match(source, /hasAssessmentIntent/);
+  assert.match(source, /broad_assessment/);
+  assert.match(source, /broad_lesson/);
+  assert.match(source, /representative coverage across the selected course materials/);
+  assert.match(source, /broad coverage across the selected lecture or topic/);
 });
 
 test('chat route stores planner trace with retrieval metadata', () => {
@@ -38,4 +50,15 @@ test('chat route can call the artifact save tool from planner intent', () => {
   assert.match(source, /saveChatOutputAsArtifact/);
   assert.match(source, /tool_artifact_save_v0/);
   assert.match(source, /chat_planner_artifact_save_v0/);
+});
+
+test('chat route can return reader links from planner intent', () => {
+  const source = readFileSync(resolve(root, 'src/app/api/chat/route.ts'), 'utf8');
+
+  assert.match(source, /chatPlan\.intent === 'reader_navigation'/);
+  assert.match(source, /tool_reader_open_v0/);
+  assert.match(source, /parseChatSourceRefs\(assistantMessage\.sourceRefs\)/);
+  assert.match(source, /sourceRef\.page === chatPlan\.requestedPage/);
+  assert.match(source, /reader_link_ready/);
+  assert.match(source, /Open it from the citation below/);
 });

@@ -192,6 +192,8 @@ test('chat send automatically asks for source confirmation on ambiguous auto sco
   assert.match(source, /const updateDraftMessage/);
   assert.match(source, /hasStudySignalForAutoScope/);
   assert.match(source, /mode !== 'free' \|\| hasStudySignalForAutoScope\(trimmedMessage\)/);
+  assert.match(source, /sourcePreviewChunkLabel/);
+  assert.match(source, /retrieval\.strategy\.startsWith\('broad_'\)/);
 });
 
 test('chat API loads recent session history before creating the next user message', () => {

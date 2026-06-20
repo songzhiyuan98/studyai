@@ -43,6 +43,10 @@ student asks what to study
 - Teacher Mode prompt guidance is implemented as model-decided behavior with a deterministic hint/fallback. Beginner, from-scratch, and page-by-page learning requests should now produce fuller teacher-style explanations with examples.
 - Explicit lecture-title topic narrowing is implemented for Chat and source preview. Named topics such as "lambda" prefer the matching material before broader hybrid retrieval.
 - Exact page retrieval is implemented for Chat and source preview. Requests like "page 9" or "第九页" prioritize that page inside the selected or inferred source scope.
+- Retrieval breadth planning is partially implemented:
+  - focused questions use top relevant chunks
+  - broad lessons use representative coverage across the selected lecture/topic
+  - mock exam and midterm requests use representative coverage across the selected course materials
 
 ## Milestone 1: Chat Product Surface
 
@@ -122,12 +126,13 @@ student asks what to study
 ## Milestone 4.5: Chat Planner and Internal Tools
 
 - Add a lightweight planner before generation. It should infer whether the user needs casual chat, Teacher Mode, source preview, retrieval, save, quiz, cheat sheet, or library/file management.
+- Planner should decide retrieval breadth: focused chunks for specific questions, broad lesson coverage for learning a section/lecture, and broad assessment coverage for exams.
 - Represent internal product capabilities as typed tools:
   - `source.preview`
   - `rag.retrieve`
   - `artifact.save`. Initial planner-backed save request handling is implemented for recent source-grounded assistant outputs.
   - `library.manage`
-  - `reader.open`
+  - `reader.open`. Initial planner-backed reader link handling is implemented for recent cited source refs.
 - Store planner/tool traces on chat messages or sessions so failures can be debugged and evaluated.
 - Let the model decide Teacher Mode intent, with deterministic hints as fallback.
 - Let the planner ask one concise confirmation question before calling tools that change state, such as save, delete, upload, move, or AI-assisted filing.

@@ -299,6 +299,9 @@ export default function ChatPage() {
   const sourceLabel = confirmedSources.length === 0
     ? 'Auto scope'
     : `${confirmedSources.length} ${confirmedSources.length === 1 ? 'source' : 'sources'}`;
+  const sourcePreviewChunkLabel = sourcePreview?.retrieval.strategy.startsWith('broad_')
+    ? 'representative chunks'
+    : 'relevant chunks';
 
   const loadSources = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) {
@@ -976,7 +979,7 @@ export default function ChatPage() {
                   <div className="min-w-0">
                     <p>Suggested materials</p>
                     <span>
-                      I found {sourcePreview.materials.length} likely {sourcePreview.materials.length === 1 ? 'material' : 'materials'} · {sourcePreview.retrieval.count} relevant chunks
+                      I found {sourcePreview.materials.length} likely {sourcePreview.materials.length === 1 ? 'material' : 'materials'} · {sourcePreview.retrieval.count} {sourcePreviewChunkLabel}
                       {sourcePreview.materials.length > 0 ? ` · ${selectedPreviewLectureIds.length} selected` : ''}
                     </span>
                   </div>

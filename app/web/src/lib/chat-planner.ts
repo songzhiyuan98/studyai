@@ -18,6 +18,7 @@ export type ChatPlannerIntent =
   | 'casual_chat'
   | 'guided_learning'
   | 'retrieval_answer'
+  | 'assessment_generation'
   | 'fixed_action'
   | 'save_request'
   | 'reader_navigation'
@@ -31,6 +32,7 @@ export type ChatPlannerToolCall = {
 export type ChatTurnPlan = {
   intent: ChatPlannerIntent;
   requiresRetrieval: boolean;
+  retrievalBreadth: 'focused' | 'broad_lesson' | 'broad_assessment';
   teacherModeHint: boolean;
   requestedPage: number | null;
   requiresConfirmation: boolean;
@@ -47,6 +49,11 @@ function hasReaderNavigationIntent(message: string) {
 
 function hasLibraryOperationIntent(message: string) {
   return /\b(upload|rename|delete|move|folder|file|library|上传|重命名|删除|移动|文件夹|归档)\b/i.test(message);
+}
+
+function hasAssessmentIntent(message: string, mode: ChatMode) {
+  return mode === 'mini_quiz' && /\b(midterm|final|exam|mock|practice test|test)\b/i.test(message)
+    || /(期中|期末|考试|模拟|测试|卷子|试卷|114a)/i.test(message);
 }
 
 export function planChatTurn({
@@ -68,6 +75,11 @@ export function planChatTurn({
     hasExplicitScope,
   });
   const requestedPage = extractRequestedPageNumber(message);
+  const retrievalBreadth: ChatTurnPlan['retrievalBreadth'] = hasAssessmentIntent(message, mode)
+    ? 'broad_assessment'
+    : teacherModeHint && !requestedPage
+      ? 'broad_lesson'
+      : 'focused';
   const tools: ChatPlannerToolCall[] = [];
   let intent: ChatPlannerIntent = 'casual_chat';
   let requiresConfirmation = false;
@@ -83,6 +95,8 @@ export function planChatTurn({
   } else if (hasReaderNavigationIntent(message)) {
     intent = 'reader_navigation';
     tools.push({ name: 'reader.open', reason: 'The student is asking to inspect the cited source or original material.' });
+  } else if (retrievalBreadth === 'broad_assessment') {
+    intent = 'assessment_generation';
   } else if (mode !== 'free') {
     intent = 'fixed_action';
   } else if (teacherModeHint) {
@@ -97,7 +111,13 @@ export function planChatTurn({
     }
     tools.push({
       name: 'rag.retrieve',
-      reason: requestedPage ? `Retrieve exact page ${requestedPage} before semantic context.` : 'Retrieve grounded course context.',
+      reason: retrievalBreadth === 'broad_assessment'
+        ? 'Retrieve representative coverage across the selected course materials for assessment generation.'
+        : retrievalBreadth === 'broad_lesson'
+          ? 'Retrieve broad coverage across the selected lecture or topic for guided learning.'
+          : requestedPage
+          ? `Retrieve exact page ${requestedPage} before semantic context.`
+          : 'Retrieve grounded course context.',
     });
   }
 
@@ -106,6 +126,7 @@ export function planChatTurn({
   return {
     intent,
     requiresRetrieval,
+    retrievalBreadth,
     teacherModeHint,
     requestedPage,
     requiresConfirmation,

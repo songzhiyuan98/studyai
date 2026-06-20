@@ -7,6 +7,7 @@ import { formatSourceRef } from '@/lib/reader-format';
 import {
   compactContextText,
   mergeHybridContext,
+  retrieveBroadCoverageContext,
   retrieveContextForPageRequest,
   retrieveContextForQuery,
   type RetrievedContext,
@@ -368,6 +369,69 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (chatPlan.intent === 'reader_navigation') {
+      const recentAssistantMessages = await prisma.chatMessage.findMany({
+        where: {
+          sessionId: chatSession.id,
+          userId: session.user.id,
+          role: 'ASSISTANT',
+        },
+        select: {
+          sourceRefs: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 8,
+      });
+      const recentRefs = recentAssistantMessages.flatMap((assistantMessage) => (
+        parseChatSourceRefs(assistantMessage.sourceRefs)
+      ));
+      const requestedPageRef = chatPlan.requestedPage
+        ? recentRefs.find((sourceRef) => sourceRef.page === chatPlan.requestedPage)
+        : undefined;
+      const targetRef = requestedPageRef || recentRefs[0];
+      const readerResponseContent = targetRef
+        ? `I found the source reference${chatPlan.requestedPage ? ` for page ${chatPlan.requestedPage}` : ''}. Open it from the citation below.`
+        : 'I could not find a recent cited source to open yet. Ask me a source-grounded question first, then I can jump you to the original material.';
+      const sourceRefs = targetRef ? [targetRef] : [];
+      const retrievalTrace = {
+        strategy: 'tool_reader_open_v0',
+        count: sourceRefs.length,
+        scopedLectureCount: targetRef ? 1 : 0,
+        historyCount: recentHistory.length,
+        query: 'tool_call',
+        plan: chatPlan,
+        toolResult: targetRef ? 'reader_link_ready' : 'no_recent_source',
+      };
+
+      await prisma.chatMessage.create({
+        data: {
+          sessionId: chatSession.id,
+          userId: session.user.id,
+          role: 'ASSISTANT',
+          mode: parsed.data.mode,
+          title: targetRef ? 'Open source' : 'No source to open yet',
+          content: readerResponseContent,
+          sourceRefs,
+          retrieval: retrievalTrace,
+        },
+      });
+      await touchChatSession(chatSession.id);
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          message: {
+            sessionId: chatSession.id,
+            role: 'assistant',
+            title: targetRef ? 'Open source' : 'No source to open yet',
+            content: readerResponseContent,
+            sourceRefs,
+            retrieval: retrievalTrace,
+          },
+        },
+      });
+    }
+
     if (!shouldRetrieveSources) {
       const sourceRefs: never[] = [];
       const retrievalTrace = {
@@ -623,6 +687,16 @@ export async function POST(request: NextRequest) {
 
     let retrievalStrategy = 'lexical_page_aware_v0';
     let vectorResults: RetrievedContext[] = [];
+    const usesBroadCoverage = chatPlan.retrievalBreadth === 'broad_assessment'
+      || chatPlan.retrievalBreadth === 'broad_lesson';
+    const broadCoverageResults = usesBroadCoverage
+      ? retrieveBroadCoverageContext({
+        query: retrievalQuery,
+        candidateSegments,
+        perLecture: chatPlan.retrievalBreadth === 'broad_lesson' ? 6 : 4,
+        limit: chatPlan.retrievalBreadth === 'broad_lesson' ? 20 : 16,
+      })
+      : [];
     const pageResults = retrieveContextForPageRequest({
       query: retrievalQuery,
       candidateSegments,
@@ -634,7 +708,7 @@ export async function POST(request: NextRequest) {
       limit: 8,
     });
 
-    if (pageResults.length === 0) {
+    if (pageResults.length === 0 && broadCoverageResults.length === 0) {
       try {
         vectorResults = await retrieveVectorContext({
           query: retrievalQuery,
@@ -648,7 +722,12 @@ export async function POST(request: NextRequest) {
     }
 
     let retrieved: RetrievedContext[];
-    if (pageResults.length > 0) {
+    if (broadCoverageResults.length > 0) {
+      retrieved = broadCoverageResults;
+      retrievalStrategy = chatPlan.retrievalBreadth === 'broad_lesson'
+        ? 'broad_lesson_v0'
+        : 'broad_assessment_v0';
+    } else if (pageResults.length > 0) {
       retrieved = pageResults.slice(0, 6);
       retrievalStrategy = 'exact_page_v0';
     } else if (vectorResults.length > 0 && lexicalResults.length > 0) {
@@ -671,7 +750,10 @@ export async function POST(request: NextRequest) {
       reason: 'lexical' as const,
     }));
     const context = retrieved.length > 0 ? retrieved : fallbackSegments;
-    const contextText = compactContextText(context.map(({ segment }) => segment), 1000);
+    const contextText = compactContextText(
+      context.map(({ segment }) => segment),
+      usesBroadCoverage ? 3800 : 1000,
+    );
     const lectureMap = new Map(activeLectures.map((lecture) => [lecture.id, lecture]));
     const sourceRefs = context.map(({ segment, score, reason }) => {
       const lecture = lectureMap.get(segment.lectureId);

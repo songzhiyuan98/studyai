@@ -217,6 +217,7 @@ Current retrieval:
 - Merge vector and lexical results into a hybrid ranked context and preserve each source ref's retrieval reason.
 - When the user explicitly names a material/topic that matches a lecture title, retrieval and source preview first narrow to that lecture set. This keeps requests such as "teach me lambda" from drifting into unrelated Typeclass or Types material unless the model needs them as clearly labeled background.
 - When the user asks for a specific page, exact page retrieval should take priority over semantic retrieval inside the selected or inferred lecture scope.
+- Retrieval breadth is an explicit planner decision. Focused factual questions use top relevant chunks. Lesson, lecture, chapter, beginner, page-by-page, and exam-prep requests use broad coverage across the selected material so the assistant can teach or assess the whole scope instead of overfitting to a few chunks.
 - Fall back to lexical/page-aware retrieval when embeddings are unavailable or provider calls fail.
 
 Embedding retrieval constraints:

@@ -29,7 +29,7 @@ function bulletizeContext(contextText: string, limit = 4): string[] {
 }
 
 function isTeacherLikeRequest(message: string) {
-  return /(\bteach\b|\blearn\b|\breview\b|\bfrom scratch\b|\bbeginner\b|\bwalk me through\b|\beach page\b|带我|教我|学会|从头|小白|没接触过|每一页|逐页|详细讲|听你的安排)/i.test(message);
+  return /(\bteach\b|\blearn\b|\breview\b|\bfrom scratch\b|\bbeginner\b|\bwalk me through\b|\beach page\b|学习|复习|带我|教我|学会|从头|小白|没接触过|每一页|逐页|详细讲|讲讲|听你的安排)/i.test(message);
 }
 
 export function buildCasualChatAnswer({ message }: { message: string }): string {
