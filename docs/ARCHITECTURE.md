@@ -84,6 +84,10 @@ User action
 
 ```text
 User chat message
+  -> Chat planner / orchestrator
+     - infer intent: casual chat, teacher mode, source preview, retrieval answer, save, quiz, cheat sheet, reader navigation
+     - choose internal tools/APIs to call before generation
+     - record a tool trace for debugging and future agent evaluation
   -> Conversation state
      - latest turns are preserved for follow-up references
      - older turns are compacted when context grows long
@@ -121,6 +125,20 @@ User chat message
 ```
 
 The chat response should stream token-by-token for the user, while the backend preserves the full trace of retrieved source references. This gives the product the familiar ChatGPT feeling without losing the source-grounded study workflow.
+
+### Chat Planner / Internal Tools
+
+StudyFlow should evolve from a single LLM call into a planner-led chat loop. The planner is responsible for talking with the user, inferring intent, choosing source scope, and calling internal StudyFlow APIs before generation. This gives the product MCP-like capability without exposing the whole app as external tools too early.
+
+Initial internal tool surface:
+
+- `source.preview`: recommend likely folders, lectures, pages, or chunks for the current request.
+- `rag.retrieve`: retrieve grounded context with user, folder, lecture, and page filters.
+- `artifact.save`: save useful assistant outputs into Saved when the user asks or confirms.
+- `library.manage`: future upload, move, rename, delete, and AI-assisted filing operations.
+- `reader.open`: future deep link into a cited source/page/segment.
+
+The MVP can implement this planner deterministically with prompt-level model judgment and typed helper functions. Future versions can split it into specialized agents: planner, retrieval specialist, teacher, artifact curator, and library operator. The interface should remain tool-call shaped so this migration is incremental.
 
 StudyFlow Chat should be source-aware, not source-imprisoned. Retrieved RAG context helps the model understand the student's course materials, terminology, and citation targets; it is not a hard ceiling on the model's tutoring ability. The assistant should answer naturally like ChatGPT, using general model knowledge to explain concepts, provide examples, connect ideas, and fill in basic background when helpful. Source markers such as `[S1]` are reserved for specific source-supported claims, and the UI keeps a citation trace attached to the answer. The assistant must not fabricate citations or imply that general knowledge came from the student's files.
 
@@ -198,6 +216,7 @@ Current retrieval:
 - Retrieve lexical keyword matches from the same user-scoped candidate set.
 - Merge vector and lexical results into a hybrid ranked context and preserve each source ref's retrieval reason.
 - When the user explicitly names a material/topic that matches a lecture title, retrieval and source preview first narrow to that lecture set. This keeps requests such as "teach me lambda" from drifting into unrelated Typeclass or Types material unless the model needs them as clearly labeled background.
+- When the user asks for a specific page, exact page retrieval should take priority over semantic retrieval inside the selected or inferred lecture scope.
 - Fall back to lexical/page-aware retrieval when embeddings are unavailable or provider calls fail.
 
 Embedding retrieval constraints:

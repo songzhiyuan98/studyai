@@ -7,6 +7,7 @@ import { formatSourceRef } from '@/lib/reader-format';
 import {
   compactContextText,
   mergeHybridContext,
+  retrieveContextForPageRequest,
   retrieveContextForQuery,
   type RetrievedContext,
 } from '@/lib/rag-context';
@@ -540,37 +541,46 @@ export async function POST(request: NextRequest) {
 
     let retrievalStrategy = 'lexical_page_aware_v0';
     let vectorResults: RetrievedContext[] = [];
+    const pageResults = retrieveContextForPageRequest({
+      query: retrievalQuery,
+      candidateSegments,
+      limit: 8,
+    });
     const lexicalResults = retrieveContextForQuery({
       query: retrievalQuery,
       candidateSegments,
       limit: 8,
     });
 
-    try {
-      vectorResults = await retrieveVectorContext({
-        query: retrievalQuery,
-        userId: session.user.id,
-        lectureIds: retrievalLectureIds,
-        limit: 8,
-      });
-    } catch (vectorError) {
-      console.error('Vector retrieval failed, falling back to lexical:', vectorError);
+    if (pageResults.length === 0) {
+      try {
+        vectorResults = await retrieveVectorContext({
+          query: retrievalQuery,
+          userId: session.user.id,
+          lectureIds: retrievalLectureIds,
+          limit: 8,
+        });
+      } catch (vectorError) {
+        console.error('Vector retrieval failed, falling back to lexical:', vectorError);
+      }
     }
 
-    const retrieved = vectorResults.length > 0 && lexicalResults.length > 0
-      ? mergeHybridContext({
+    let retrieved: RetrievedContext[];
+    if (pageResults.length > 0) {
+      retrieved = pageResults.slice(0, 6);
+      retrievalStrategy = 'exact_page_v0';
+    } else if (vectorResults.length > 0 && lexicalResults.length > 0) {
+      retrieved = mergeHybridContext({
         vectorResults,
         lexicalResults,
         limit: 6,
-      })
-      : vectorResults.length > 0
-        ? vectorResults.slice(0, 6)
-        : lexicalResults.slice(0, 6);
-
-    if (vectorResults.length > 0 && lexicalResults.length > 0) {
+      });
       retrievalStrategy = 'hybrid_vector_lexical_v0';
     } else if (vectorResults.length > 0) {
+      retrieved = vectorResults.slice(0, 6);
       retrievalStrategy = 'pgvector_embedding_v0';
+    } else {
+      retrieved = lexicalResults.slice(0, 6);
     }
 
     const fallbackSegments: RetrievedContext[] = candidateSegments.slice(0, 3).map((segment) => ({

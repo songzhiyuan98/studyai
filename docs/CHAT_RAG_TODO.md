@@ -20,6 +20,7 @@ The chat should feel conversational, but the architecture must remain citation-f
 
 ```text
 student asks what to study
+  -> planner infers intent and chooses internal tools
   -> resolve study scope from library
   -> recommend and confirm likely sources when needed
   -> retrieve grounded source context
@@ -41,6 +42,7 @@ student asks what to study
 - Chat source preview is implemented. Manual "Check sources" previews likely materials, and auto-scope sends now pause for confirmation when multiple candidate materials are found.
 - Teacher Mode prompt guidance is implemented as model-decided behavior with a deterministic hint/fallback. Beginner, from-scratch, and page-by-page learning requests should now produce fuller teacher-style explanations with examples.
 - Explicit lecture-title topic narrowing is implemented for Chat and source preview. Named topics such as "lambda" prefer the matching material before broader hybrid retrieval.
+- Exact page retrieval is implemented for Chat and source preview. Requests like "page 9" or "第九页" prioritize that page inside the selected or inferred source scope.
 
 ## Milestone 1: Chat Product Surface
 
@@ -116,6 +118,20 @@ student asks what to study
   - lexical fallback when vectors are missing or provider calls fail
   - page/slide adjacency expansion
   - deduplication before context packing
+
+## Milestone 4.5: Chat Planner and Internal Tools
+
+- Add a lightweight planner before generation. It should infer whether the user needs casual chat, Teacher Mode, source preview, retrieval, save, quiz, cheat sheet, or library/file management.
+- Represent internal product capabilities as typed tools:
+  - `source.preview`
+  - `rag.retrieve`
+  - `artifact.save`
+  - `library.manage`
+  - `reader.open`
+- Store planner/tool traces on chat messages or sessions so failures can be debugged and evaluated.
+- Let the model decide Teacher Mode intent, with deterministic hints as fallback.
+- Let the planner ask one concise confirmation question before calling tools that change state, such as save, delete, upload, move, or AI-assisted filing.
+- Future upgrade: split planner, retrieval specialist, teacher, artifact curator, and library operator into separate agents while keeping the same internal tool contracts.
 
 ## Milestone 5: Streaming Generation
 

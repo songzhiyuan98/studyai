@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   compactContextText,
+  extractRequestedPageNumber,
   mergeHybridContext,
+  retrieveContextForPageRequest,
   retrieveContextForQuery,
   retrieveRelatedContext,
   tokenizeForRetrieval,
@@ -97,6 +99,28 @@ test('retrieves context directly from a user query', () => {
   assert.equal(results[0].segment.id, 'seg-2');
   assert.equal(results[0].reason, 'lexical');
   assert.ok(results.every((result) => result.score > 0));
+});
+
+test('extracts requested page numbers from English and Chinese queries', () => {
+  assert.equal(extractRequestedPageNumber('explain page 9 in detail'), 9);
+  assert.equal(extractRequestedPageNumber('look at p. 12'), 12);
+  assert.equal(extractRequestedPageNumber('详细给我讲讲第九页'), 9);
+  assert.equal(extractRequestedPageNumber('第21页讲什么'), 21);
+  assert.equal(extractRequestedPageNumber('teach lambda syntax'), null);
+});
+
+test('retrieves exact page context before lexical fallback', () => {
+  const results = retrieveContextForPageRequest({
+    query: '详细给我讲讲第九页',
+    candidateSegments: [
+      { id: 'p10', lectureId: 'lambda', text: 'page ten', page: 10, slide: null, charStart: 0, charEnd: 8 },
+      { id: 'p9b', lectureId: 'lambda', text: 'second page nine chunk', page: 9, slide: null, charStart: 20, charEnd: 42 },
+      { id: 'p9a', lectureId: 'lambda', text: 'first page nine chunk', page: 9, slide: null, charStart: 0, charEnd: 21 },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.segment.id), ['p9a', 'p9b']);
+  assert.equal(results[0].reason, 'nearby');
 });
 
 test('merges vector and lexical retrieval into hybrid ranked context', () => {

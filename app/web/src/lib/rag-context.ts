@@ -102,6 +102,75 @@ export function retrieveContextForQuery({
     .slice(0, limit);
 }
 
+const CHINESE_DIGITS: Record<string, number> = {
+  零: 0,
+  一: 1,
+  二: 2,
+  两: 2,
+  三: 3,
+  四: 4,
+  五: 5,
+  六: 6,
+  七: 7,
+  八: 8,
+  九: 9,
+};
+
+function parseChinesePageNumber(value: string) {
+  if (value === '十') return 10;
+
+  if (value.includes('十')) {
+    const [tensRaw, onesRaw] = value.split('十');
+    const tens = tensRaw ? CHINESE_DIGITS[tensRaw] : 1;
+    const ones = onesRaw ? CHINESE_DIGITS[onesRaw] : 0;
+
+    if (tens === undefined || ones === undefined) return null;
+    return tens * 10 + ones;
+  }
+
+  return CHINESE_DIGITS[value] ?? null;
+}
+
+export function extractRequestedPageNumber(query: string) {
+  const numericMatch = query.match(/\b(?:page|p\.?)\s*(\d{1,4})\b/i)
+    || query.match(/第\s*(\d{1,4})\s*页/);
+  if (numericMatch) {
+    return Number(numericMatch[1]);
+  }
+
+  const chineseMatch = query.match(/第\s*([零一二两三四五六七八九十]{1,4})\s*页/);
+  if (chineseMatch) {
+    return parseChinesePageNumber(chineseMatch[1]);
+  }
+
+  return null;
+}
+
+export function retrieveContextForPageRequest({
+  query,
+  candidateSegments,
+  limit = 6,
+}: {
+  query: string;
+  candidateSegments: RetrievalSegment[];
+  limit?: number;
+}): RetrievedContext[] {
+  const requestedPage = extractRequestedPageNumber(query);
+  if (!requestedPage) {
+    return [];
+  }
+
+  return candidateSegments
+    .filter((segment) => segment.page === requestedPage)
+    .sort((first, second) => (first.charStart || 0) - (second.charStart || 0))
+    .slice(0, limit)
+    .map((segment, index) => ({
+      segment,
+      score: 1 - index * 0.01,
+      reason: 'nearby' as const,
+    }));
+}
+
 function nearbyScore(selectedSegments: RetrievalSegment[], segment: RetrievalSegment): number {
   const samePage = selectedSegments.some((selected) => (
     selected.page !== null
