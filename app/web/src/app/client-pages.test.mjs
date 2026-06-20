@@ -197,6 +197,13 @@ test('chat page surfaces safe actions for library operation replies', () => {
 
   assert.match(source, /function isLibraryActionMessage/);
   assert.match(source, /tool_library_manage_v0/);
+  assert.match(source, /type LibraryOperationDraft/);
+  assert.match(source, /function getLibraryOperationDraft/);
+  assert.match(source, /operationDraft/);
+  assert.match(source, /Library draft/);
+  assert.match(source, /Action/);
+  assert.match(source, /Target/);
+  assert.match(source, /Destination/);
   assert.match(source, /href="\/library"/);
   assert.match(source, /Open Library/);
 });

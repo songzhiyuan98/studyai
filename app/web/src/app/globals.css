@@ -1086,6 +1086,22 @@
     @apply text-xs font-medium text-[#737373] underline decoration-[#737373]/20 underline-offset-4 transition-colors hover:text-[#000000] hover:decoration-[#000000]/50 disabled:text-[#a3a3a3] disabled:no-underline;
   }
 
+  .chat-tool-draft {
+    @apply mt-4 w-full max-w-md rounded-xl border border-[#e5e5e5] bg-white px-4 py-3 text-xs text-[#737373];
+  }
+
+  .chat-tool-draft p {
+    @apply mb-2 font-medium text-[#000000];
+  }
+
+  .chat-tool-draft div {
+    @apply flex items-center justify-between gap-4 border-t border-[#f0f0f0] py-2 first:border-t-0;
+  }
+
+  .chat-tool-draft strong {
+    @apply max-w-56 truncate text-right font-medium text-[#171717];
+  }
+
   .chat-typing-cursor {
     @apply ml-0.5 inline-block h-4 w-px translate-y-0.5 bg-[#000000];
     animation: landing-cursor-blink 1s steps(2, start) infinite;

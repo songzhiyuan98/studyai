@@ -27,6 +27,13 @@ type SourceRef = {
   reason?: 'lexical' | 'nearby' | 'vector' | 'hybrid';
 };
 
+type LibraryOperationDraft = {
+  action: 'upload' | 'delete' | 'rename' | 'move' | 'organize';
+  targetLabel: string;
+  destinationLabel?: string;
+  requiresConfirmation: true;
+};
+
 type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
@@ -46,6 +53,8 @@ type ChatMessage = {
       provider: string;
       model: string;
     };
+    operationDraft?: LibraryOperationDraft;
+    targetLabel?: string;
   };
   mode?: ActionMode;
   savedId?: string;
@@ -297,6 +306,10 @@ function shouldShowMessageTitle(chatMessage: ChatMessage) {
 
 function isLibraryActionMessage(chatMessage: ChatMessage) {
   return chatMessage.retrieval?.strategy === 'tool_library_manage_v0';
+}
+
+function getLibraryOperationDraft(chatMessage: ChatMessage) {
+  return chatMessage.retrieval?.operationDraft;
 }
 
 function isArtifactSaveMessage(chatMessage: ChatMessage) {
@@ -973,11 +986,30 @@ export default function ChatPage() {
                 ) : null}
 
                 {chatMessage.role === 'assistant' && !chatMessage.isStreaming && isLibraryActionMessage(chatMessage) ? (
-                  <div className="chat-message-actions">
-                    <Link href="/library" className="chat-message-action">
-                      Open Library
-                    </Link>
-                  </div>
+                  <>
+                    {getLibraryOperationDraft(chatMessage) ? (
+                      <div className="chat-tool-draft">
+                        <p>Library draft</p>
+                        <div>
+                          <span>Action</span>
+                          <strong>{getLibraryOperationDraft(chatMessage)?.action}</strong>
+                        </div>
+                        <div>
+                          <span>Target</span>
+                          <strong>{getLibraryOperationDraft(chatMessage)?.targetLabel}</strong>
+                        </div>
+                        <div>
+                          <span>Destination</span>
+                          <strong>{getLibraryOperationDraft(chatMessage)?.destinationLabel || 'Not specified'}</strong>
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className="chat-message-actions">
+                      <Link href="/library" className="chat-message-action">
+                        Open Library
+                      </Link>
+                    </div>
+                  </>
                 ) : null}
               </div>
             </div>
