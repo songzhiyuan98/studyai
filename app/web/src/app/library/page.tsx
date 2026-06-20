@@ -98,21 +98,6 @@ export default function LibraryPage() {
     loadLibrary();
   }, [loadLibrary]);
 
-  useEffect(() => {
-    if (!libraryAction) return;
-
-    if (libraryAction === 'upload') {
-      setNewItemMode('file');
-      setShowNewFolder(true);
-      return;
-    }
-
-    if (libraryTarget) {
-      setSearchQuery(libraryTarget);
-      setViewMode('list');
-    }
-  }, [libraryAction, libraryTarget]);
-
   const libraryItems = useMemo(
     () => lectures.map(mapLectureToLibraryItem),
     [lectures],
@@ -148,6 +133,15 @@ export default function LibraryPage() {
     () => activeFolder ? visibleLibraryItems(libraryItems, activeFolder.id, searchQuery) : [],
     [activeFolder, libraryItems, searchQuery],
   );
+  const normalizedLibraryTarget = libraryTarget?.trim().toLowerCase() || '';
+  const chatIntentMatchedDocuments = useMemo(() => {
+    if (!normalizedLibraryTarget) return [];
+
+    return libraryItems.filter((document) => (
+      document.title.toLowerCase().includes(normalizedLibraryTarget)
+      || document.originalName.toLowerCase().includes(normalizedLibraryTarget)
+    ));
+  }, [libraryItems, normalizedLibraryTarget]);
   const targetFolderId = activeFolder?.id;
   const visibleLectureIds = useMemo(() => visibleItems.map((item) => item.id), [visibleItems]);
   const selectedVisibleCount = selectedLectureIds.filter((id) => visibleLectureIds.includes(id)).length;
@@ -156,6 +150,30 @@ export default function LibraryPage() {
   useEffect(() => {
     setSelectedLectureIds((current) => current.filter((id) => visibleLectureIds.includes(id)));
   }, [visibleLectureIds]);
+
+  useEffect(() => {
+    if (!libraryAction) return;
+
+    if (libraryAction === 'upload') {
+      setNewItemMode('file');
+      setShowNewFolder(true);
+      return;
+    }
+
+    if (libraryTarget) {
+      setSearchQuery(libraryTarget);
+      setViewMode('list');
+    }
+  }, [libraryAction, libraryTarget]);
+
+  useEffect(() => {
+    if (libraryAction !== 'delete' || !libraryTarget || loading) return;
+    if (chatIntentMatchedDocuments.length !== 1) return;
+
+    setSelectedFolder(chatIntentMatchedDocuments[0].folderId || 'root');
+    setSelectedLectureIds([chatIntentMatchedDocuments[0].id]);
+    setShowBulkDelete(true);
+  }, [chatIntentMatchedDocuments, libraryAction, libraryTarget, loading]);
 
   useEffect(() => {
     if (!hasIndexingSources) return;
@@ -499,7 +517,9 @@ export default function LibraryPage() {
               <div>
                 <p>Chat requested</p>
                 <span>
-                  {libraryAction}
+                  {libraryAction === 'delete' && chatIntentMatchedDocuments.length === 1
+                    ? 'Delete is ready for review'
+                    : libraryAction}
                   {libraryTarget ? ` · ${libraryTarget}` : ''}
                   {libraryDestination ? ` -> ${libraryDestination}` : ''}
                 </span>

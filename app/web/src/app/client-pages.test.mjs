@@ -251,6 +251,19 @@ test('library page can surface chat requested operation intent from URL', () => 
   assert.match(source, /library-intent-banner/);
 });
 
+test('library page can prepare confirmation for chat requested deletes', () => {
+  const source = readFileSync(resolve(root, 'src/app/library/page.tsx'), 'utf8');
+
+  assert.match(source, /const chatIntentMatchedDocuments = useMemo/);
+  assert.match(source, /libraryAction === 'delete'/);
+  assert.match(source, /normalizedLibraryTarget/);
+  assert.match(source, /document\.title\.toLowerCase\(\)\.includes\(normalizedLibraryTarget\)/);
+  assert.match(source, /document\.originalName\.toLowerCase\(\)\.includes\(normalizedLibraryTarget\)/);
+  assert.match(source, /setSelectedLectureIds\(\[chatIntentMatchedDocuments\[0\]\.id\]\)/);
+  assert.match(source, /setShowBulkDelete\(true\)/);
+  assert.match(source, /Delete is ready for review/);
+});
+
 test('chat page surfaces saved-output tool replies without resaving them', () => {
   const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
 
