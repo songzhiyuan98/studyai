@@ -166,6 +166,10 @@ export async function POST(request: NextRequest) {
       });
     const explicitScope = titleScope || libraryScope;
     const activeLectures = explicitScope.lectures;
+    const lectureLabels = Object.fromEntries(activeLectures.map((lecture) => [
+      lecture.id,
+      lecture.title || lecture.originalName || 'Source',
+    ]));
     const retrievalLectureIds = explicitScope.lectureIds.length > 0
       ? explicitScope.lectureIds
       : scopedLectureIds;
@@ -254,6 +258,7 @@ export async function POST(request: NextRequest) {
       const lecturePack = buildLecturePackContext({
         candidateSegments,
         maxChars: 6000,
+        lectureLabels,
       });
       retrieved = lecturePack.segments.map((segment, index) => ({
         segment,

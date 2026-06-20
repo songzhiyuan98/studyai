@@ -36,12 +36,16 @@ test('packs lecture context in source order with page markers', () => {
   const pack = buildLecturePackContext({
     candidateSegments: segments,
     maxChars: 1000,
+    lectureLabels: {
+      'lecture-a': 'Lambda lecture',
+      'lecture-b': 'Typeclasses lecture',
+    },
   });
 
   assert.deepEqual(pack.segments.map((segment) => segment.id), ['s1', 's2', 's3']);
-  assert.match(pack.contextText, /\[lecture-a · page 1\]\nPage one defines the core idea\./);
-  assert.match(pack.contextText, /\[lecture-a · page 2\]\nPage two introduces examples\./);
-  assert.match(pack.contextText, /\[lecture-b · page 1\]\nSecond lecture first page\./);
+  assert.match(pack.contextText, /\[Lambda lecture · page 1\]\nPage one defines the core idea\./);
+  assert.match(pack.contextText, /\[Lambda lecture · page 2\]\nPage two introduces examples\./);
+  assert.match(pack.contextText, /\[Typeclasses lecture · page 1\]\nSecond lecture first page\./);
 });
 
 test('keeps whole segments while respecting a context budget', () => {
