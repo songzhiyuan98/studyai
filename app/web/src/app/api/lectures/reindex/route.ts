@@ -10,6 +10,15 @@ type MissingEmbeddingRow = {
   text: string;
 };
 
+type CountRow = {
+  count: bigint | number;
+};
+
+function readCount(rows: CountRow[]) {
+  const value = rows[0]?.count || 0;
+  return typeof value === 'bigint' ? Number(value) : Number(value);
+}
+
 export async function POST() {
   try {
     const session = await getServerSession(authOptions);
@@ -28,6 +37,15 @@ export async function POST() {
       );
     }
 
+    const missingCountRows = await prisma.$queryRaw<CountRow[]>`
+      SELECT COUNT(*)::bigint as count
+      FROM segments s
+      JOIN lectures l ON l.id = s.lecture_id
+      WHERE l.user_id = ${session.user.id}
+        AND l.status = 'PROCESSED'
+        AND s.embedding IS NULL
+    `;
+    const totalMissingSegmentCount = readCount(missingCountRows);
     const missingSegments = await prisma.$queryRaw<MissingEmbeddingRow[]>`
       SELECT s.id, s.text
       FROM segments s
@@ -45,12 +63,21 @@ export async function POST() {
         text: segment.text,
       })),
     );
+    const remainingCountRows = await prisma.$queryRaw<CountRow[]>`
+      SELECT COUNT(*)::bigint as count
+      FROM segments s
+      JOIN lectures l ON l.id = s.lecture_id
+      WHERE l.user_id = ${session.user.id}
+        AND l.status = 'PROCESSED'
+        AND s.embedding IS NULL
+    `;
 
     return NextResponse.json({
       success: true,
       data: {
         ...result,
-        remainingSegmentCount: Math.max(0, missingSegments.length - result.embeddedSegmentCount),
+        totalMissingSegmentCount,
+        remainingSegmentCount: readCount(remainingCountRows),
       },
     });
   } catch (error) {

@@ -76,6 +76,9 @@ test('lecture reindex API can backfill missing segment embeddings', () => {
   assert.match(source, /s\.embedding IS NULL/);
   assert.match(source, /backfillSegmentEmbeddings/);
   assert.match(source, /user_id = \$\{session\.user\.id\}/);
+  assert.match(source, /totalMissingSegmentCount/);
+  assert.match(source, /remainingSegmentCount: readCount\(remainingCountRows\)/);
+  assert.match(source, /COUNT\(\*\)::bigint as count/);
 });
 
 test('chat page can refresh ready library sources after uploads finish indexing', () => {
