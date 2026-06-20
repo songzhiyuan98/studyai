@@ -112,12 +112,12 @@ student asks what to study
 
 ## Milestone 5: Streaming Generation
 
-- Add streaming chat response API. Current Chat API can optionally call OpenAI chat completion when configured, then falls back to deterministic local generation when no real key is present.
+- Add streaming chat response API. Current Chat API returns server-sent events for Chat, can optionally stream OpenAI chat completion when configured, and falls back to deterministic local generation streamed in chunks when no real key is present or the provider fails.
 - Build prompts that include explicit source ids. Basic prompt packaging now includes `[S1]`-style source markers.
 - Support response modes from quick action pills. The current generation prompt receives the selected mode.
 - Require the model to answer only from retrieved context. The current prompt enforces source-grounded answering.
-- Save the final assistant answer after stream completion.
-- Show partial response in the UI while preserving the final citation trace.
+- Save the final assistant answer after stream completion. Current UI receives the final full message over the `done` event; persistent chat history is still future work.
+- Show partial response in the UI while preserving the final citation trace. Implemented for the active Chat page.
 
 ## Milestone 6: RAG Quality Upgrades
 

@@ -219,8 +219,8 @@ Target behavior:
 Current RAG status:
 
 - Active implementation: lexical/page-aware retrieval v0 for reader micro actions.
-- Active when configured: optional OpenAI embeddings, pgvector retrieval, OpenAI chat generation, and lexical/local-generation fallback.
-- Not active yet: reranking and true server-side streaming chat generation.
+- Active when configured: optional OpenAI embeddings, pgvector retrieval, OpenAI chat generation, server-sent event chat streaming, and lexical/local-generation fallback.
+- Not active yet: reranking and persistent chat-session storage.
 - Recommended embedding default: `text-embedding-3-small`, stored as 1536-dimensional vectors in `Segment.embedding`.
 
 ### Run Micro Action

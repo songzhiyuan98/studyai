@@ -6,13 +6,19 @@ import { authOptions } from '@/lib/auth';
 import { formatSourceRef } from '@/lib/reader-format';
 import { retrieveContextForQuery, compactContextText } from '@/lib/rag-context';
 import { buildChatAnswer, chatModeLabels } from '@/lib/chat-answer';
-import { generateGroundedChatAnswer } from '@/lib/chat-llm';
+import {
+  chunkTextForLocalStream,
+  generateGroundedChatAnswer,
+  getChatModelConfig,
+  streamGroundedChatAnswer,
+} from '@/lib/chat-llm';
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 
 const chatSchema = z.object({
   message: z.string().min(1).max(2000),
   mode: z.enum(['free', 'explain', 'summarize', 'key_terms', 'mini_quiz', 'cheat_sheet']).default('free'),
   lectureIds: z.array(z.string().min(1)).max(20).optional(),
+  stream: z.boolean().optional(),
 });
 
 type VectorSearchRow = {
@@ -25,6 +31,12 @@ type VectorSearchRow = {
   char_end: number | null;
   score: number;
 };
+
+const streamEncoder = new TextEncoder();
+
+function encodeSseEvent(event: string, data: unknown) {
+  return streamEncoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
 
 async function retrieveVectorContext({
   query,
@@ -276,6 +288,96 @@ export async function POST(request: NextRequest) {
         reason,
       };
     });
+    const fallbackAnswerContent = buildChatAnswer({
+      mode: parsed.data.mode,
+      message: parsed.data.message,
+      contextText,
+    });
+    const generationInput = {
+      mode: parsed.data.mode,
+      message: parsed.data.message,
+      contextText,
+      sources: context.map(({ segment }, index) => ({
+        label: sourceRefs[index]?.label || formatSourceRef(segment),
+        text: segment.text,
+      })),
+    };
+    const retrievalTrace = {
+      strategy: retrievalStrategy,
+      count: context.length,
+      scopedLectureCount: lectures.length,
+    };
+
+    if (parsed.data.stream) {
+      const stream = new ReadableStream({
+        async start(controller) {
+          let fullContent = '';
+          let generation = {
+            provider: 'local_fallback',
+            model: 'deterministic',
+          };
+
+          controller.enqueue(encodeSseEvent('metadata', {
+            message: {
+              role: 'assistant',
+              title: chatModeLabels[parsed.data.mode],
+              sourceRefs,
+              retrieval: retrievalTrace,
+            },
+          }));
+
+          try {
+            let streamedFromModel = false;
+
+            for await (const delta of streamGroundedChatAnswer(generationInput)) {
+              streamedFromModel = true;
+              fullContent += delta;
+              controller.enqueue(encodeSseEvent('delta', { delta }));
+            }
+
+            if (streamedFromModel) {
+              generation = {
+                provider: 'openai_chat',
+                model: getChatModelConfig().model,
+              };
+            }
+          } catch (generationError) {
+            console.error('Streaming LLM generation failed, falling back to local chat answer:', generationError);
+            fullContent = '';
+          }
+
+          if (!fullContent) {
+            for (const delta of chunkTextForLocalStream(fallbackAnswerContent)) {
+              fullContent += delta;
+              controller.enqueue(encodeSseEvent('delta', { delta }));
+            }
+          }
+
+          controller.enqueue(encodeSseEvent('done', {
+            message: {
+              role: 'assistant',
+              title: chatModeLabels[parsed.data.mode],
+              content: fullContent,
+              sourceRefs,
+              retrieval: {
+                ...retrievalTrace,
+                generation,
+              },
+            },
+          }));
+          controller.close();
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+          Connection: 'keep-alive',
+        },
+      });
+    }
+
     let answerContent = buildChatAnswer({
       mode: parsed.data.mode,
       message: parsed.data.message,
@@ -288,13 +390,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const generatedAnswer = await generateGroundedChatAnswer({
-        mode: parsed.data.mode,
-        message: parsed.data.message,
-        contextText,
-        sources: context.map(({ segment }, index) => ({
-          label: sourceRefs[index]?.label || formatSourceRef(segment),
-          text: segment.text,
-        })),
+        ...generationInput,
       });
       if (generatedAnswer) {
         answerContent = generatedAnswer.content;

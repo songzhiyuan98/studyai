@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildGroundedPrompt,
+  chunkTextForLocalStream,
   generateGroundedChatAnswer,
   getChatModelConfig,
   isChatModelConfigured,
+  parseChatCompletionStreamLine,
 } from './chat-llm.ts';
 
 const originalApiKey = process.env.OPENAI_API_KEY;
@@ -80,4 +82,14 @@ test('skips remote generation when chat model is not configured', async () => {
 
   assert.equal(answer, null);
   restoreEnv();
+});
+
+test('parses OpenAI chat completion stream deltas', () => {
+  const line = 'data: {"choices":[{"delta":{"content":"hello"}}]}';
+  assert.equal(parseChatCompletionStreamLine(line), 'hello');
+  assert.equal(parseChatCompletionStreamLine('data: [DONE]'), null);
+});
+
+test('chunks local fallback text for server-side streaming', () => {
+  assert.deepEqual(chunkTextForLocalStream('abcdef', 2), ['ab', 'cd', 'ef']);
 });

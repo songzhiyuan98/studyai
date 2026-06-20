@@ -52,3 +52,10 @@ test('chat page can refresh ready library sources after uploads finish indexing'
   assert.match(source, /visibilitychange/);
   assert.match(source, /hasHydratedSourcesRef/);
 });
+
+test('chat page requests server-side streaming responses', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+  assert.match(source, /Accept: 'text\/event-stream'/);
+  assert.match(source, /stream: true/);
+  assert.match(source, /parseChatStreamEvent/);
+});

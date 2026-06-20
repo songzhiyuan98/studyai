@@ -44,6 +44,11 @@ type ChatMessage = {
   isStreaming?: boolean;
 };
 
+type ChatStreamEvent =
+  | { event: 'metadata'; data: { message: Partial<ChatMessage> } }
+  | { event: 'delta'; data: { delta: string } }
+  | { event: 'done'; data: { message: ChatMessage } };
+
 const actionModes: Array<{ id: ActionMode; label: string; hint: string }> = [
   { id: 'free', label: 'Ask freely', hint: 'Natural study chat' },
   { id: 'explain', label: 'Explain', hint: 'Clarify hard parts' },
@@ -62,9 +67,23 @@ function formatAssistantContent(content: string) {
   ));
 }
 
+function parseChatStreamEvent(rawEvent: string): ChatStreamEvent | null {
+  const lines = rawEvent.split('\n').filter(Boolean);
+  const eventLine = lines.find((line) => line.startsWith('event:'));
+  const dataLine = lines.find((line) => line.startsWith('data:'));
+
+  if (!eventLine || !dataLine) {
+    return null;
+  }
+
+  return {
+    event: eventLine.replace(/^event:\s*/, '') as ChatStreamEvent['event'],
+    data: JSON.parse(dataLine.replace(/^data:\s*/, '')),
+  } as ChatStreamEvent;
+}
+
 export default function ChatPage() {
   const chatScrollRef = useRef<HTMLElement>(null);
-  const typingTimersRef = useRef<number[]>([]);
   const hasHydratedSourcesRef = useRef(false);
   const mountedRef = useRef(true);
   const [mode, setMode] = useState<ActionMode>('free');
@@ -162,10 +181,6 @@ export default function ChatPage() {
     });
   }, [messages, sending]);
 
-  useEffect(() => () => {
-    typingTimersRef.current.forEach((timer) => window.clearInterval(timer));
-  }, []);
-
   const toggleSource = (sourceId: string) => {
     setConfirmedSources((current) => (
       current.includes(sourceId)
@@ -206,53 +221,128 @@ export default function ChatPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Accept: 'application/json',
+          Accept: 'text/event-stream',
         },
         body: JSON.stringify({
           message: trimmedMessage,
           mode,
           lectureIds: confirmedSources,
+          stream: true,
         }),
       });
-      const payload = await response.json();
 
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.error || 'Failed to generate a grounded response.');
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || 'Failed to generate a grounded response.');
       }
 
       const assistantId = `assistant-${Date.now()}`;
-      const fullContent = payload.data.message.content as string;
 
-      setMessages((current) => [
-        ...current,
-        {
-          ...payload.data.message,
-          id: assistantId,
-          content: '',
-          mode,
-          isStreaming: true,
-        },
-      ]);
+      if (!response.body || !response.headers.get('content-type')?.includes('text/event-stream')) {
+        const payload = await response.json();
 
-      let visibleChars = 0;
-      const timer = window.setInterval(() => {
-        visibleChars = Math.min(fullContent.length, visibleChars + 8);
-        setMessages((current) => current.map((item) => (
-          item.id === assistantId
-            ? {
-                ...item,
-                content: fullContent.slice(0, visibleChars),
-                isStreaming: visibleChars < fullContent.length,
-              }
-            : item
-        )));
-
-        if (visibleChars >= fullContent.length) {
-          window.clearInterval(timer);
-          typingTimersRef.current = typingTimersRef.current.filter((item) => item !== timer);
+        if (!payload.success) {
+          throw new Error(payload.error || 'Failed to generate a grounded response.');
         }
-      }, 20);
-      typingTimersRef.current.push(timer);
+
+        setMessages((current) => [
+          ...current,
+          {
+            ...payload.data.message,
+            id: assistantId,
+            mode,
+            isStreaming: false,
+          },
+        ]);
+        return;
+      }
+
+      let assistantStarted = false;
+      let streamBuffer = '';
+      const decoder = new TextDecoder();
+      const reader = response.body.getReader();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        streamBuffer += decoder.decode(value, { stream: true });
+        const rawEvents = streamBuffer.split('\n\n');
+        streamBuffer = rawEvents.pop() || '';
+
+        for (const rawEvent of rawEvents) {
+          const streamEvent = parseChatStreamEvent(rawEvent);
+          if (!streamEvent) continue;
+
+          if (streamEvent.event === 'metadata') {
+            assistantStarted = true;
+            setMessages((current) => [
+              ...current,
+              {
+                id: assistantId,
+                role: 'assistant',
+                title: streamEvent.data.message.title,
+                content: '',
+                sourceRefs: streamEvent.data.message.sourceRefs,
+                retrieval: streamEvent.data.message.retrieval,
+                mode,
+                isStreaming: true,
+              },
+            ]);
+          }
+
+          if (streamEvent.event === 'delta') {
+            if (!assistantStarted) {
+              assistantStarted = true;
+              setMessages((current) => [
+                ...current,
+                {
+                  id: assistantId,
+                  role: 'assistant',
+                  content: '',
+                  mode,
+                  isStreaming: true,
+                },
+              ]);
+            }
+
+            setMessages((current) => current.map((item) => (
+              item.id === assistantId
+                ? { ...item, content: `${item.content}${streamEvent.data.delta}` }
+                : item
+            )));
+          }
+
+          if (streamEvent.event === 'done') {
+            setMessages((current) => current.map((item) => (
+              item.id === assistantId
+                ? {
+                    ...streamEvent.data.message,
+                    id: assistantId,
+                    mode,
+                    isStreaming: false,
+                  }
+                : item
+            )));
+          }
+        }
+      }
+
+      if (streamBuffer.trim()) {
+        const streamEvent = parseChatStreamEvent(streamBuffer);
+        if (streamEvent?.event === 'done') {
+          setMessages((current) => current.map((item) => (
+            item.id === assistantId
+              ? {
+                  ...streamEvent.data.message,
+                  id: assistantId,
+                  mode,
+                  isStreaming: false,
+                }
+              : item
+          )));
+        }
+      }
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : 'Failed to generate a grounded response.');
       setMessages((current) => [
