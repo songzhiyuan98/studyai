@@ -76,6 +76,8 @@ export default function LibraryPage() {
   const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
   const [moveFolderId, setMoveFolderId] = useState('');
   const [moving, setMoving] = useState(false);
+  const [folderDeleteTarget, setFolderDeleteTarget] = useState<Folder | null>(null);
+  const [deletingFolder, setDeletingFolder] = useState(false);
   const [reindexingVectors, setReindexingVectors] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -320,23 +322,37 @@ export default function LibraryPage() {
     });
   };
 
-  const deleteFolder = async (folder: Folder) => {
-    if (!window.confirm(`Delete empty collection "${folder.name}"?`)) return;
+  const confirmDeleteFolder = async () => {
+    if (!folderDeleteTarget || deletingFolder) return;
 
-    const response = await fetch(`/api/folders/${folder.id}`, {
-      method: 'DELETE',
-    });
-    const result = await response.json();
+    setDeletingFolder(true);
+    setActionMessage('');
 
-    if (!response.ok || !result.success) {
-      setActionMessage(result.error || 'Collection could not be deleted.');
-      return;
+    try {
+      const response = await fetch(`/api/folders/${folderDeleteTarget.id}`, {
+        method: 'DELETE',
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Collection could not be deleted.');
+      }
+
+      if (selectedFolder === folderDeleteTarget.id) {
+        setSelectedFolder('root');
+      }
+      setFolderDeleteTarget(null);
+      await loadLibrary();
+    } catch (deleteError) {
+      setActionMessage(deleteError instanceof Error ? deleteError.message : 'Collection could not be deleted.');
+    } finally {
+      setDeletingFolder(false);
     }
+  };
 
-    if (selectedFolder === folder.id) {
-      setSelectedFolder('root');
-    }
-    await loadLibrary();
+  const deleteFolder = (folder: Folder) => {
+    setFolderDeleteTarget(folder);
+    setActionMessage('');
   };
 
   const renameLecture = (lectureId: string, currentTitle: string) => {
@@ -386,20 +402,10 @@ export default function LibraryPage() {
     }
   };
 
-  const deleteLecture = async (lectureId: string, title: string) => {
-    if (!window.confirm(`Delete "${title}" and its generated study data?`)) return;
-
-    const response = await fetch(`/api/lectures/${lectureId}`, {
-      method: 'DELETE',
-    });
-    const result = await response.json();
-
-    if (!response.ok || !result.success) {
-      setActionMessage(result.error || 'Material could not be deleted.');
-      return;
-    }
-
-    await loadLibrary();
+  const deleteLecture = (lectureId: string) => {
+    setSelectedLectureIds([lectureId]);
+    setShowBulkDelete(true);
+    setActionMessage('');
   };
 
   const toggleLectureSelection = (lectureId: string) => {
@@ -769,7 +775,7 @@ export default function LibraryPage() {
                       <button type="button" onClick={() => openMoveDialog(document)} className="text-link">
                         Move
                       </button>
-                      <button type="button" onClick={() => deleteLecture(document.id, document.title)} className="text-link text-red-700">
+                      <button type="button" onClick={() => deleteLecture(document.id)} className="text-link text-red-700">
                         Delete
                       </button>
                     </span>
@@ -835,7 +841,7 @@ export default function LibraryPage() {
                         <button type="button" onClick={() => openMoveDialog(document)} className="text-link">
                           Move
                         </button>
-                        <button type="button" onClick={() => deleteLecture(document.id, document.title)} className="text-link text-red-700">
+                        <button type="button" onClick={() => deleteLecture(document.id)} className="text-link text-red-700">
                           Delete
                         </button>
                       </span>
@@ -889,7 +895,7 @@ export default function LibraryPage() {
                       <button type="button" onClick={() => openMoveDialog(document)} className="text-link">
                         Move
                       </button>
-                      <button type="button" onClick={() => deleteLecture(document.id, document.title)} className="text-link text-red-700">
+                      <button type="button" onClick={() => deleteLecture(document.id)} className="text-link text-red-700">
                         Delete
                       </button>
                     </span>
@@ -1196,6 +1202,38 @@ export default function LibraryPage() {
                 className="btn-primary"
               >
                 {moving ? 'Moving...' : 'Move file'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {folderDeleteTarget ? (
+        <div className="modal-backdrop">
+          <div className="modal-panel max-w-lg">
+            <p className="text-xs uppercase tracking-normal text-[#737373]">Delete folder</p>
+            <h2 className="mt-2 text-xl font-normal text-[#000000]">
+              Delete empty folder?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[#737373]">
+              This removes "{folderDeleteTarget.name}" from your Library. Folders must be empty before they can be deleted, so source files and nested folders stay protected.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setFolderDeleteTarget(null)}
+                disabled={deletingFolder}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteFolder}
+                disabled={deletingFolder}
+                className="btn-primary bg-red-700 hover:bg-red-800"
+              >
+                {deletingFolder ? 'Deleting...' : 'Delete empty folder'}
               </button>
             </div>
           </div>

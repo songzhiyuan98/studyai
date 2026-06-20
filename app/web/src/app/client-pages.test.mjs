@@ -289,6 +289,16 @@ test('library page supports moving files with a confirmation modal', () => {
   assert.match(source, /matchedDestinationFolder/);
 });
 
+test('library page uses modal confirmation for folder deletes', () => {
+  const source = readFileSync(resolve(root, 'src/app/library/page.tsx'), 'utf8');
+
+  assert.match(source, /const \[folderDeleteTarget, setFolderDeleteTarget\]/);
+  assert.match(source, /confirmDeleteFolder/);
+  assert.match(source, /Delete folder/);
+  assert.match(source, /Delete empty folder/);
+  assert.doesNotMatch(source, /window\.confirm/);
+});
+
 test('library page uses a shared rename modal instead of browser prompts', () => {
   const source = readFileSync(resolve(root, 'src/app/library/page.tsx'), 'utf8');
 
