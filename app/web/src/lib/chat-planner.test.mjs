@@ -175,6 +175,15 @@ test('chat route can return reader links from planner intent', () => {
   assert.match(source, /Open it from the citation below/);
 });
 
+test('chat planner only opens reader for explicit navigation language', () => {
+  const source = readFileSync(resolve(root, 'src/lib/chat-planner.ts'), 'utf8');
+
+  assert.match(source, /hasReaderNavigationIntent/);
+  assert.match(source, /explicitReaderOpen/);
+  assert.match(source, /explicitCitationLookup/);
+  assert.doesNotMatch(source, /open\|show\|go to\|source\|citation\|reader\|打开\|跳到\|来源\|原文/);
+});
+
 test('chat route handles library operations as confirmation-gated tool requests', () => {
   const source = readFileSync(resolve(root, 'src/app/api/chat/route.ts'), 'utf8');
 

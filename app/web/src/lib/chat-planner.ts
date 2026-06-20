@@ -101,7 +101,12 @@ function hasSaveIntent(message: string) {
 }
 
 function hasReaderNavigationIntent(message: string) {
-  return /\b(open|show|go to|source|citation|reader|打开|跳到|来源|原文)\b/i.test(message);
+  const explicitReaderOpen = /\b(open|show|go to|jump to|take me to|reader)\b/i.test(message)
+    || /(打开|跳到|跳转|查看|看一下|原文)/i.test(message);
+  const explicitCitationLookup = /\b(citation|cited source|source reference|original passage)\b/i.test(message)
+    || /(引用|来源位置|原文位置|源文档|出处)/i.test(message);
+
+  return explicitReaderOpen || explicitCitationLookup;
 }
 
 function hasExplicitLibraryManagementVerb(message: string) {
