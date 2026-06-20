@@ -281,6 +281,26 @@ function shouldShowMessageTitle(chatMessage: ChatMessage) {
   return Boolean(chatMessage.title && chatMessage.title !== 'Study answer');
 }
 
+function getContextStrategyLabel(strategy?: NonNullable<ChatMessage['retrieval']>['contextStrategy']) {
+  if (strategy === 'lecture_pack') {
+    return 'lecture pack';
+  }
+
+  if (strategy === 'long_document_map') {
+    return 'document map';
+  }
+
+  if (strategy === 'broad_rag') {
+    return 'scope coverage';
+  }
+
+  if (strategy === 'focused_rag') {
+    return 'focused retrieval';
+  }
+
+  return 'source grounded';
+}
+
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const requestedSessionId = searchParams.get('sessionId');
@@ -849,7 +869,9 @@ export default function ChatPage() {
                 {!chatMessage.isStreaming && chatMessage.content.trim() && chatMessage.sourceRefs?.length ? (
                   <>
                     <div className="chat-used-sources">
-                      <p>Used materials</p>
+                      <p>
+                        Used materials · {getContextStrategyLabel(chatMessage.retrieval?.contextStrategy)}
+                      </p>
                       <div>
                         {getUsedMaterials(chatMessage.sourceRefs).map((material) => (
                           <Link

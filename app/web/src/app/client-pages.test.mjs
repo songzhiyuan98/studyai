@@ -140,7 +140,10 @@ test('chat answers summarize the materials used for retrieval', () => {
 
   assert.match(source, /contextStrategy\?:/);
   assert.match(source, /function getUsedMaterials/);
+  assert.match(source, /function getContextStrategyLabel/);
   assert.match(source, /Used materials/);
+  assert.match(source, /lecture pack/);
+  assert.match(source, /document map/);
   assert.match(source, /material\.count\} chunks/);
   assert.match(source, /chat-used-source-pill/);
 });
