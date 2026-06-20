@@ -3,6 +3,17 @@ import { getServerSession } from 'next-auth/next';
 import { prisma } from '@study-assistant/db';
 import { authOptions } from '@/lib/auth';
 
+function getSavedArtifactId(retrieval: unknown) {
+  if (!retrieval || typeof retrieval !== 'object' || Array.isArray(retrieval)) {
+    return undefined;
+  }
+
+  const savedArtifactId = (retrieval as Record<string, unknown>).savedArtifactId;
+  return typeof savedArtifactId === 'string' && savedArtifactId.trim()
+    ? savedArtifactId
+    : undefined;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } },
@@ -65,6 +76,7 @@ export async function GET(
             content: message.content,
             sourceRefs: message.sourceRefs || undefined,
             retrieval: message.retrieval || undefined,
+            savedId: getSavedArtifactId(message.retrieval),
             isStreaming: false,
           })),
         },

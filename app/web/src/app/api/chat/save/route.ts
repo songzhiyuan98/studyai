@@ -1,7 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
+import { prisma } from '@study-assistant/db';
+import { z } from 'zod';
 import { authOptions } from '@/lib/auth';
 import { saveChatOutputAsArtifact, saveChatOutputSchema } from '@/lib/chat-save-artifact';
+
+const saveChatRequestSchema = saveChatOutputSchema.extend({
+  chatMessageId: z.string().min(1).optional(),
+});
+
+function mergeSavedArtifactId(retrieval: unknown, artifactId: string) {
+  const retrievalObject = retrieval && typeof retrieval === 'object' && !Array.isArray(retrieval)
+    ? retrieval as Record<string, unknown>
+    : {};
+
+  return {
+    ...retrievalObject,
+    savedArtifactId: artifactId,
+  };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +31,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const parsed = saveChatOutputSchema.safeParse(await request.json());
+    const parsed = saveChatRequestSchema.safeParse(await request.json());
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -33,6 +50,31 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'No valid source references were found for this saved output' },
         { status: 400 },
       );
+    }
+
+    if (parsed.data.chatMessageId && artifact.id) {
+      const chatMessage = await prisma.chatMessage.findFirst({
+        where: {
+          id: parsed.data.chatMessageId,
+          userId: session.user.id,
+          role: 'ASSISTANT',
+        },
+        select: {
+          id: true,
+          retrieval: true,
+        },
+      });
+
+      if (chatMessage) {
+        await prisma.chatMessage.update({
+          where: {
+            id: chatMessage.id,
+          },
+          data: {
+            retrieval: mergeSavedArtifactId(chatMessage.retrieval, artifact.id),
+          },
+        });
+      }
     }
 
     return NextResponse.json({

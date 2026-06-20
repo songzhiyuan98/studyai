@@ -839,6 +839,7 @@ export default function ChatPage() {
           Accept: 'application/json',
         },
         body: JSON.stringify({
+          chatMessageId: chatMessage.id,
           mode: chatMessage.mode || mode,
           title: chatMessage.title || actionModes.find((action) => action.id === chatMessage.mode)?.label || selectedMode.label,
           content: chatMessage.content,
