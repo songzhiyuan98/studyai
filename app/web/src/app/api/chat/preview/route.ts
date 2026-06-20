@@ -13,7 +13,7 @@ import {
 } from '@/lib/rag-context';
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 import { resolveExplicitLectureScope } from '@/lib/source-scope';
-import { planChatTurn } from '@/lib/chat-planner';
+import { planChatTurnWithAi } from '@/lib/chat-planner';
 import { resolveLibraryScope } from '@/lib/library-catalog';
 import { buildLecturePackContext } from '@/lib/lecture-pack';
 
@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
 
     let retrievalStrategy = 'lexical_page_aware_v0';
     let vectorResults: RetrievedContext[] = [];
-    const previewPlan = planChatTurn({
+    const previewPlan = await planChatTurnWithAi({
       mode: parsed.data.mode,
       message: parsed.data.message,
       hasExplicitScope: Boolean(scopedLectureIds?.length),

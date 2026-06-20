@@ -14,7 +14,7 @@ import {
 } from '@/lib/rag-context';
 import { resolveExplicitLectureScope } from '@/lib/source-scope';
 import { buildCasualChatAnswer, buildChatAnswer, chatModeLabels } from '@/lib/chat-answer';
-import { planChatTurn } from '@/lib/chat-planner';
+import { planChatTurnWithAi } from '@/lib/chat-planner';
 import { parseChatSourceRefs, saveChatOutputAsArtifact, saveChatOutputSchema } from '@/lib/chat-save-artifact';
 import {
   buildHistoryAwareRetrievalQuery,
@@ -310,7 +310,7 @@ export async function POST(request: NextRequest) {
     });
     await touchChatSession(chatSession.id);
 
-    const chatPlan = planChatTurn({
+    const chatPlan = await planChatTurnWithAi({
       mode: parsed.data.mode,
       message: parsed.data.message,
       history: recentHistory,

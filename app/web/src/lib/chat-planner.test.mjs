@@ -9,6 +9,7 @@ test('chat planner exposes internal tool-shaped planning decisions', () => {
   const source = readFileSync(resolve(root, 'src/lib/chat-planner.ts'), 'utf8');
 
   assert.match(source, /export function planChatTurn/);
+  assert.match(source, /export async function planChatTurnWithAi/);
   assert.match(source, /ChatPlannerToolName/);
   assert.match(source, /'library\.catalog'/);
   assert.match(source, /'scope\.resolve'/);
@@ -24,6 +25,19 @@ test('chat planner exposes internal tool-shaped planning decisions', () => {
   assert.match(source, /retrievalBreadth/);
   assert.match(source, /requestedPage/);
   assert.match(source, /requiresConfirmation/);
+  assert.match(source, /plannerSource/);
+});
+
+test('chat planner can use an AI planning agent with deterministic fallback', () => {
+  const source = readFileSync(resolve(root, 'src/lib/chat-planner.ts'), 'utf8');
+
+  assert.match(source, /isChatModelConfigured/);
+  assert.match(source, /StudyFlow Planner, an internal planning agent/);
+  assert.match(source, /Return only a JSON object/);
+  assert.match(source, /normalizeAiPlan/);
+  assert.match(source, /fallbackPlan/);
+  assert.match(source, /plannerSource: 'ai_planner'/);
+  assert.match(source, /plannerSource: 'deterministic'/);
 });
 
 test('chat planner models broad assessment generation separately from focused retrieval', () => {
@@ -74,8 +88,8 @@ test('chat planner resolves library scope before retrieval and agent response', 
 test('chat route stores planner trace with retrieval metadata', () => {
   const source = readFileSync(resolve(root, 'src/app/api/chat/route.ts'), 'utf8');
 
-  assert.match(source, /planChatTurn/);
-  assert.match(source, /const chatPlan = planChatTurn/);
+  assert.match(source, /planChatTurnWithAi/);
+  assert.match(source, /const chatPlan = await planChatTurnWithAi/);
   assert.match(source, /shouldRetrieveSources = chatPlan\.requiresRetrieval/);
   assert.match(source, /plan: chatPlan/);
   assert.match(source, /resolvedScope/);

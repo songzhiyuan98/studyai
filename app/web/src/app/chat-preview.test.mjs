@@ -24,6 +24,8 @@ test('chat source preview uses selected chat mode for planning breadth', () => {
 
   assert.match(routeSource, /mode: z\.enum/);
   assert.match(routeSource, /mode: parsed\.data\.mode/);
+  assert.match(routeSource, /planChatTurnWithAi/);
+  assert.match(routeSource, /await planChatTurnWithAi/);
   assert.match(routeSource, /broad_lesson_v0/);
   assert.match(routeSource, /broad_assessment_v0/);
 });

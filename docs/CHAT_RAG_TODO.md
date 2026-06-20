@@ -125,7 +125,7 @@ student asks what to study
 
 ## Milestone 4.5: Chat Planner and Internal Tools
 
-- Add a lightweight planner before generation. It should infer whether the user needs casual chat, Teacher Mode, source preview, retrieval, save, quiz, cheat sheet, or library/file management.
+- Add a lightweight planner before generation. It should infer whether the user needs casual chat, Teacher Mode, source preview, retrieval, save, quiz, cheat sheet, or library/file management. Current implementation includes an optional AI planner that returns a validated structured plan when a chat model is configured, with deterministic fallback when the model is unavailable or returns invalid JSON.
 - Planner should decide retrieval breadth: focused chunks for specific questions, broad lesson coverage for learning a section/lecture, and broad assessment coverage for exams.
 - Planner should decide context strategy, not just retrieval breadth:
   - `lecture_pack` for complete lecture, short source, and page-by-page teaching.
@@ -142,7 +142,7 @@ student asks what to study
   - `artifact.save`. Initial planner-backed save request handling is implemented for recent source-grounded assistant outputs.
   - `library.manage`
   - `reader.open`. Initial planner-backed reader link handling is implemented for recent cited source refs.
-- Store planner/tool traces on chat messages or sessions so failures can be debugged and evaluated.
+- Store planner/tool traces on chat messages or sessions so failures can be debugged and evaluated. Current traces include `plannerSource` (`ai_planner` or `deterministic`), model, rationale, chosen tools, context strategy, and context coverage.
 - Keep agent roles bounded but not over-scripted. The planner coordinates intent, Library scope, and internal API/tool use; the teaching agent has freedom to choose the lesson shape, examples, pacing, and follow-up style.
 - Resolve scope from Library catalog before RAG. Course/folder labels like `CSE 114A`, file titles like `lambda`, and manual selected sources should decide the retrieval scope before embedding or lexical chunk search runs.
 - Do not use top-k RAG as the default for every study request. For "teach this lecture" or "take me page by page," pack source-ordered lecture context first. Use RAG when the question is focused, the source is long, or representative coverage is enough.
