@@ -397,6 +397,7 @@ export default function ChatPage() {
   const chatScrollRef = useRef<HTMLElement>(null);
   const composerFormRef = useRef<HTMLFormElement>(null);
   const adoptedSessionIdRef = useRef<string | null>(requestedSessionId);
+  const hydratedDraftRef = useRef<string | null>(null);
   const hasHydratedSourcesRef = useRef(false);
   const mountedRef = useRef(true);
   const [mode, setMode] = useState<ActionMode>('free');
@@ -528,7 +529,7 @@ export default function ChatPage() {
   }, [loadSources]);
 
   useEffect(() => {
-    if (!requestedDraft) return;
+    if (!requestedDraft || hydratedDraftRef.current === requestedDraft) return;
 
     let decodedDraft = requestedDraft;
     try {
@@ -541,6 +542,7 @@ export default function ChatPage() {
       : [];
 
     setMessage(decodedDraft);
+    hydratedDraftRef.current = requestedDraft;
     if (isActionMode(requestedMode)) {
       setMode(requestedMode);
     }
@@ -550,7 +552,8 @@ export default function ChatPage() {
       setConfirmedSources(draftLectureIds);
       setShowSourceScope(false);
     }
-  }, [requestedDraft, requestedLectureIds, requestedMode]);
+    router.replace('/chat', { scroll: false });
+  }, [requestedDraft, requestedLectureIds, requestedMode, router]);
 
   useEffect(() => {
     const refreshOnFocus = () => {

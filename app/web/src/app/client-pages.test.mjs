@@ -154,6 +154,8 @@ test('saved outputs can be continued in chat as a draft prompt', () => {
   assert.match(chatSource, /setMessage\(decodedDraft\)/);
   assert.match(chatSource, /setMode\(requestedMode\)/);
   assert.match(chatSource, /setConfirmedSources\(draftLectureIds\)/);
+  assert.match(chatSource, /hydratedDraftRef/);
+  assert.match(chatSource, /router\.replace\('\/chat', \{ scroll: false \}\)/);
 });
 
 test('lecture reindex API can backfill missing segment embeddings', () => {
