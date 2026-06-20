@@ -17,6 +17,7 @@ import { planChatTurn } from '@/lib/chat-planner';
 
 const previewSchema = z.object({
   message: z.string().min(1).max(2000),
+  mode: z.enum(['free', 'explain', 'summarize', 'key_terms', 'mini_quiz', 'cheat_sheet']).default('free'),
   lectureIds: z.array(z.string().min(1)).max(20).optional(),
 });
 
@@ -180,7 +181,7 @@ export async function POST(request: NextRequest) {
     let retrievalStrategy = 'lexical_page_aware_v0';
     let vectorResults: RetrievedContext[] = [];
     const previewPlan = planChatTurn({
-      mode: 'free',
+      mode: parsed.data.mode,
       message: parsed.data.message,
       hasExplicitScope: Boolean(scopedLectureIds?.length),
     });

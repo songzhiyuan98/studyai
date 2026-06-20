@@ -165,7 +165,11 @@ test('chat page can preview suggested sources before generation', () => {
   assert.match(source, /requestSourcePreview/);
   assert.match(source, /Check sources/);
   assert.match(source, /Suggested materials/);
-  assert.match(source, /I found \{sourcePreview\.materials\.length\} likely/);
+  assert.match(source, /mode,/);
+  assert.match(source, /Suggested source range/);
+  assert.match(source, /study scope/);
+  assert.match(source, /coverage samples/);
+  assert.match(source, /sourcePreviewDescription/);
   assert.match(source, /selectedPreviewLectureIds/);
   assert.match(source, /Use selected/);
   assert.match(source, /togglePreviewMaterial/);

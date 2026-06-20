@@ -299,9 +299,14 @@ export default function ChatPage() {
   const sourceLabel = confirmedSources.length === 0
     ? 'Auto scope'
     : `${confirmedSources.length} ${confirmedSources.length === 1 ? 'source' : 'sources'}`;
+  const isBroadSourcePreview = Boolean(sourcePreview?.retrieval.strategy.startsWith('broad_'));
   const sourcePreviewChunkLabel = sourcePreview?.retrieval.strategy.startsWith('broad_')
-    ? 'representative chunks'
+    ? 'coverage samples'
     : 'relevant chunks';
+  const sourcePreviewTitle = isBroadSourcePreview ? 'Suggested source range' : 'Suggested materials';
+  const sourcePreviewDescription = isBroadSourcePreview
+    ? `I will treat the selected materials as the study scope and use ${sourcePreview?.retrieval.count || 0} coverage samples to plan the answer.`
+    : `I found ${sourcePreview?.materials.length || 0} likely ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} · ${sourcePreview?.retrieval.count || 0} ${sourcePreviewChunkLabel}`;
 
   const loadSources = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) {
@@ -445,6 +450,7 @@ export default function ChatPage() {
       },
       body: JSON.stringify({
         message: trimmedMessage,
+        mode,
         lectureIds,
       }),
     });
@@ -977,9 +983,9 @@ export default function ChatPage() {
               <div className="chat-source-preview">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <p>Suggested materials</p>
+                    <p>{sourcePreviewTitle}</p>
                     <span>
-                      I found {sourcePreview.materials.length} likely {sourcePreview.materials.length === 1 ? 'material' : 'materials'} · {sourcePreview.retrieval.count} {sourcePreviewChunkLabel}
+                      {sourcePreviewDescription}
                       {sourcePreview.materials.length > 0 ? ` · ${selectedPreviewLectureIds.length} selected` : ''}
                     </span>
                   </div>
@@ -1022,7 +1028,7 @@ export default function ChatPage() {
                           </span>
                           <span className="min-w-0">
                             <span className="block truncate">{material.title}</span>
-                            <span>{material.count} chunks · {material.detail}</span>
+                            <span>{material.count} {sourcePreviewChunkLabel} · {material.detail}</span>
                           </span>
                         </button>
                       );

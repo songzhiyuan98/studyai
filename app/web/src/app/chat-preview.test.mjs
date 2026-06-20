@@ -18,3 +18,12 @@ test('chat source preview returns suggested materials without generation', () =>
   assert.match(routeSource, /hybrid_vector_lexical_v0/);
   assert.doesNotMatch(routeSource, /generateGroundedChatAnswer/);
 });
+
+test('chat source preview uses selected chat mode for planning breadth', () => {
+  const routeSource = readFileSync(new URL('./api/chat/preview/route.ts', import.meta.url), 'utf8');
+
+  assert.match(routeSource, /mode: z\.enum/);
+  assert.match(routeSource, /mode: parsed\.data\.mode/);
+  assert.match(routeSource, /broad_lesson_v0/);
+  assert.match(routeSource, /broad_assessment_v0/);
+});
