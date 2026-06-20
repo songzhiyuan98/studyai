@@ -182,6 +182,10 @@ test('builds teacher-mode prompt guidance for beginner page-by-page learning', (
   assert.match(prompt, /examples are required/);
   assert.match(prompt, /page-by-page requests/);
   assert.match(prompt, /answer in the student’s language/);
+  assert.match(prompt, /Do not lead with a generic menu/);
+  assert.match(prompt, /first real lesson step/);
+  assert.match(prompt, /not terse/);
+  assert.doesNotMatch(prompt, /Keep the tone natural, concise, and useful for studying/);
 });
 
 test('builds history-aware retrieval queries for follow-up messages', () => {

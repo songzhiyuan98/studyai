@@ -70,7 +70,11 @@ test('builds teacher-like fallback for beginner learning requests', () => {
   assert.match(answer, /心智模型/);
   assert.match(answer, /小例子/);
   assert.match(answer, /小练习/);
+  assert.match(answer, /第一步/);
+  assert.match(answer, /第二步/);
+  assert.match(answer, /例子/);
   assert.doesNotMatch(answer, /What part should we unpack next/);
+  assert.doesNotMatch(answer, /你想从哪个方面入手/);
 });
 
 test('builds casual fallback without pretending retrieval failed', () => {
