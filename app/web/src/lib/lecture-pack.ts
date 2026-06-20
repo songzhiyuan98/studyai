@@ -32,6 +32,63 @@ function buildSegmentBlock(
   return `[${formatPackLabel(segment, lectureLabels)}]\n${segment.text.trim()}`;
 }
 
+function formatPageRange(segments: RetrievalSegment[]) {
+  const pages = segments
+    .map((segment) => segment.page)
+    .filter((page): page is number => typeof page === 'number')
+    .sort((first, second) => first - second);
+
+  if (pages.length === 0) {
+    return 'unpaged';
+  }
+
+  const firstPage = pages[0];
+  const lastPage = pages[pages.length - 1];
+
+  return firstPage === lastPage ? `page ${firstPage}` : `pages ${firstPage}-${lastPage}`;
+}
+
+function selectRepresentativeSegments(segments: RetrievalSegment[], maxCount: number) {
+  if (segments.length <= maxCount) {
+    return segments;
+  }
+
+  const selected: RetrievalSegment[] = [];
+  const usedIds = new Set<string>();
+
+  for (let index = 0; index < maxCount; index += 1) {
+    const sampleIndex = Math.min(
+      segments.length - 1,
+      Math.round((index * (segments.length - 1)) / Math.max(1, maxCount - 1)),
+    );
+    const segment = segments[sampleIndex];
+    if (!usedIds.has(segment.id)) {
+      selected.push(segment);
+      usedIds.add(segment.id);
+    }
+  }
+
+  for (const segment of segments) {
+    if (selected.length >= maxCount) break;
+    if (!usedIds.has(segment.id)) {
+      selected.push(segment);
+      usedIds.add(segment.id);
+    }
+  }
+
+  return selected.sort((first, second) => {
+    const firstPosition = getSegmentPosition(first);
+    const secondPosition = getSegmentPosition(second);
+    const lectureDiff = first.lectureId.localeCompare(second.lectureId);
+    if (lectureDiff !== 0) return lectureDiff;
+    const pageDiff = firstPosition.page - secondPosition.page;
+    if (pageDiff !== 0) return pageDiff;
+    const slideDiff = firstPosition.slide - secondPosition.slide;
+    if (slideDiff !== 0) return slideDiff;
+    return firstPosition.charStart - secondPosition.charStart;
+  });
+}
+
 function appendSegmentBlock({
   segment,
   contextParts,
@@ -155,4 +212,75 @@ export function buildLecturePackContext({
   }
 
   return finishPack();
+}
+
+export function buildLongDocumentMapContext({
+  candidateSegments,
+  maxChars = 6000,
+  lectureLabels = {},
+}: {
+  candidateSegments: RetrievalSegment[];
+  maxChars?: number;
+  lectureLabels?: Record<string, string>;
+}) {
+  const orderedSegments = [...candidateSegments].sort((first, second) => {
+    const lectureDiff = first.lectureId.localeCompare(second.lectureId);
+    if (lectureDiff !== 0) return lectureDiff;
+
+    const firstPosition = getSegmentPosition(first);
+    const secondPosition = getSegmentPosition(second);
+    const pageDiff = firstPosition.page - secondPosition.page;
+    if (pageDiff !== 0) return pageDiff;
+
+    const slideDiff = firstPosition.slide - secondPosition.slide;
+    if (slideDiff !== 0) return slideDiff;
+
+    return firstPosition.charStart - secondPosition.charStart;
+  });
+  const groupedSegments = new Map<string, RetrievalSegment[]>();
+  orderedSegments.forEach((segment) => {
+    groupedSegments.set(segment.lectureId, [
+      ...(groupedSegments.get(segment.lectureId) || []),
+      segment,
+    ]);
+  });
+  const mapLines = ['Document map'];
+
+  groupedSegments.forEach((segments, lectureId) => {
+    const sourceLabel = lectureLabels[lectureId] || lectureId;
+    mapLines.push(`${sourceLabel} · ${formatPageRange(segments)} · ${segments.length} passages`);
+  });
+
+  const contextParts = [mapLines.join('\n')];
+  const selectedSegments: RetrievalSegment[] = [];
+  let usedChars = contextParts[0].length;
+  const lectureCount = Math.max(1, groupedSegments.size);
+  const representativesPerLecture = Math.max(2, Math.floor(8 / lectureCount));
+
+  for (const segments of Array.from(groupedSegments.values())) {
+    const representatives = selectRepresentativeSegments(segments, representativesPerLecture);
+    for (const segment of representatives) {
+      const result = appendSegmentBlock({
+        segment,
+        contextParts,
+        selectedSegments,
+        usedChars,
+        maxChars,
+        lectureLabels,
+      });
+      if (!result.added) break;
+      usedChars = result.usedChars;
+    }
+  }
+
+  const contextText = contextParts.join('\n\n');
+
+  return {
+    contextText: contextText.length > maxChars ? `${contextText.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…` : contextText,
+    segments: selectedSegments,
+    totalSegments: orderedSegments.length,
+    includedSegments: selectedSegments.length,
+    truncated: selectedSegments.length < orderedSegments.length,
+    maxChars,
+  };
 }

@@ -33,7 +33,7 @@ import {
 } from '@/lib/chat-context-budget';
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 import { resolveLibraryScope } from '@/lib/library-catalog';
-import { buildLecturePackContext } from '@/lib/lecture-pack';
+import { buildLecturePackContext, buildLongDocumentMapContext } from '@/lib/lecture-pack';
 import { inferLibraryOperationDraft } from '@/lib/chat-library-tools';
 import { scoreReaderLectureMatch } from '@/lib/chat-reader-tools';
 const chatSchema = z.object({
@@ -959,9 +959,11 @@ export async function POST(request: NextRequest) {
     let retrievalStrategy = 'lexical_page_aware_v0';
     let vectorResults: RetrievedContext[] = [];
     const usesLecturePack = effectiveContextStrategy === 'lecture_pack';
-    const usesBroadCoverage = chatPlan.retrievalBreadth === 'broad_assessment'
+    const usesLongDocumentMap = effectiveContextStrategy === 'long_document_map';
+    const usesBroadCoverage = (
+      chatPlan.retrievalBreadth === 'broad_assessment'
       || chatPlan.retrievalBreadth === 'broad_lesson'
-      || effectiveContextStrategy === 'long_document_map';
+    ) && !usesLongDocumentMap;
     const contextCharBudget = getChatContextCharBudget({
       contextStrategy: effectiveContextStrategy,
     });
@@ -1013,6 +1015,13 @@ export async function POST(request: NextRequest) {
       truncated: boolean;
       maxChars: number;
     } | null = null;
+    let longDocumentMapContextText = '';
+    let longDocumentMapSummary: {
+      totalSegments: number;
+      includedSegments: number;
+      truncated: boolean;
+      maxChars: number;
+    } | null = null;
     if (usesLecturePack) {
       const lecturePack = buildLecturePackContext({
         candidateSegments,
@@ -1032,11 +1041,28 @@ export async function POST(request: NextRequest) {
         reason: 'nearby' as const,
       }));
       retrievalStrategy = 'lecture_pack_v0';
+    } else if (usesLongDocumentMap) {
+      const documentMap = buildLongDocumentMapContext({
+        candidateSegments,
+        maxChars: contextCharBudget,
+        lectureLabels,
+      });
+      longDocumentMapContextText = documentMap.contextText;
+      longDocumentMapSummary = {
+        totalSegments: documentMap.totalSegments,
+        includedSegments: documentMap.includedSegments,
+        truncated: documentMap.truncated,
+        maxChars: documentMap.maxChars,
+      };
+      retrieved = documentMap.segments.map((segment, index) => ({
+        segment,
+        score: 1 - index * 0.001,
+        reason: 'nearby' as const,
+      }));
+      retrievalStrategy = 'long_document_map_v0';
     } else if (broadCoverageResults.length > 0) {
       retrieved = broadCoverageResults;
-      retrievalStrategy = effectiveContextStrategy === 'long_document_map'
-        ? 'long_document_map_v0'
-        : chatPlan.retrievalBreadth === 'broad_lesson'
+      retrievalStrategy = chatPlan.retrievalBreadth === 'broad_lesson'
         ? 'broad_lesson_v0'
         : 'broad_assessment_v0';
     } else if (pageResults.length > 0) {
@@ -1078,7 +1104,7 @@ export async function POST(request: NextRequest) {
       })
       : seedContext;
     const parentChildExpandedCount = Math.max(0, context.length - seedContext.length);
-    const contextSummary = lecturePackSummary || {
+    const contextSummary = lecturePackSummary || longDocumentMapSummary || {
       totalSegments: candidateSegments.length,
       includedSegments: context.length,
       truncated: context.length < candidateSegments.length,
@@ -1086,6 +1112,8 @@ export async function POST(request: NextRequest) {
     };
     const contextText = usesLecturePack
       ? lecturePackContextText
+      : usesLongDocumentMap
+      ? longDocumentMapContextText
       : compactContextText(
         context.map(({ segment }) => segment),
         contextSummary.maxChars,

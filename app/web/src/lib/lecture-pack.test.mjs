@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildLecturePackContext } from './lecture-pack.ts';
+import { buildLecturePackContext, buildLongDocumentMapContext } from './lecture-pack.ts';
 
 const segments = [
   {
@@ -108,4 +108,32 @@ test('shares pack budget across multiple lectures', () => {
   assert.match(pack.contextText, /First lecture anchor/);
   assert.doesNotMatch(pack.contextText, /First lecture extra/);
   assert.match(pack.contextText, /Second lecture anchor/);
+});
+
+test('builds a long document map with page range and representative passages', () => {
+  const longSegments = Array.from({ length: 12 }, (_, index) => ({
+    id: `page-${index + 1}`,
+    lectureId: 'haskell',
+    text: `Page ${index + 1} covers concept ${index + 1} with an example.`,
+    page: index + 1,
+    slide: null,
+    charStart: 0,
+    charEnd: 48,
+  }));
+
+  const pack = buildLongDocumentMapContext({
+    candidateSegments: longSegments,
+    maxChars: 1200,
+    lectureLabels: {
+      haskell: 'Haskell lecture',
+    },
+  });
+
+  assert.equal(pack.totalSegments, 12);
+  assert.ok(pack.includedSegments < pack.totalSegments);
+  assert.equal(pack.truncated, true);
+  assert.match(pack.contextText, /Document map/);
+  assert.match(pack.contextText, /Haskell lecture · pages 1-12 · 12 passages/);
+  assert.match(pack.contextText, /\[Haskell lecture · page 1\]/);
+  assert.match(pack.contextText, /\[Haskell lecture · page 12\]/);
 });

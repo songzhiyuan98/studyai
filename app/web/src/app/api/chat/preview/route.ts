@@ -15,7 +15,7 @@ import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 import { resolveExplicitLectureScope } from '@/lib/source-scope';
 import { formatLibraryCatalogForPlanner, planChatTurnWithAi } from '@/lib/chat-planner';
 import { resolveLibraryScope } from '@/lib/library-catalog';
-import { buildLecturePackContext } from '@/lib/lecture-pack';
+import { buildLecturePackContext, buildLongDocumentMapContext } from '@/lib/lecture-pack';
 import {
   CHAT_CONTEXT_SEGMENT_FETCH_LIMIT,
   getChatContextCharBudget,
@@ -224,9 +224,11 @@ export async function POST(request: NextRequest) {
       ? 'long_document_map'
       : previewPlan.contextStrategy;
     const usesLecturePack = effectiveContextStrategy === 'lecture_pack';
-    const usesBroadCoverage = previewPlan.retrievalBreadth === 'broad_assessment'
+    const usesLongDocumentMap = effectiveContextStrategy === 'long_document_map';
+    const usesBroadCoverage = (
+      previewPlan.retrievalBreadth === 'broad_assessment'
       || previewPlan.retrievalBreadth === 'broad_lesson'
-      || effectiveContextStrategy === 'long_document_map';
+    ) && !usesLongDocumentMap;
     const contextCharBudget = getChatContextCharBudget({
       contextStrategy: effectiveContextStrategy,
     });
@@ -277,6 +279,12 @@ export async function POST(request: NextRequest) {
       truncated: boolean;
       maxChars: number;
     } | null = null;
+    let longDocumentMapSummary: {
+      totalSegments: number;
+      includedSegments: number;
+      truncated: boolean;
+      maxChars: number;
+    } | null = null;
     if (usesLecturePack) {
       const lecturePack = buildLecturePackContext({
         candidateSegments,
@@ -295,11 +303,27 @@ export async function POST(request: NextRequest) {
         reason: 'nearby' as const,
       }));
       retrievalStrategy = 'lecture_pack_v0';
+    } else if (usesLongDocumentMap) {
+      const documentMap = buildLongDocumentMapContext({
+        candidateSegments,
+        maxChars: contextCharBudget,
+        lectureLabels,
+      });
+      longDocumentMapSummary = {
+        totalSegments: documentMap.totalSegments,
+        includedSegments: documentMap.includedSegments,
+        truncated: documentMap.truncated,
+        maxChars: documentMap.maxChars,
+      };
+      retrieved = documentMap.segments.map((segment, index) => ({
+        segment,
+        score: 1 - index * 0.001,
+        reason: 'nearby' as const,
+      }));
+      retrievalStrategy = 'long_document_map_v0';
     } else if (broadCoverageResults.length > 0) {
       retrieved = broadCoverageResults;
-      retrievalStrategy = effectiveContextStrategy === 'long_document_map'
-        ? 'long_document_map_v0'
-        : previewPlan.retrievalBreadth === 'broad_lesson'
+      retrievalStrategy = previewPlan.retrievalBreadth === 'broad_lesson'
         ? 'broad_lesson_v0'
         : 'broad_assessment_v0';
     } else if (pageResults.length > 0) {
@@ -322,7 +346,7 @@ export async function POST(request: NextRequest) {
         score: 0,
         reason: 'lexical' as const,
       }));
-    const contextSummary = lecturePackSummary || {
+    const contextSummary = lecturePackSummary || longDocumentMapSummary || {
       totalSegments: candidateSegments.length,
       includedSegments: context.length,
       truncated: context.length < candidateSegments.length,
