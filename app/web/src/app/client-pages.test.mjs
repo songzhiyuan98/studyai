@@ -30,6 +30,20 @@ test('root layout delegates authenticated chrome to AppShell', () => {
   assert.doesNotMatch(source, /<footer className=/);
 });
 
+test('public product copy frames StudyFlow as agentic context orchestration', () => {
+  const layoutSource = readFileSync(resolve(root, 'src/app/layout.tsx'), 'utf8');
+  const homeSource = readFileSync(resolve(root, 'src/app/page.tsx'), 'utf8');
+  const dashboardSource = readFileSync(resolve(root, 'src/app/dashboard/page.tsx'), 'utf8');
+
+  assert.match(layoutSource, /agentic study context/);
+  assert.match(homeSource, /Plans the right study context/);
+  assert.match(homeSource, /organizes the relevant lecture context before teaching/);
+  assert.match(dashboardSource, /agent-organized study desk/);
+  assert.doesNotMatch(homeSource, /retrieves from your own lecture files before answering/);
+  assert.doesNotMatch(homeSource, /building RAG/);
+  assert.doesNotMatch(dashboardSource, /RAG retrieval are the next ingestion milestone/);
+});
+
 test('authenticated navigation is focused on chat library and saved', () => {
   const source = readFileSync(resolve(root, 'src/components/app-shell.tsx'), 'utf8');
   assert.match(source, /\{ href: ['"]\/chat['"], label: ['"]Chat['"] \}/);

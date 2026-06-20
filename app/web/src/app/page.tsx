@@ -4,7 +4,7 @@ import { LandingExperience } from '@/components/landing-experience';
 
 export const metadata: Metadata = {
   title: 'StudyFlow',
-  description: 'A citation-first AI study workspace for student-owned lecture materials.',
+  description: 'An agentic AI study workspace for student-owned lecture materials.',
 };
 
 const workflow = [
@@ -15,15 +15,15 @@ const workflow = [
 ];
 
 const productMoments = [
-  ['Source-grounded chat', 'A ChatGPT-like study surface that retrieves from your own lecture files before answering.'],
+  ['Agentic study chat', 'Plans the right study context, then organizes the relevant lecture context before teaching.'],
   ['Knowledge-base library', 'A Drive-style file manager for courses, folders, PDFs, notes, and future AI-assisted uploads.'],
   ['Micro-actions in chat', 'Quick pills for explain, summarize, translate, quiz, and cheat sheet generation without leaving the flow.'],
-  ['Reader diagnostics', 'A developer-facing source map to inspect chunks, citations, and retrieval behavior while building RAG.'],
+  ['Reader diagnostics', 'A developer-facing source map to inspect chunks, citations, and context packaging while building the study loop.'],
 ];
 
 const comparison = [
   ['Generic chat', 'You paste files again, lose context, and manually remember which lecture matters.'],
-  ['StudyFlow', 'Your library stays organized, retrieval is scoped, and the chat can cite the exact study material.'],
+  ['StudyFlow', 'Your library stays organized, context is scoped, and the chat can cite the exact study material.'],
 ];
 
 export default function HomePage() {

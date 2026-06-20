@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 const primaryActions = [
   {
     title: 'Chat',
-    description: 'Start with a study goal and retrieve grounded library context.',
+    description: 'Start with a study goal and let the planner organize the right lecture context.',
     href: '/chat',
   },
   {
@@ -22,7 +22,7 @@ const primaryActions = [
 const principles = [
   'Original lecture material stays the source of truth.',
   'Every generated artifact should keep source references visible.',
-  'PDF parsing and RAG retrieval are the next ingestion milestone.',
+  'Context packaging, citations, and long-document handling are the next study-loop milestones.',
 ];
 
 export default function DashboardPage() {
@@ -33,7 +33,7 @@ export default function DashboardPage() {
           <div className="min-w-0">
           <p className="eyebrow">Workspace</p>
             <h1 className="mt-4 max-w-4xl text-4xl font-normal leading-[1.08] tracking-normal text-[#000000] sm:text-5xl">
-              A source-grounded study desk for every lecture.
+              An agent-organized study desk for every lecture.
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-[#737373]">
               StudyFlow keeps course files, selected context, generated study outputs, and source references in one calm workspace.

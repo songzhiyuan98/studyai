@@ -18,8 +18,8 @@ export const metadata: Metadata = {
     template: '%s | StudyFlow',
     default: 'StudyFlow',
   },
-  description: 'Citation-first study workspace for student-owned lecture materials.',
-  keywords: ['study workspace', 'RAG', 'lecture notes', 'citation', 'student tools'],
+  description: 'An agentic study context workspace for student-owned lecture materials.',
+  keywords: ['study workspace', 'agentic study context', 'lecture notes', 'citation', 'student tools'],
   authors: [{ name: 'StudyFlow Team' }],
   openGraph: {
     type: 'website',
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     url: 'http://localhost:3000',
     siteName: 'StudyFlow',
     title: 'StudyFlow',
-    description: 'Citation-first study workspace for student-owned lecture materials.',
+    description: 'An agentic study context workspace for student-owned lecture materials.',
   },
   robots: {
     index: true,
