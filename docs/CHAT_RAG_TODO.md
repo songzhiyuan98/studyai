@@ -47,6 +47,8 @@ student asks what to study
   - focused questions use top relevant chunks
   - broad lessons use representative coverage across the selected lecture/topic
   - mock exam and midterm requests use representative coverage across the selected course materials
+- Optional AI planner v1 is implemented. When a chat model is configured, the planner receives recent conversation plus a compact Library catalog summary, returns a validated structured plan, and falls back to deterministic planning if unavailable or invalid.
+- Full-lecture learning now uses a larger lecture-pack context budget and a higher segment prefetch limit than focused RAG, so "teach this whole lecture" is not treated like a top-k chunk query.
 
 ## Milestone 1: Chat Product Surface
 
@@ -125,7 +127,7 @@ student asks what to study
 
 ## Milestone 4.5: Chat Planner and Internal Tools
 
-- Add a lightweight planner before generation. It should infer whether the user needs casual chat, Teacher Mode, source preview, retrieval, save, quiz, cheat sheet, or library/file management. Current implementation includes an optional AI planner that returns a validated structured plan when a chat model is configured, with deterministic fallback when the model is unavailable or returns invalid JSON.
+- Add a lightweight planner before generation. It should infer whether the user needs casual chat, Teacher Mode, source preview, retrieval, save, quiz, cheat sheet, or library/file management. Current implementation includes an optional AI planner that receives recent conversation and Library catalog context, then returns a validated structured plan when a chat model is configured, with deterministic fallback when the model is unavailable or returns invalid JSON.
 - Planner should decide retrieval breadth: focused chunks for specific questions, broad lesson coverage for learning a section/lecture, and broad assessment coverage for exams.
 - Planner should decide context strategy, not just retrieval breadth:
   - `lecture_pack` for complete lecture, short source, and page-by-page teaching.
@@ -133,7 +135,7 @@ student asks what to study
   - `broad_rag` for exams, quizzes, and wide review.
   - `long_document_map` for large PDFs/papers where full packing would waste context.
 - Represent internal product capabilities as typed tools:
-  - `library.catalog`. Initial deterministic catalog inspection is implemented for chat scope resolution.
+  - `library.catalog`. Initial deterministic catalog inspection is implemented for chat scope resolution, and the compact catalog summary is now also passed into the optional AI planner.
   - `scope.resolve`. Initial deterministic folder/course/file-title scope resolution is implemented before retrieval.
   - `source.preview`
   - `rag.retrieve`
