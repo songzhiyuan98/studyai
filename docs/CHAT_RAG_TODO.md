@@ -125,7 +125,7 @@ student asks what to study
 - Represent internal product capabilities as typed tools:
   - `source.preview`
   - `rag.retrieve`
-  - `artifact.save`
+  - `artifact.save`. Initial planner-backed save request handling is implemented for recent source-grounded assistant outputs.
   - `library.manage`
   - `reader.open`
 - Store planner/tool traces on chat messages or sessions so failures can be debugged and evaluated.

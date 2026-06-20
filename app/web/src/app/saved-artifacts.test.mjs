@@ -16,3 +16,14 @@ test('saved artifact delete removes an orphaned selection', () => {
   assert.match(routeSource, /if \(remainingItems === 0\)/);
   assert.match(routeSource, /tx\.selection\.delete\(\{\s*where:\s*\{\s*id: item\.selectionId,/s);
 });
+
+test('chat save route reuses the shared artifact save helper', () => {
+  const routeSource = readFileSync(new URL('./api/chat/save/route.ts', import.meta.url), 'utf8');
+  const helperSource = readFileSync(new URL('../lib/chat-save-artifact.ts', import.meta.url), 'utf8');
+
+  assert.match(routeSource, /saveChatOutputSchema\.safeParse/);
+  assert.match(routeSource, /saveChatOutputAsArtifact/);
+  assert.doesNotMatch(routeSource, /prisma\.item\.create/);
+  assert.match(helperSource, /export async function saveChatOutputAsArtifact/);
+  assert.match(helperSource, /generationMode = 'chat_retrieval_v0'/);
+});

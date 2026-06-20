@@ -28,3 +28,14 @@ test('chat route stores planner trace with retrieval metadata', () => {
   assert.match(source, /shouldRetrieveSources = chatPlan\.requiresRetrieval/);
   assert.match(source, /plan: chatPlan/);
 });
+
+test('chat route can call the artifact save tool from planner intent', () => {
+  const source = readFileSync(resolve(root, 'src/app/api/chat/route.ts'), 'utf8');
+
+  assert.match(source, /chatPlan\.intent === 'save_request'/);
+  assert.match(source, /parseChatSourceRefs/);
+  assert.match(source, /saveChatOutputSchema\.safeParse/);
+  assert.match(source, /saveChatOutputAsArtifact/);
+  assert.match(source, /tool_artifact_save_v0/);
+  assert.match(source, /chat_planner_artifact_save_v0/);
+});

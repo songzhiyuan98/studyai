@@ -14,6 +14,7 @@ import {
 import { resolveExplicitLectureScope } from '@/lib/source-scope';
 import { buildCasualChatAnswer, buildChatAnswer, chatModeLabels } from '@/lib/chat-answer';
 import { planChatTurn } from '@/lib/chat-planner';
+import { parseChatSourceRefs, saveChatOutputAsArtifact, saveChatOutputSchema } from '@/lib/chat-save-artifact';
 import {
   buildHistoryAwareRetrievalQuery,
   chunkTextForLocalStream,
@@ -287,6 +288,85 @@ export async function POST(request: NextRequest) {
       hasExplicitScope: Boolean(scopedLectureIds?.length),
     });
     const shouldRetrieveSources = chatPlan.requiresRetrieval;
+
+    if (chatPlan.intent === 'save_request') {
+      const recentAssistantMessages = await prisma.chatMessage.findMany({
+        where: {
+          sessionId: chatSession.id,
+          userId: session.user.id,
+          role: 'ASSISTANT',
+        },
+        select: {
+          mode: true,
+          title: true,
+          content: true,
+          sourceRefs: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 8,
+      });
+      const saveCandidate = recentAssistantMessages
+        .map((assistantMessage) => ({
+          ...assistantMessage,
+          sourceRefs: parseChatSourceRefs(assistantMessage.sourceRefs),
+        }))
+        .find((assistantMessage) => assistantMessage.content.trim() && assistantMessage.sourceRefs.length > 0);
+      const parsedSaveOutput = saveCandidate
+        ? saveChatOutputSchema.safeParse({
+          mode: saveCandidate.mode || 'free',
+          title: saveCandidate.title || 'Saved chat output',
+          content: saveCandidate.content,
+          sourceRefs: saveCandidate.sourceRefs,
+        })
+        : null;
+      const artifact = parsedSaveOutput?.success
+        ? await saveChatOutputAsArtifact({
+          userId: session.user.id,
+          output: parsedSaveOutput.data,
+          generationMode: 'chat_planner_artifact_save_v0',
+        })
+        : null;
+      const saveResponseContent = artifact
+        ? `Saved "${artifact.title}" to Saved.`
+        : 'I could not find a recent source-grounded answer to save yet. Ask me to generate an answer from your Library first, then I can save it.';
+      const retrievalTrace = {
+        strategy: 'tool_artifact_save_v0',
+        count: artifact ? 1 : 0,
+        scopedLectureCount: 0,
+        historyCount: recentHistory.length,
+        query: 'tool_call',
+        plan: chatPlan,
+        toolResult: artifact ? 'saved' : 'no_candidate',
+      };
+
+      await prisma.chatMessage.create({
+        data: {
+          sessionId: chatSession.id,
+          userId: session.user.id,
+          role: 'ASSISTANT',
+          mode: parsed.data.mode,
+          title: artifact ? 'Saved output' : 'Nothing to save yet',
+          content: saveResponseContent,
+          sourceRefs: artifact?.sourceRefs || [],
+          retrieval: retrievalTrace,
+        },
+      });
+      await touchChatSession(chatSession.id);
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          message: {
+            sessionId: chatSession.id,
+            role: 'assistant',
+            title: artifact ? 'Saved output' : 'Nothing to save yet',
+            content: saveResponseContent,
+            sourceRefs: artifact?.sourceRefs || [],
+            retrieval: retrievalTrace,
+          },
+        },
+      });
+    }
 
     if (!shouldRetrieveSources) {
       const sourceRefs: never[] = [];
