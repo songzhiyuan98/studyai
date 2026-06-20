@@ -6,6 +6,7 @@ import {
   buildGroundedPrompt,
   buildHistoryAwareRetrievalQuery,
   chunkTextForLocalStream,
+  compactChatHistory,
   generateGroundedChatAnswer,
   getChatModelConfig,
   isChatModelConfigured,
@@ -160,6 +161,50 @@ test('builds prompts with recent conversation history for follow-up questions', 
   assert.match(prompt, /teach gradually like a patient tutor/);
   assert.match(prompt, /Do not generate quizzes, cheat sheets, or long fixed templates/);
   assert.match(prompt, /Can you continue from that example\?/);
+});
+
+test('compacts older chat turns into structured study memory', () => {
+  const memory = compactChatHistory([
+    {
+      role: 'user',
+      content: 'I need to review CSE 114A Haskell lambda and types for a midterm.',
+    },
+    {
+      role: 'assistant',
+      content: 'We used the lambda lecture as source scope and started with first-class functions.',
+    },
+    {
+      role: 'user',
+      content: 'Please teach slowly in Chinese and keep using examples.',
+    },
+    {
+      role: 'assistant',
+      content: 'Functions can be passed as values, and types describe valid inputs and outputs.',
+    },
+    {
+      role: 'user',
+      content: 'Continue with page 2.',
+    },
+    {
+      role: 'assistant',
+      content: 'Page 2 introduces equations and pattern matching.',
+    },
+    {
+      role: 'user',
+      content: 'Now quiz me.',
+    },
+  ], 3, 1800);
+
+  assert.match(memory, /Long-term study memory:/);
+  assert.match(memory, /Source\/scope memory:/);
+  assert.match(memory, /CSE 114A Haskell lambda and types/);
+  assert.match(memory, /Learning preferences:/);
+  assert.match(memory, /teach slowly in Chinese/);
+  assert.match(memory, /Recent turns:/);
+  assert.match(memory, /user: Continue with page 2\./);
+  assert.match(memory, /assistant: Page 2 introduces equations and pattern matching\./);
+  assert.match(memory, /user: Now quiz me\./);
+  assert.doesNotMatch(memory, /Earlier compressed context/);
 });
 
 test('builds teacher-mode prompt guidance for beginner page-by-page learning', () => {

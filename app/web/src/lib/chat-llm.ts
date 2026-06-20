@@ -72,6 +72,50 @@ function truncateText(text: string, maxLength: number) {
   return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1)}…` : normalized;
 }
 
+function buildStudyMemory(earlierTurns: ChatHistoryTurn[]) {
+  const olderLines = earlierTurns
+    .map((turn) => ({
+      role: turn.role,
+      content: truncateText(turn.content, 260),
+    }))
+    .filter((turn) => turn.content.length > 0);
+  const sourceScope = olderLines
+    .filter((turn) => (
+      /course|cse|lecture|source|scope|material|pdf|page|chapter|haskell|lambda|types?|文件|材料|来源|第\s*\d+\s*页/i.test(turn.content)
+    ))
+    .slice(-3)
+    .map((turn) => `- ${turn.role}: ${turn.content}`);
+  const learningPreferences = olderLines
+    .filter((turn) => (
+      /slow|slowly|simple|simpler|example|chinese|中文|慢|简单|例子|举例|详细/i.test(turn.content)
+    ))
+    .slice(-3)
+    .map((turn) => `- ${turn.role}: ${turn.content}`);
+  const conceptsDiscussed = olderLines
+    .filter((turn) => turn.role === 'assistant' && hasStudyRetrievalSignal(turn.content))
+    .slice(-4)
+    .map((turn) => `- ${turn.content}`);
+  const pendingDirections = olderLines
+    .filter((turn) => /continue|next|quiz|test|page|继续|下一个|测验|题目|第\s*\d+\s*页/i.test(turn.content))
+    .slice(-3)
+    .map((turn) => `- ${turn.role}: ${turn.content}`);
+  const fallback = olderLines
+    .slice(-4)
+    .map((turn) => `- ${turn.role}: ${turn.content}`);
+
+  return [
+    'Long-term study memory:',
+    'Source/scope memory:',
+    ...(sourceScope.length > 0 ? sourceScope : ['- none captured yet']),
+    'Learning preferences:',
+    ...(learningPreferences.length > 0 ? learningPreferences : ['- none captured yet']),
+    'Concepts already discussed:',
+    ...(conceptsDiscussed.length > 0 ? conceptsDiscussed : fallback),
+    'Pending directions:',
+    ...(pendingDirections.length > 0 ? pendingDirections : ['- none captured yet']),
+  ].join('\n');
+}
+
 export function compactChatHistory(history: ChatHistoryTurn[] = [], maxTurns = 8, maxChars = 2200) {
   const cleanHistory = history
     .map((turn) => ({
@@ -90,7 +134,7 @@ export function compactChatHistory(history: ChatHistoryTurn[] = [], maxTurns = 8
     .map((turn) => `${turn.role}: ${truncateText(turn.content, 420)}`)
     .join('\n');
   const earlierSummary = earlierTurns.length > 0
-    ? `Earlier compressed context: ${truncateText(earlierTurns.map((turn) => `${turn.role}: ${turn.content}`).join(' | '), 650)}\n`
+    ? `${truncateText(buildStudyMemory(earlierTurns), Math.max(700, Math.floor(maxChars * 0.45)))}\n\nRecent turns:\n`
     : '';
   const historyBlock = `${earlierSummary}${recentBlock}`.trim();
 

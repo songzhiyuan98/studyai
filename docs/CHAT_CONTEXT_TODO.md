@@ -86,7 +86,7 @@ student asks what to study
 - Add chat session storage. Implemented with `ChatSession`.
 - Add chat message storage. Implemented with `ChatMessage`.
 - Store message role, content, status, model, token usage, and timestamps. Current implementation stores role, content, mode, title, retrieval trace, source refs, and timestamps; token usage is still future work.
-- Pass recent chat history into generation prompts. Current implementation preserves recent turns and deterministically compacts older context when the prompt would grow too long; future work can replace this with a model-generated conversation memory.
+- Pass recent chat history into generation prompts. Current implementation preserves recent turns and deterministically compacts older context into structured study memory covering source/scope, learning preferences, concepts already discussed, and pending directions; future work can replace or augment this with a model-generated conversation memory.
 - Store retrieval traces. Current implementation stores retrieval JSON and source refs:
   - selected scope
   - source confirmation decision
@@ -161,7 +161,7 @@ student asks what to study
 - Support response modes from quick action pills. The current generation prompt receives the selected mode.
 - Require the model to use retrieved context as course grounding and citation trace, not as a hard limit on GPT tutoring ability.
 - Allow natural explanations, examples, and background knowledge. Source markers should appear only when a specific claim is directly grounded in retrieved material, and the assistant must not fabricate citations.
-- Save the final assistant answer after stream completion. Current UI receives the final full message over the `done` event; persistent chat history is still future work.
+- Save the final assistant answer after stream completion. Implemented for both streamed and non-streamed Chat replies, with retrieval/tool traces stored on the assistant message.
 - Show partial response in the UI while preserving the final citation trace. Implemented for the active Chat page.
 
 ## Milestone 6: Context Quality Upgrades
