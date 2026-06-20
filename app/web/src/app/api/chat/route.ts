@@ -503,6 +503,56 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (chatPlan.intent === 'library_operation') {
+      const libraryResponseContent = [
+        'I can help organize your Library, but I need confirmation before changing files or folders.',
+        '',
+        'Open Library to upload, rename, move, or delete materials now. In chat, tell me the exact file or folder and the action you want, and I will prepare the next confirmation step instead of changing anything silently.',
+      ].join('\n');
+      const retrievalTrace = {
+        strategy: 'tool_library_manage_v0',
+        count: 0,
+        scopedLectureCount: 0,
+        historyCount: recentHistory.length,
+        historyTurnsLoaded: recentHistory.length,
+        historyTurnsCompacted: Math.max(0, recentHistory.length - CHAT_HISTORY_RECENT_WINDOW),
+        query: 'tool_call',
+        plan: chatPlan,
+        ...getPlannerTrace(chatPlan),
+        plannerCatalogCount: plannerCatalogLectures.length,
+        toolResult: 'confirmation_required',
+        requiresConfirmation: true,
+      };
+
+      await prisma.chatMessage.create({
+        data: {
+          sessionId: chatSession.id,
+          userId: session.user.id,
+          role: 'ASSISTANT',
+          mode: parsed.data.mode,
+          title: 'Library action needs confirmation',
+          content: libraryResponseContent,
+          sourceRefs: [],
+          retrieval: retrievalTrace,
+        },
+      });
+      await touchChatSession(chatSession.id);
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          message: {
+            sessionId: chatSession.id,
+            role: 'assistant',
+            title: 'Library action needs confirmation',
+            content: libraryResponseContent,
+            sourceRefs: [],
+            retrieval: retrievalTrace,
+          },
+        },
+      });
+    }
+
     if (!shouldRetrieveSources) {
       const sourceRefs: never[] = [];
       const retrievalTrace = {

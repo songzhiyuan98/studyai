@@ -143,3 +143,13 @@ test('chat route can return reader links from planner intent', () => {
   assert.match(source, /reader_link_ready/);
   assert.match(source, /Open it from the citation below/);
 });
+
+test('chat route handles library operations as confirmation-gated tool requests', () => {
+  const source = readFileSync(resolve(root, 'src/app/api/chat/route.ts'), 'utf8');
+
+  assert.match(source, /chatPlan\.intent === 'library_operation'/);
+  assert.match(source, /tool_library_manage_v0/);
+  assert.match(source, /requiresConfirmation: true/);
+  assert.match(source, /I can help organize your Library/);
+  assert.match(source, /Open Library/);
+});
