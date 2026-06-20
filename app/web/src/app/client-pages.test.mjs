@@ -448,6 +448,9 @@ test('chat source preview explains assessment scope as representative coverage',
   assert.match(source, /exam scope/i);
   assert.match(source, /representative coverage/i);
   assert.match(source, /not just one or two passages/i);
+  assert.match(source, /selected as scope/i);
+  assert.match(source, /context passages/i);
+  assert.doesNotMatch(source, /selectedPreviewLectureIds\.length\} selected`/);
 });
 
 test('chat source preview requires at least one selected material before sending', () => {

@@ -452,7 +452,7 @@ export default function ChatPage() {
           : 'Auto scope';
   const sourcePreviewTitle = isSourceRangePreview ? 'Suggested study scope' : 'Suggested materials';
   const sourcePreviewDescription = isSourceRangePreview
-    ? `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} in ${isAssessmentPreview ? 'exam scope' : 'scope'} · ${sourcePreviewCoverageLabel} · ${getPlannerSourceLabel(sourcePreview?.retrieval.plannerSource)}`
+    ? `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} in ${isAssessmentPreview ? 'exam scope' : 'scope'} · ${sourcePreview?.retrieval.count || 0} context passages · ${sourcePreviewCoverageLabel} · ${getPlannerSourceLabel(sourcePreview?.retrieval.plannerSource)}`
     : `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} likely ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} · ${sourcePreview?.retrieval.count || 0} ${sourcePreviewChunkLabel} · ${getPlannerSourceLabel(sourcePreview?.retrieval.plannerSource)}`;
   const sourcePreviewCoverageNote = isAssessmentPreview
     ? 'I will use representative coverage across the selected materials, not just one or two passages.'
@@ -1227,7 +1227,7 @@ export default function ChatPage() {
                     <p>{sourcePreviewTitle}</p>
                     <span>
                       {sourcePreviewDescription}
-                      {sourcePreview.materials.length > 0 ? ` · ${selectedPreviewLectureIds.length} selected` : ''}
+                      {sourcePreview.materials.length > 0 ? ` · ${selectedPreviewLectureIds.length} selected as scope` : ''}
                     </span>
                     {sourcePreviewReason ? (
                       <span className="mt-2 block">
