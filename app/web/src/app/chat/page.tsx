@@ -316,6 +316,14 @@ function getLibraryOperationDraft(chatMessage: ChatMessage) {
   return chatMessage.retrieval?.operationDraft;
 }
 
+function describeLibraryOperation(action: LibraryOperationDraft['action']) {
+  if (action === 'upload') return 'Add a source file in Library';
+  if (action === 'delete') return 'Review and delete a Library file';
+  if (action === 'rename') return 'Rename a Library item';
+  if (action === 'move') return 'Move a file into another folder';
+  return 'Organize Library materials';
+}
+
 function buildLibraryOperationHref(chatMessage: ChatMessage) {
   const operationDraft = getLibraryOperationDraft(chatMessage);
   if (!operationDraft) {
@@ -1037,18 +1045,18 @@ export default function ChatPage() {
                   <>
                     {getLibraryOperationDraft(chatMessage) ? (
                       <div className="chat-tool-draft">
-                        <p>Library draft</p>
+                        <p>Prepared Library change</p>
                         <div>
-                          <span>Action</span>
-                          <strong>{getLibraryOperationDraft(chatMessage)?.action}</strong>
+                          <span>What will happen</span>
+                          <strong>{describeLibraryOperation(getLibraryOperationDraft(chatMessage)!.action)}</strong>
                         </div>
                         <div>
                           <span>Target</span>
                           <strong>{getLibraryOperationDraft(chatMessage)?.targetLabel}</strong>
                         </div>
                         <div>
-                          <span>Destination</span>
-                          <strong>{getLibraryOperationDraft(chatMessage)?.destinationLabel || 'Not specified'}</strong>
+                          <span>Needs confirmation</span>
+                          <strong>{getLibraryOperationDraft(chatMessage)?.destinationLabel || 'Open Library to review'}</strong>
                         </div>
                       </div>
                     ) : null}

@@ -223,10 +223,10 @@ test('chat page surfaces safe actions for library operation replies', () => {
   assert.match(source, /function getLibraryOperationDraft/);
   assert.match(source, /function buildLibraryOperationHref/);
   assert.match(source, /operationDraft/);
-  assert.match(source, /Library draft/);
-  assert.match(source, /Action/);
+  assert.match(source, /Prepared Library change/);
+  assert.match(source, /What will happen/);
   assert.match(source, /Target/);
-  assert.match(source, /Destination/);
+  assert.match(source, /Needs confirmation/);
   assert.match(source, /libraryParams\.set\('action'/);
   assert.match(source, /libraryParams\.set\('target'/);
   assert.match(source, /libraryParams\.set\('destination'/);
