@@ -51,6 +51,18 @@ test('chat planner treats full lecture learning as lecture pack context', () => 
   assert.match(source, /\? 'lecture_pack'/);
 });
 
+test('chat planner separates course-wide learning from focused questions and assessment generation', () => {
+  const source = readFileSync(resolve(root, 'src/lib/chat-planner.ts'), 'utf8');
+
+  assert.match(source, /hasCourseWideLearningIntent/);
+  assert.match(source, /系统|整理|板块|相关内容/);
+  assert.match(source, /teacherModeHint \|\| courseWideLearningIntent/);
+  assert.match(source, /courseWideLearningIntent \|\| teacherModeHint && hasFullLectureLearningIntent\(message\)/);
+  assert.match(source, /: 'focused_rag'/);
+  assert.match(source, /const assessmentIntent = hasAssessmentIntent\(message, mode\)/);
+  assert.match(source, /assessmentIntent\s*\n\s*\? 'broad_rag'/);
+});
+
 test('chat planner resolves library scope before retrieval and agent response', () => {
   const source = readFileSync(resolve(root, 'src/lib/chat-planner.ts'), 'utf8');
 

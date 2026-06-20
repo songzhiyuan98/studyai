@@ -67,6 +67,11 @@ function hasFullLectureLearningIntent(message: string) {
     || /(整份|整个|全部|全篇|每一页|逐页|一页一页|从头|完整|带我学会|带我学|讲完|学完整)/i.test(message);
 }
 
+function hasCourseWideLearningIntent(message: string) {
+  return /\b(course|class|materials?|all lectures?|whole topic|study plan|review plan)\b/i.test(message)
+    || /(系统|整理|梳理|相关内容|课程|这门课|材料|全部材料|所有材料|板块|复习计划|学习计划)/i.test(message);
+}
+
 export function planChatTurn({
   mode,
   message,
@@ -79,6 +84,8 @@ export function planChatTurn({
   hasExplicitScope?: boolean;
 }): ChatTurnPlan {
   const teacherModeHint = shouldUseTeacherMode(message, mode);
+  const assessmentIntent = hasAssessmentIntent(message, mode);
+  const courseWideLearningIntent = !assessmentIntent && hasCourseWideLearningIntent(message);
   const requiresRetrieval = shouldUseStudyRetrieval({
     mode,
     message,
@@ -86,14 +93,14 @@ export function planChatTurn({
     hasExplicitScope,
   });
   const requestedPage = extractRequestedPageNumber(message);
-  const retrievalBreadth: ChatTurnPlan['retrievalBreadth'] = hasAssessmentIntent(message, mode)
+  const retrievalBreadth: ChatTurnPlan['retrievalBreadth'] = assessmentIntent
     ? 'broad_assessment'
-    : teacherModeHint && !requestedPage
+    : (teacherModeHint || courseWideLearningIntent) && !requestedPage
       ? 'broad_lesson'
       : 'focused';
-  let contextStrategy: ChatTurnPlan['contextStrategy'] = hasAssessmentIntent(message, mode)
+  let contextStrategy: ChatTurnPlan['contextStrategy'] = assessmentIntent
     ? 'broad_rag'
-    : teacherModeHint && hasFullLectureLearningIntent(message)
+    : courseWideLearningIntent || teacherModeHint && hasFullLectureLearningIntent(message)
       ? 'lecture_pack'
       : retrievalBreadth === 'broad_lesson'
         ? 'broad_rag'
@@ -123,7 +130,7 @@ export function planChatTurn({
   } else if (mode !== 'free') {
     intent = 'fixed_action';
     delegatedAgent = mode === 'mini_quiz' ? 'assessment_agent' : 'teaching_agent';
-  } else if (teacherModeHint) {
+  } else if (teacherModeHint || courseWideLearningIntent) {
     intent = 'guided_learning';
     delegatedAgent = 'teaching_agent';
   } else if (requiresRetrieval) {
