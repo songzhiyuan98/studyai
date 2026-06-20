@@ -246,7 +246,11 @@ test('chat API loads recent session history before creating the next user messag
   assert.ok(createUserMessageIndex > -1, 'chat route should persist user messages');
   assert.ok(historyIndex < createUserMessageIndex, 'history should exclude the new user message');
   assert.match(source, /orderBy:\s*\{\s*createdAt: 'desc'\s*\}/);
-  assert.match(source, /take: 8/);
+  assert.match(source, /const CHAT_HISTORY_LOAD_LIMIT = 24/);
+  assert.match(source, /const CHAT_HISTORY_RECENT_WINDOW = 8/);
+  assert.match(source, /take: CHAT_HISTORY_LOAD_LIMIT/);
+  assert.match(source, /historyTurnsLoaded: recentHistory\.length/);
+  assert.match(source, /historyTurnsCompacted: Math\.max\(0, recentHistory\.length - CHAT_HISTORY_RECENT_WINDOW\)/);
   assert.match(source, /history: recentHistory/);
 });
 

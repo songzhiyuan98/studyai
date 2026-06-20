@@ -69,6 +69,8 @@ function getChatSourceVectorStatus(lecture: {
 
 const streamEncoder = new TextEncoder();
 const CHAT_STREAM_DELAY_MS = 28;
+const CHAT_HISTORY_LOAD_LIMIT = 24;
+const CHAT_HISTORY_RECENT_WINDOW = 8;
 
 function encodeSseEvent(event: string, data: unknown) {
   return streamEncoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -300,7 +302,7 @@ export async function POST(request: NextRequest) {
         content: true,
       },
       orderBy: { createdAt: 'desc' },
-      take: 8,
+      take: CHAT_HISTORY_LOAD_LIMIT,
     })).reverse().map((chatMessage) => ({
       role: chatMessage.role === 'USER' ? 'user' : 'assistant',
       title: chatMessage.title,
@@ -396,6 +398,8 @@ export async function POST(request: NextRequest) {
         count: artifact ? 1 : 0,
         scopedLectureCount: 0,
         historyCount: recentHistory.length,
+        historyTurnsLoaded: recentHistory.length,
+        historyTurnsCompacted: Math.max(0, recentHistory.length - CHAT_HISTORY_RECENT_WINDOW),
         query: 'tool_call',
         plan: chatPlan,
         ...getPlannerTrace(chatPlan),
@@ -461,6 +465,8 @@ export async function POST(request: NextRequest) {
         count: sourceRefs.length,
         scopedLectureCount: targetRef ? 1 : 0,
         historyCount: recentHistory.length,
+        historyTurnsLoaded: recentHistory.length,
+        historyTurnsCompacted: Math.max(0, recentHistory.length - CHAT_HISTORY_RECENT_WINDOW),
         query: 'tool_call',
         plan: chatPlan,
         ...getPlannerTrace(chatPlan),
@@ -504,6 +510,8 @@ export async function POST(request: NextRequest) {
         count: 0,
         scopedLectureCount: 0,
         historyCount: recentHistory.length,
+        historyTurnsLoaded: recentHistory.length,
+        historyTurnsCompacted: Math.max(0, recentHistory.length - CHAT_HISTORY_RECENT_WINDOW),
         query: 'not_requested',
         plan: chatPlan,
         ...getPlannerTrace(chatPlan),
@@ -938,6 +946,8 @@ export async function POST(request: NextRequest) {
       count: context.length,
       scopedLectureCount: activeLectures.length,
       historyCount: recentHistory.length,
+      historyTurnsLoaded: recentHistory.length,
+      historyTurnsCompacted: Math.max(0, recentHistory.length - CHAT_HISTORY_RECENT_WINDOW),
       query: recentHistory.length > 0 ? 'history_aware' : 'current_message',
       contextStrategy: effectiveContextStrategy,
       plannedContextStrategy: chatPlan.contextStrategy,
