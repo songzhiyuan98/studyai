@@ -25,6 +25,47 @@ function formatPackLabel(
   return `${sourceLabel} · source`;
 }
 
+function buildSegmentBlock(
+  segment: RetrievalSegment,
+  lectureLabels: Record<string, string>,
+) {
+  return `[${formatPackLabel(segment, lectureLabels)}]\n${segment.text.trim()}`;
+}
+
+function appendSegmentBlock({
+  segment,
+  contextParts,
+  selectedSegments,
+  usedChars,
+  maxChars,
+  lectureLabels,
+}: {
+  segment: RetrievalSegment;
+  contextParts: string[];
+  selectedSegments: RetrievalSegment[];
+  usedChars: number;
+  maxChars: number;
+  lectureLabels: Record<string, string>;
+}) {
+  const block = buildSegmentBlock(segment, lectureLabels);
+  const blockLength = block.length + (contextParts.length > 0 ? 2 : 0);
+
+  if (contextParts.length > 0 && usedChars + blockLength > maxChars) {
+    return { added: false, usedChars };
+  }
+
+  if (contextParts.length === 0 && block.length > maxChars) {
+    const truncatedBlock = block.slice(0, Math.max(0, maxChars - 1)).trimEnd();
+    contextParts.push(`${truncatedBlock}…`);
+    selectedSegments.push(segment);
+    return { added: true, usedChars: maxChars };
+  }
+
+  contextParts.push(block);
+  selectedSegments.push(segment);
+  return { added: true, usedChars: usedChars + blockLength };
+}
+
 export function buildLecturePackContext({
   candidateSegments,
   maxChars = 6000,
@@ -51,25 +92,61 @@ export function buildLecturePackContext({
   const selectedSegments: RetrievalSegment[] = [];
   const contextParts: string[] = [];
   let usedChars = 0;
+  const lectureIds = Array.from(new Set(orderedSegments.map((segment) => segment.lectureId)));
+
+  if (lectureIds.length > 1) {
+    const groupedSegments = new Map<string, RetrievalSegment[]>();
+    for (const segment of orderedSegments) {
+      groupedSegments.set(segment.lectureId, [
+        ...(groupedSegments.get(segment.lectureId) || []),
+        segment,
+      ]);
+    }
+    const perLectureBudget = Math.floor(maxChars / lectureIds.length);
+
+    for (const lectureId of lectureIds) {
+      let lectureUsedChars = 0;
+      const segments = groupedSegments.get(lectureId) || [];
+
+      for (const segment of segments) {
+        const blockLength = buildSegmentBlock(segment, lectureLabels).length
+          + (contextParts.length > 0 ? 2 : 0);
+        const exceedsLectureBudget = lectureUsedChars > 0
+          && lectureUsedChars + blockLength > perLectureBudget;
+        if (exceedsLectureBudget) break;
+
+        const result = appendSegmentBlock({
+          segment,
+          contextParts,
+          selectedSegments,
+          usedChars,
+          maxChars,
+          lectureLabels,
+        });
+        if (!result.added) break;
+
+        usedChars = result.usedChars;
+        lectureUsedChars += blockLength;
+      }
+    }
+
+    return {
+      contextText: contextParts.join('\n\n'),
+      segments: selectedSegments,
+    };
+  }
 
   for (const segment of orderedSegments) {
-    const block = `[${formatPackLabel(segment, lectureLabels)}]\n${segment.text.trim()}`;
-    const blockLength = block.length + (contextParts.length > 0 ? 2 : 0);
-
-    if (contextParts.length > 0 && usedChars + blockLength > maxChars) {
-      break;
-    }
-
-    if (contextParts.length === 0 && block.length > maxChars) {
-      const truncatedBlock = block.slice(0, Math.max(0, maxChars - 1)).trimEnd();
-      contextParts.push(`${truncatedBlock}…`);
-      selectedSegments.push(segment);
-      break;
-    }
-
-    contextParts.push(block);
-    selectedSegments.push(segment);
-    usedChars += blockLength;
+    const result = appendSegmentBlock({
+      segment,
+      contextParts,
+      selectedSegments,
+      usedChars,
+      maxChars,
+      lectureLabels,
+    });
+    if (!result.added) break;
+    usedChars = result.usedChars;
   }
 
   return {

@@ -58,3 +58,47 @@ test('keeps whole segments while respecting a context budget', () => {
   assert.match(pack.contextText, /Page one defines the core idea/);
   assert.doesNotMatch(pack.contextText, /Page two introduces examples/);
 });
+
+test('shares pack budget across multiple lectures', () => {
+  const pack = buildLecturePackContext({
+    candidateSegments: [
+      {
+        id: 'a1',
+        lectureId: 'lecture-a',
+        text: 'First lecture anchor. '.repeat(4),
+        page: 1,
+        slide: null,
+        charStart: 0,
+        charEnd: 90,
+      },
+      {
+        id: 'a2',
+        lectureId: 'lecture-a',
+        text: 'First lecture extra. '.repeat(4),
+        page: 2,
+        slide: null,
+        charStart: 0,
+        charEnd: 90,
+      },
+      {
+        id: 'b1',
+        lectureId: 'lecture-b',
+        text: 'Second lecture anchor. '.repeat(4),
+        page: 1,
+        slide: null,
+        charStart: 0,
+        charEnd: 94,
+      },
+    ],
+    maxChars: 240,
+    lectureLabels: {
+      'lecture-a': 'Lambda lecture',
+      'lecture-b': 'Types lecture',
+    },
+  });
+
+  assert.deepEqual(pack.segments.map((segment) => segment.id), ['a1', 'b1']);
+  assert.match(pack.contextText, /First lecture anchor/);
+  assert.doesNotMatch(pack.contextText, /First lecture extra/);
+  assert.match(pack.contextText, /Second lecture anchor/);
+});
