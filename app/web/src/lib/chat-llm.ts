@@ -160,6 +160,63 @@ function isStudyFollowUp(content: string) {
     || /(这个|那个|继续|下一个|翻译|用中文|讲简单|简单点|再讲|换种说法)/i.test(content);
 }
 
+function addRetrievalHints(hints: Set<string>, content: string, pattern: RegExp, terms: string[]) {
+  if (pattern.test(content)) {
+    terms.forEach((term) => hints.add(term));
+  }
+}
+
+function buildRetrievalHints(message: string, history: ChatHistoryTurn[] = []) {
+  const content = [
+    message,
+    ...history.slice(-4).map((turn) => turn.content),
+  ].join('\n').toLowerCase();
+  const hints = new Set<string>();
+
+  addRetrievalHints(hints, content, /考试|要考|备考|midterm|final|exam|mock|模拟|测试|测验|quiz|practice/i, [
+    'exam',
+    'practice',
+    'quiz',
+    'midterm',
+  ]);
+  addRetrievalHints(hints, content, /学习|复习|学会|带我|教我|讲讲|详细|learn|study|review|teach|explain/i, [
+    'learn',
+    'review',
+    'explain',
+    'examples',
+  ]);
+  addRetrievalHints(hints, content, /函数|function|lambda|higher.order|first.class/i, [
+    'function',
+    'functions',
+    'lambda',
+  ]);
+  addRetrievalHints(hints, content, /类型|type\b|types\b|typeclass|polymorph|inference|类型类/i, [
+    'type',
+    'types',
+    'typeclass',
+    'inference',
+  ]);
+  addRetrievalHints(hints, content, /模式匹配|pattern|matching/i, [
+    'pattern',
+    'matching',
+  ]);
+
+  return Array.from(hints);
+}
+
+function appendRetrievalHints(query: string, message: string, history: ChatHistoryTurn[] = []) {
+  const hints = buildRetrievalHints(message, history);
+  if (hints.length === 0) {
+    return query;
+  }
+
+  return [
+    query,
+    '',
+    `Retrieval hints: ${hints.join(' ')}`,
+  ].join('\n');
+}
+
 export function shouldUseStudyRetrieval({
   mode,
   message,
@@ -200,15 +257,15 @@ export function buildHistoryAwareRetrievalQuery({
     .join('\n');
 
   if (!usefulHistory) {
-    return message;
+    return truncateText(appendRetrievalHints(message, message, history), 850);
   }
 
-  return truncateText([
+  return truncateText(appendRetrievalHints([
     'Recent study conversation:',
     usefulHistory,
     '',
     `Current request: ${message}`,
-  ].join('\n'), 850);
+  ].join('\n'), message, history), 850);
 }
 
 export function buildGroundedPrompt({

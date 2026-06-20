@@ -255,6 +255,28 @@ test('builds history-aware retrieval queries for follow-up messages', () => {
   assert.ok(query.length < 900);
 });
 
+test('expands bilingual study requests with retrieval-friendly course terms', () => {
+  const examQuery = buildHistoryAwareRetrievalQuery({
+    message: '我马上要考 114a，帮我整理一份模拟 midterm 测试',
+    history: [],
+  });
+  const learningQuery = buildHistoryAwareRetrievalQuery({
+    message: '我想学会 Haskell 里面的函数和类型，用例子讲',
+    history: [],
+  });
+
+  assert.match(examQuery, /Retrieval hints:/);
+  assert.match(examQuery, /exam/);
+  assert.match(examQuery, /practice/);
+  assert.match(examQuery, /quiz/);
+  assert.match(examQuery, /midterm/);
+  assert.match(learningQuery, /function/);
+  assert.match(learningQuery, /functions/);
+  assert.match(learningQuery, /type/);
+  assert.match(learningQuery, /types/);
+  assert.match(learningQuery, /examples/);
+});
+
 test('keeps casual chat history out of retrieval queries', () => {
   const query = buildHistoryAwareRetrievalQuery({
     message: 'Can you explain Haskell functions now?',
@@ -274,7 +296,10 @@ test('keeps casual chat history out of retrieval queries', () => {
     ],
   });
 
-  assert.equal(query, 'Can you explain Haskell functions now?');
+  assert.match(query, /Can you explain Haskell functions now\?/);
+  assert.match(query, /Retrieval hints:/);
+  assert.doesNotMatch(query, /hi how are you/);
+  assert.doesNotMatch(query, /thanks/);
 });
 
 test('detects when a chat turn should use study retrieval', () => {
