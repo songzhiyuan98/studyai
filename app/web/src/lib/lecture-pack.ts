@@ -93,6 +93,14 @@ export function buildLecturePackContext({
   const contextParts: string[] = [];
   let usedChars = 0;
   const lectureIds = Array.from(new Set(orderedSegments.map((segment) => segment.lectureId)));
+  const finishPack = () => ({
+    contextText: contextParts.join('\n\n'),
+    segments: selectedSegments,
+    totalSegments: orderedSegments.length,
+    includedSegments: selectedSegments.length,
+    truncated: selectedSegments.length < orderedSegments.length,
+    maxChars,
+  });
 
   if (lectureIds.length > 1) {
     const groupedSegments = new Map<string, RetrievalSegment[]>();
@@ -130,10 +138,7 @@ export function buildLecturePackContext({
       }
     }
 
-    return {
-      contextText: contextParts.join('\n\n'),
-      segments: selectedSegments,
-    };
+    return finishPack();
   }
 
   for (const segment of orderedSegments) {
@@ -149,8 +154,5 @@ export function buildLecturePackContext({
     usedChars = result.usedChars;
   }
 
-  return {
-    contextText: contextParts.join('\n\n'),
-    segments: selectedSegments,
-  };
+  return finishPack();
 }

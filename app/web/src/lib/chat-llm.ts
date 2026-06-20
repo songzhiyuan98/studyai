@@ -34,6 +34,12 @@ type GenerateGroundedAnswerInput = {
   sources: GroundedSource[];
   delegatedAgent?: 'teaching_agent' | 'assessment_agent' | 'chat_agent' | 'tool_agent';
   contextStrategy?: 'focused_rag' | 'broad_rag' | 'lecture_pack' | 'long_document_map';
+  contextSummary?: {
+    totalSegments: number;
+    includedSegments: number;
+    truncated: boolean;
+    maxChars: number;
+  };
   resolvedScope?: {
     source: string;
     confidence: string;
@@ -167,6 +173,7 @@ export function buildGroundedPrompt({
   sources,
   delegatedAgent,
   contextStrategy,
+  contextSummary,
   resolvedScope,
 }: GenerateGroundedAnswerInput) {
   const sourceBlock = sources.length > 0
@@ -193,6 +200,13 @@ export function buildGroundedPrompt({
       `Reason: ${resolvedScope.reason}`,
     ].join('\n')
     : 'No resolved Library scope was provided.';
+  const contextSummaryBlock = contextSummary
+    ? [
+      `Included segments: ${contextSummary.includedSegments} of ${contextSummary.totalSegments}`,
+      `Context budget: ${contextSummary.maxChars} chars`,
+      `Truncated: ${contextSummary.truncated ? 'yes' : 'no'}`,
+    ].join('\n')
+    : 'No context summary was provided.';
 
   return [
     `Mode: ${chatModeLabels[mode]}`,
@@ -209,11 +223,15 @@ export function buildGroundedPrompt({
     'Resolved Library scope from planner:',
     scopeBlock,
     '',
+    'Context coverage from planner:',
+    contextSummaryBlock,
+    '',
     'Retrieved source context:',
     sourceBlock,
     '',
     'Answer requirements:',
     '- Use the retrieved sources to understand the student’s course context, terminology, and likely intent.',
+    '- If context coverage says the source was truncated, be honest about teaching from the included coverage and offer to continue through the remaining pages.',
     '- Treat retrieved context as grounding, not as your full intelligence. You may use general tutoring knowledge to explain, connect ideas, and create examples, but cite only source-grounded claims.',
     '- Use recent conversation to resolve follow-up references like "this", "that", "continue", and "quiz me on it".',
     '- Answer like ChatGPT with full tutoring ability: explain, connect concepts, provide examples, and fill in basic background when helpful.',

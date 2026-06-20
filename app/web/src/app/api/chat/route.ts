@@ -760,12 +760,26 @@ export async function POST(request: NextRequest) {
     }
 
     let retrieved: RetrievedContext[];
+    let lecturePackContextText = '';
+    let lecturePackSummary: {
+      totalSegments: number;
+      includedSegments: number;
+      truncated: boolean;
+      maxChars: number;
+    } | null = null;
     if (usesLecturePack) {
       const lecturePack = buildLecturePackContext({
         candidateSegments,
         maxChars: 6000,
         lectureLabels,
       });
+      lecturePackContextText = lecturePack.contextText;
+      lecturePackSummary = {
+        totalSegments: lecturePack.totalSegments,
+        includedSegments: lecturePack.includedSegments,
+        truncated: lecturePack.truncated,
+        maxChars: lecturePack.maxChars,
+      };
       retrieved = lecturePack.segments.map((segment, index) => ({
         segment,
         score: 1 - index * 0.001,
@@ -802,15 +816,17 @@ export async function POST(request: NextRequest) {
       reason: 'lexical' as const,
     }));
     const context = retrieved.length > 0 ? retrieved : fallbackSegments;
+    const contextSummary = lecturePackSummary || {
+      totalSegments: candidateSegments.length,
+      includedSegments: context.length,
+      truncated: context.length < candidateSegments.length,
+      maxChars: usesBroadCoverage ? 3800 : 1000,
+    };
     const contextText = usesLecturePack
-      ? buildLecturePackContext({
-        candidateSegments: context.map(({ segment }) => segment),
-        maxChars: 6000,
-        lectureLabels,
-      }).contextText
+      ? lecturePackContextText
       : compactContextText(
         context.map(({ segment }) => segment),
-        usesBroadCoverage ? 3800 : 1000,
+        contextSummary.maxChars,
       );
     const lectureMap = new Map(activeLectures.map((lecture) => [lecture.id, lecture]));
     const sourceRefs = context.map(({ segment, score, reason }) => {
@@ -844,6 +860,7 @@ export async function POST(request: NextRequest) {
       })),
       delegatedAgent: chatPlan.delegatedAgent,
       contextStrategy: effectiveContextStrategy,
+      contextSummary,
       resolvedScope: {
         source: libraryScope.source,
         confidence: libraryScope.confidence,
@@ -858,6 +875,7 @@ export async function POST(request: NextRequest) {
       historyCount: recentHistory.length,
       query: recentHistory.length > 0 ? 'history_aware' : 'current_message',
       contextStrategy: effectiveContextStrategy,
+      contextSummary,
       sourceScope: libraryScope.source === 'all_ready' && titleScope?.narrowed
         ? 'lecture_title'
         : libraryScope.source,

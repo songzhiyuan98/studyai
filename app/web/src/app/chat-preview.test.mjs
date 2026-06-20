@@ -42,6 +42,8 @@ test('chat source preview reports planner context strategy', () => {
 
   assert.match(routeSource, /effectiveContextStrategy/);
   assert.match(routeSource, /contextStrategy: effectiveContextStrategy/);
+  assert.match(routeSource, /contextSummary/);
+  assert.match(routeSource, /lecturePackSummary/);
   assert.match(routeSource, /lecture_pack_v0/);
   assert.match(routeSource, /long_document_map_v0/);
   assert.match(routeSource, /buildLecturePackContext/);

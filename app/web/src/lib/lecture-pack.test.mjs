@@ -43,6 +43,9 @@ test('packs lecture context in source order with page markers', () => {
   });
 
   assert.deepEqual(pack.segments.map((segment) => segment.id), ['s1', 's2', 's3']);
+  assert.equal(pack.totalSegments, 3);
+  assert.equal(pack.includedSegments, 3);
+  assert.equal(pack.truncated, false);
   assert.match(pack.contextText, /\[Lambda lecture · page 1\]\nPage one defines the core idea\./);
   assert.match(pack.contextText, /\[Lambda lecture · page 2\]\nPage two introduces examples\./);
   assert.match(pack.contextText, /\[Typeclasses lecture · page 1\]\nSecond lecture first page\./);
@@ -55,6 +58,10 @@ test('keeps whole segments while respecting a context budget', () => {
   });
 
   assert.deepEqual(pack.segments.map((segment) => segment.id), ['s1']);
+  assert.equal(pack.totalSegments, 3);
+  assert.equal(pack.includedSegments, 1);
+  assert.equal(pack.truncated, true);
+  assert.equal(pack.maxChars, 85);
   assert.match(pack.contextText, /Page one defines the core idea/);
   assert.doesNotMatch(pack.contextText, /Page two introduces examples/);
 });

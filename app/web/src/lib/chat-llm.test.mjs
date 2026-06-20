@@ -91,6 +91,12 @@ test('builds prompts with planner-resolved library scope for the teaching agent'
     contextText: 'Haskell functions and types are core course topics.',
     delegatedAgent: 'assessment_agent',
     contextStrategy: 'broad_rag',
+    contextSummary: {
+      totalSegments: 120,
+      includedSegments: 16,
+      truncated: true,
+      maxChars: 3800,
+    },
     resolvedScope: {
       source: 'course',
       confidence: 'high',
@@ -107,11 +113,15 @@ test('builds prompts with planner-resolved library scope for the teaching agent'
 
   assert.match(prompt, /Delegated agent: assessment_agent/);
   assert.match(prompt, /Context strategy: broad_rag/);
+  assert.match(prompt, /Context coverage from planner:/);
+  assert.match(prompt, /Included segments: 16 of 120/);
+  assert.match(prompt, /Truncated: yes/);
   assert.match(prompt, /Resolved Library scope from planner:/);
   assert.match(prompt, /Source: course/);
   assert.match(prompt, /Matched labels: CSE 114A/);
   assert.match(prompt, /Agent boundary: planner coordinates intent, scope, and tools/);
   assert.match(prompt, /Agent freedom: adapt the teaching path to the student/);
+  assert.match(prompt, /If context coverage says the source was truncated/);
 });
 
 test('builds prompts with recent conversation history for follow-up questions', () => {

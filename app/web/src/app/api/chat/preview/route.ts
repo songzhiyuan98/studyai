@@ -254,12 +254,24 @@ export async function POST(request: NextRequest) {
     }
 
     let retrieved: RetrievedContext[];
+    let lecturePackSummary: {
+      totalSegments: number;
+      includedSegments: number;
+      truncated: boolean;
+      maxChars: number;
+    } | null = null;
     if (usesLecturePack) {
       const lecturePack = buildLecturePackContext({
         candidateSegments,
         maxChars: 6000,
         lectureLabels,
       });
+      lecturePackSummary = {
+        totalSegments: lecturePack.totalSegments,
+        includedSegments: lecturePack.includedSegments,
+        truncated: lecturePack.truncated,
+        maxChars: lecturePack.maxChars,
+      };
       retrieved = lecturePack.segments.map((segment, index) => ({
         segment,
         score: 1 - index * 0.001,
@@ -293,6 +305,12 @@ export async function POST(request: NextRequest) {
         score: 0,
         reason: 'lexical' as const,
       }));
+    const contextSummary = lecturePackSummary || {
+      totalSegments: candidateSegments.length,
+      includedSegments: context.length,
+      truncated: context.length < candidateSegments.length,
+      maxChars: usesBroadCoverage ? 3800 : 1000,
+    };
     const lectureMap = new Map(activeLectures.map((lecture) => [lecture.id, lecture]));
     const sourceRefs = context.map(({ segment, score, reason }) => {
       const lecture = lectureMap.get(segment.lectureId);
@@ -355,6 +373,7 @@ export async function POST(request: NextRequest) {
         retrieval: {
           strategy: retrievalStrategy,
           contextStrategy: effectiveContextStrategy,
+          contextSummary,
           count: context.length,
           scopedLectureCount: activeLectures.length,
           sourceScope: libraryScope.source === 'all_ready' && titleScope?.narrowed
