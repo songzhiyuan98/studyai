@@ -18,6 +18,7 @@ const chatSchema = z.object({
   message: z.string().min(1).max(2000),
   mode: z.enum(['free', 'explain', 'summarize', 'key_terms', 'mini_quiz', 'cheat_sheet']).default('free'),
   lectureIds: z.array(z.string().min(1)).max(20).optional(),
+  sessionId: z.string().min(1).optional(),
   stream: z.boolean().optional(),
 });
 
@@ -36,6 +37,51 @@ const streamEncoder = new TextEncoder();
 
 function encodeSseEvent(event: string, data: unknown) {
   return streamEncoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+function buildSessionTitle(message: string) {
+  const trimmed = message.trim().replace(/\s+/g, ' ');
+  return trimmed.length > 48 ? `${trimmed.slice(0, 45)}...` : trimmed || 'New study chat';
+}
+
+async function getOrCreateChatSession({
+  userId,
+  sessionId,
+  message,
+  lectureIds,
+}: {
+  userId: string;
+  sessionId?: string;
+  message: string;
+  lectureIds?: string[];
+}) {
+  if (sessionId) {
+    const existingSession = await prisma.chatSession.findFirst({
+      where: {
+        id: sessionId,
+        userId,
+      },
+    });
+
+    if (existingSession) {
+      return existingSession;
+    }
+  }
+
+  return prisma.chatSession.create({
+    data: {
+      userId,
+      title: buildSessionTitle(message),
+      scopeJson: lectureIds?.length ? { lectureIds } : undefined,
+    },
+  });
+}
+
+async function touchChatSession(sessionId: string) {
+  await prisma.chatSession.update({
+    where: { id: sessionId },
+    data: { updatedAt: new Date() },
+  });
 }
 
 async function retrieveVectorContext({
@@ -182,6 +228,23 @@ export async function POST(request: NextRequest) {
     const scopedLectureIds = parsed.data.lectureIds?.length
       ? Array.from(new Set(parsed.data.lectureIds))
       : undefined;
+    const chatSession = await getOrCreateChatSession({
+      userId: session.user.id,
+      sessionId: parsed.data.sessionId,
+      message: parsed.data.message,
+      lectureIds: scopedLectureIds,
+    });
+
+    await prisma.chatMessage.create({
+      data: {
+        sessionId: chatSession.id,
+        userId: session.user.id,
+        role: 'USER',
+        mode: parsed.data.mode,
+        content: parsed.data.message,
+      },
+    });
+    await touchChatSession(chatSession.id);
 
     const lectures = await prisma.lecture.findMany({
       where: {
@@ -224,12 +287,31 @@ export async function POST(request: NextRequest) {
     ));
 
     if (candidateSegments.length === 0) {
+      const noSourcesContent = 'I could not find processed source chunks in your Library yet. Upload a PDF or TXT file in Library first, then come back and ask me to study it with you.';
+      await prisma.chatMessage.create({
+        data: {
+          sessionId: chatSession.id,
+          userId: session.user.id,
+          role: 'ASSISTANT',
+          mode: parsed.data.mode,
+          title: 'No ready sources',
+          content: noSourcesContent,
+          sourceRefs: [],
+          retrieval: {
+            strategy: 'lexical_page_aware_v0',
+            count: 0,
+          },
+        },
+      });
+      await touchChatSession(chatSession.id);
+
       return NextResponse.json({
         success: true,
         data: {
           message: {
+            sessionId: chatSession.id,
             role: 'assistant',
-            content: 'I could not find processed source chunks in your Library yet. Upload a PDF or TXT file in Library first, then come back and ask me to study it with you.',
+            content: noSourcesContent,
             title: 'No ready sources',
             sourceRefs: [],
             retrieval: {
@@ -319,6 +401,7 @@ export async function POST(request: NextRequest) {
 
           controller.enqueue(encodeSseEvent('metadata', {
             message: {
+              sessionId: chatSession.id,
               role: 'assistant',
               title: chatModeLabels[parsed.data.mode],
               sourceRefs,
@@ -353,8 +436,26 @@ export async function POST(request: NextRequest) {
             }
           }
 
+          await prisma.chatMessage.create({
+            data: {
+              sessionId: chatSession.id,
+              userId: session.user.id,
+              role: 'ASSISTANT',
+              mode: parsed.data.mode,
+              title: chatModeLabels[parsed.data.mode],
+              content: fullContent,
+              sourceRefs,
+              retrieval: {
+                ...retrievalTrace,
+                generation,
+              },
+            },
+          });
+          await touchChatSession(chatSession.id);
+
           controller.enqueue(encodeSseEvent('done', {
             message: {
+              sessionId: chatSession.id,
               role: 'assistant',
               title: chatModeLabels[parsed.data.mode],
               content: fullContent,
@@ -403,10 +504,28 @@ export async function POST(request: NextRequest) {
       console.error('LLM generation failed, falling back to local chat answer:', generationError);
     }
 
+    await prisma.chatMessage.create({
+      data: {
+        sessionId: chatSession.id,
+        userId: session.user.id,
+        role: 'ASSISTANT',
+        mode: parsed.data.mode,
+        title: chatModeLabels[parsed.data.mode],
+        content: answerContent,
+        sourceRefs,
+        retrieval: {
+          ...retrievalTrace,
+          generation,
+        },
+      },
+    });
+    await touchChatSession(chatSession.id);
+
     return NextResponse.json({
       success: true,
       data: {
         message: {
+          sessionId: chatSession.id,
           role: 'assistant',
           title: chatModeLabels[parsed.data.mode],
           content: answerContent,

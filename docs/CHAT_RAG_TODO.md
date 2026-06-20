@@ -70,16 +70,16 @@ student asks what to study
 
 ## Milestone 2: Chat Data Model
 
-- Add chat session storage.
-- Add chat message storage.
-- Store message role, content, status, model, token usage, and timestamps.
-- Store retrieval traces:
+- Add chat session storage. Implemented with `ChatSession`.
+- Add chat message storage. Implemented with `ChatMessage`.
+- Store message role, content, status, model, token usage, and timestamps. Current implementation stores role, content, mode, title, retrieval trace, source refs, and timestamps; token usage is still future work.
+- Store retrieval traces. Current implementation stores retrieval JSON and source refs:
   - selected scope
   - source confirmation decision
   - retrieved segment ids
   - reranked segment ids
   - final cited segment ids
-- Keep chat session ownership scoped by authenticated user id.
+- Keep chat session ownership scoped by authenticated user id. Implemented in session list/detail and chat persistence APIs.
 
 ## Milestone 3: Embedding Pipeline
 

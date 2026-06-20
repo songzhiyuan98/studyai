@@ -11,11 +11,11 @@ const navItems = [
   { href: '/saved', label: 'Saved', aliases: ['/review'] },
 ];
 
-const recentChats = [
-  { id: 'today', title: 'Review Haskell functions', time: 'Today' },
-  { id: 'quiz', title: 'Mini quiz from lambda notes', time: 'Yesterday' },
-  { id: 'scope', title: 'Midterm source scope', time: 'Jun 19' },
-];
+type RecentChat = {
+  id: string;
+  title: string;
+  time: string;
+};
 
 function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -30,6 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isChat = isActivePath(pathname, '/chat');
   const [showRouteSkeleton, setShowRouteSkeleton] = useState(false);
+  const [recentChats, setRecentChats] = useState<RecentChat[]>([]);
 
   useEffect(() => {
     if (isChat) {
@@ -41,6 +42,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const timer = window.setTimeout(() => setShowRouteSkeleton(false), 220);
     return () => window.clearTimeout(timer);
   }, [isChat, pathname]);
+
+  useEffect(() => {
+    if (!session?.user) return;
+
+    let cancelled = false;
+
+    const loadRecentChats = async () => {
+      try {
+        const response = await fetch('/api/chat/sessions', {
+          headers: { Accept: 'application/json' },
+        });
+        const payload = await response.json();
+
+        if (!cancelled && response.ok && payload.success) {
+          setRecentChats(payload.data.sessions || []);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setRecentChats([]);
+        }
+      }
+    };
+
+    loadRecentChats();
+    window.addEventListener('studyflow:chat-sessions-changed', loadRecentChats);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('studyflow:chat-sessions-changed', loadRecentChats);
+    };
+  }, [session?.user, pathname]);
 
   if (status === 'loading') {
     return (
@@ -78,16 +110,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <section className="app-recent-chats">
           <p className="rail-label px-2">Recent chats</p>
           <div className="mt-3 space-y-1">
-            {recentChats.map((chat) => (
-              <Link
-                key={chat.id}
-                href="/chat"
-                className={isChat && chat.id === 'today' ? 'app-recent-chat app-recent-chat-active' : 'app-recent-chat'}
-              >
-                <span className="truncate">{chat.title}</span>
-                <span className="shrink-0 text-xs text-[#a3a3a3]">{chat.time}</span>
-              </Link>
-            ))}
+            {recentChats.length > 0 ? (
+              recentChats.map((chat) => (
+                <Link
+                  key={chat.id}
+                  href={`/chat?sessionId=${chat.id}`}
+                  className="app-recent-chat"
+                >
+                  <span className="truncate">{chat.title}</span>
+                  <span className="shrink-0 text-xs text-[#a3a3a3]">{chat.time}</span>
+                </Link>
+              ))
+            ) : (
+              <p className="px-2 py-2 text-xs leading-5 text-[#a3a3a3]">
+                Your recent study chats will appear here.
+              </p>
+            )}
           </div>
         </section>
 

@@ -39,6 +39,15 @@ test('authenticated navigation is focused on chat library and saved', () => {
   assert.doesNotMatch(source, /\{ href: ['"]\/review['"], label: ['"]Review['"] \}/);
 });
 
+test('authenticated sidebar uses real recent chat sessions', () => {
+  const source = readFileSync(resolve(root, 'src/components/app-shell.tsx'), 'utf8');
+  assert.match(source, /\/api\/chat\/sessions/);
+  assert.match(source, /studyflow:chat-sessions-changed/);
+  assert.match(source, /href=\{`\/chat\?sessionId=\$\{chat\.id\}`\}/);
+  assert.doesNotMatch(source, /Review Haskell functions/);
+  assert.doesNotMatch(source, /Mini quiz from lambda notes/);
+});
+
 test('library page is positioned as knowledge base management', () => {
   const source = readFileSync(resolve(root, 'src/app/library/page.tsx'), 'utf8');
   assert.match(source, /Knowledge base/);
@@ -58,4 +67,12 @@ test('chat page requests server-side streaming responses', () => {
   assert.match(source, /Accept: 'text\/event-stream'/);
   assert.match(source, /stream: true/);
   assert.match(source, /parseChatStreamEvent/);
+});
+
+test('chat page can continue an existing chat session', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+  assert.match(source, /useSearchParams/);
+  assert.match(source, /requestedSessionId/);
+  assert.match(source, /sessionId: activeSessionId \|\| undefined/);
+  assert.match(source, /studyflow:chat-sessions-changed/);
 });

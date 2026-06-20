@@ -33,6 +33,8 @@ model User {
   lectures      Lecture[]
   selections    Selection[]
   examAttempts  ExamAttempt[]
+  chatSessions  ChatSession[]
+  chatMessages  ChatMessage[]
   
   @@map("users")
 }
@@ -232,6 +234,53 @@ enum ItemType {
   GLOSSARY    // 术语表
   FLASHCARDS  // 闪卡
   QUIZ        // 测验题目
+}
+
+// ================================
+// 学习聊天会话
+// ================================
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String
+  scopeJson Json?    @map("scope_json")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([userId, updatedAt])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  sessionId String   @map("session_id")
+  userId    String   @map("user_id")
+  role      ChatRole
+  mode      String?
+  title     String?
+  content   String   @db.Text
+
+  sourceRefs Json?   @map("source_refs")
+  retrieval  Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@index([userId, createdAt])
+  @@map("chat_messages")
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
 }
 
 // ================================

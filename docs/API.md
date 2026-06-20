@@ -187,29 +187,39 @@ Response shape:
 
 ## Study APIs
 
-## Planned: Study Chat APIs
+## Study Chat APIs
 
-### Create Chat Session
+### List Chat Sessions
 
 ```http
-POST /api/chat/sessions
+GET /api/chat/sessions
 Cookie: next-auth session
-Content-Type: application/json
 ```
 
-Creates a student-owned chat session. Optional initial scope can point to a folder, lecture, saved scope, or reader segment.
+Returns recent student-owned chat sessions for the authenticated sidebar.
+
+### Get Chat Session
+
+```http
+GET /api/chat/sessions/:id
+Cookie: next-auth session
+```
+
+Returns a student-owned chat session with persisted user and assistant messages.
 
 ### Send Chat Message
 
 ```http
-POST /api/chat/sessions/:id/messages
+POST /api/chat
 Cookie: next-auth session
 Content-Type: application/json
+Accept: text/event-stream
 ```
 
-Target behavior:
+Current behavior:
 
 - Accept a natural-language study message.
+- Automatically create a chat session when `sessionId` is omitted, or append to the existing owned session when `sessionId` is supplied.
 - Resolve explicit or inferred library scope.
 - Retrieve source segments with metadata filters.
 - Use embeddings through pgvector when available, with lexical/page-aware fallback.

@@ -72,8 +72,8 @@ Every generated artifact stores `sourceRefs` so students can jump back to the or
 
 Current implementation status:
 
-- Implemented: real PDF/TXT parsing, page-aware source segments, selected source refs, lexical/page-aware retrieval v0, optional OpenAI embedding generation, pgvector writes, vector-first Chat retrieval with lexical fallback, optional OpenAI chat generation, and server-side SSE streaming with local fallback streaming.
-- Not implemented yet: reranking and chat memory.
+- Implemented: real PDF/TXT parsing, page-aware source segments, selected source refs, lexical/page-aware retrieval v0, optional OpenAI embedding generation, pgvector writes, vector-first Chat retrieval with lexical fallback, optional OpenAI chat generation, server-side SSE streaming with local fallback streaming, and persisted chat sessions/messages.
+- Not implemented yet: reranking and deeper long-term chat memory.
 - Existing database direction: `Segment.embedding` is prepared for 1536-dimensional vectors.
 - Recommended embedding default: `text-embedding-3-small`, configurable through environment variables. It matches the existing 1536-dimensional schema and is the better default than the older `text-embedding-ada-002` for a student SaaS cost/quality profile.
 

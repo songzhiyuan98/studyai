@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 type ActionMode = 'free' | 'explain' | 'summarize' | 'key_terms' | 'mini_quiz' | 'cheat_sheet';
 
@@ -27,6 +28,7 @@ type SourceRef = {
 type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
+  sessionId?: string;
   title?: string;
   content: string;
   sourceRefs?: SourceRef[];
@@ -83,6 +85,8 @@ function parseChatStreamEvent(rawEvent: string): ChatStreamEvent | null {
 }
 
 export default function ChatPage() {
+  const searchParams = useSearchParams();
+  const requestedSessionId = searchParams.get('sessionId');
   const chatScrollRef = useRef<HTMLElement>(null);
   const hasHydratedSourcesRef = useRef(false);
   const mountedRef = useRef(true);
@@ -90,6 +94,7 @@ export default function ChatPage() {
   const [message, setMessage] = useState('');
   const [sources, setSources] = useState<ChatSource[]>([]);
   const [confirmedSources, setConfirmedSources] = useState<string[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingSources, setLoadingSources] = useState(true);
   const [sending, setSending] = useState(false);
@@ -181,6 +186,45 @@ export default function ChatPage() {
     });
   }, [messages, sending]);
 
+  useEffect(() => {
+    if (!requestedSessionId) {
+      setActiveSessionId(null);
+      setMessages([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadChatSession = async () => {
+      setError('');
+
+      try {
+        const response = await fetch(`/api/chat/sessions/${requestedSessionId}`, {
+          headers: { Accept: 'application/json' },
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error || 'Failed to load chat session.');
+        }
+
+        if (cancelled) return;
+
+        setActiveSessionId(payload.data.session.id);
+        setMessages(payload.data.session.messages || []);
+      } catch (loadError) {
+        if (cancelled) return;
+        setError(loadError instanceof Error ? loadError.message : 'Failed to load chat session.');
+      }
+    };
+
+    loadChatSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [requestedSessionId]);
+
   const toggleSource = (sourceId: string) => {
     setConfirmedSources((current) => (
       current.includes(sourceId)
@@ -227,6 +271,7 @@ export default function ChatPage() {
           message: trimmedMessage,
           mode,
           lectureIds: confirmedSources,
+          sessionId: activeSessionId || undefined,
           stream: true,
         }),
       });
@@ -254,6 +299,10 @@ export default function ChatPage() {
             isStreaming: false,
           },
         ]);
+        if (payload.data.message.sessionId) {
+          setActiveSessionId(payload.data.message.sessionId);
+          window.dispatchEvent(new Event('studyflow:chat-sessions-changed'));
+        }
         return;
       }
 
@@ -275,12 +324,16 @@ export default function ChatPage() {
           if (!streamEvent) continue;
 
           if (streamEvent.event === 'metadata') {
+            if (streamEvent.data.message.sessionId) {
+              setActiveSessionId(streamEvent.data.message.sessionId);
+            }
             assistantStarted = true;
             setMessages((current) => [
               ...current,
               {
                 id: assistantId,
                 role: 'assistant',
+                sessionId: streamEvent.data.message.sessionId,
                 title: streamEvent.data.message.title,
                 content: '',
                 sourceRefs: streamEvent.data.message.sourceRefs,
@@ -314,6 +367,10 @@ export default function ChatPage() {
           }
 
           if (streamEvent.event === 'done') {
+            if (streamEvent.data.message.sessionId) {
+              setActiveSessionId(streamEvent.data.message.sessionId);
+              window.dispatchEvent(new Event('studyflow:chat-sessions-changed'));
+            }
             setMessages((current) => current.map((item) => (
               item.id === assistantId
                 ? {
@@ -331,6 +388,10 @@ export default function ChatPage() {
       if (streamBuffer.trim()) {
         const streamEvent = parseChatStreamEvent(streamBuffer);
         if (streamEvent?.event === 'done') {
+          if (streamEvent.data.message.sessionId) {
+            setActiveSessionId(streamEvent.data.message.sessionId);
+            window.dispatchEvent(new Event('studyflow:chat-sessions-changed'));
+          }
           setMessages((current) => current.map((item) => (
             item.id === assistantId
               ? {
