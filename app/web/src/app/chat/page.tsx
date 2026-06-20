@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -77,13 +78,144 @@ const actionModes: Array<{ id: ActionMode; label: string; hint: string }> = [
   { id: 'cheat_sheet', label: 'Cheat sheet', hint: 'Printable draft' },
 ];
 
+function renderInlineMarkdown(text: string, keyPrefix: string) {
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).filter(Boolean);
+
+  return parts.map((part, index) => {
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return <code key={`${keyPrefix}-code-${index}`}>{part.slice(1, -1)}</code>;
+    }
+
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={`${keyPrefix}-strong-${index}`}>{part.slice(2, -2)}</strong>;
+    }
+
+    return <span key={`${keyPrefix}-text-${index}`}>{part}</span>;
+  });
+}
+
 function formatAssistantContent(content: string) {
-  return content.split('\n').map((line, index) => (
-    <span key={`${line}-${index}`}>
-      {line}
-      {index < content.split('\n').length - 1 ? <br /> : null}
-    </span>
-  ));
+  const lines = content.split('\n');
+  const elements: ReactNode[] = [];
+  let paragraphLines: string[] = [];
+  let listItems: string[] = [];
+  let orderedListItems: string[] = [];
+  let codeLines: string[] | null = null;
+  let codeLanguage = '';
+
+  const flushParagraph = () => {
+    if (paragraphLines.length === 0) return;
+    const text = paragraphLines.join(' ');
+    elements.push(
+      <p key={`p-${elements.length}`}>
+        {renderInlineMarkdown(text, `p-${elements.length}`)}
+      </p>,
+    );
+    paragraphLines = [];
+  };
+
+  const flushList = () => {
+    if (listItems.length > 0) {
+      elements.push(
+        <ul key={`ul-${elements.length}`}>
+          {listItems.map((item, index) => (
+            <li key={`li-${index}`}>{renderInlineMarkdown(item, `li-${elements.length}-${index}`)}</li>
+          ))}
+        </ul>,
+      );
+      listItems = [];
+    }
+
+    if (orderedListItems.length > 0) {
+      elements.push(
+        <ol key={`ol-${elements.length}`}>
+          {orderedListItems.map((item, index) => (
+            <li key={`oli-${index}`}>{renderInlineMarkdown(item, `oli-${elements.length}-${index}`)}</li>
+          ))}
+        </ol>,
+      );
+      orderedListItems = [];
+    }
+  };
+
+  const flushTextBlocks = () => {
+    flushParagraph();
+    flushList();
+  };
+
+  lines.forEach((rawLine) => {
+    const line = rawLine.trimEnd();
+
+    if (line.startsWith('```')) {
+      if (codeLines) {
+        elements.push(
+          <pre key={`code-${elements.length}`}>
+            {codeLanguage ? <span>{codeLanguage}</span> : null}
+            <code>{codeLines.join('\n')}</code>
+          </pre>,
+        );
+        codeLines = null;
+        codeLanguage = '';
+        return;
+      }
+
+      flushTextBlocks();
+      codeLines = [];
+      codeLanguage = line.replace(/^```/, '').trim();
+      return;
+    }
+
+    if (codeLines) {
+      codeLines.push(rawLine);
+      return;
+    }
+
+    if (!line.trim()) {
+      flushTextBlocks();
+      return;
+    }
+
+    const heading = line.match(/^(#{2,4})\s+(.+)$/);
+    if (heading) {
+      flushTextBlocks();
+      elements.push(
+        <h3 key={`h-${elements.length}`}>
+          {renderInlineMarkdown(heading[2], `h-${elements.length}`)}
+        </h3>,
+      );
+      return;
+    }
+
+    const bullet = line.match(/^[-*]\s+(.+)$/);
+    if (bullet) {
+      flushParagraph();
+      orderedListItems = [];
+      listItems.push(bullet[1]);
+      return;
+    }
+
+    const ordered = line.match(/^\d+\.\s+(.+)$/);
+    if (ordered) {
+      flushParagraph();
+      listItems = [];
+      orderedListItems.push(ordered[1]);
+      return;
+    }
+
+    paragraphLines.push(line.trim());
+  });
+
+  if (codeLines) {
+    elements.push(
+      <pre key={`code-${elements.length}`}>
+        {codeLanguage ? <span>{codeLanguage}</span> : null}
+        <code>{codeLines.join('\n')}</code>
+      </pre>,
+    );
+  }
+  flushTextBlocks();
+
+  return elements;
 }
 
 function parseChatStreamEvent(rawEvent: string): ChatStreamEvent | null {
@@ -129,6 +261,10 @@ function getUsedMaterials(sourceRefs: SourceRef[]) {
   return Array.from(materials.values());
 }
 
+function shouldShowMessageTitle(chatMessage: ChatMessage) {
+  return Boolean(chatMessage.title && chatMessage.title !== 'Study answer');
+}
+
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const requestedSessionId = searchParams.get('sessionId');
@@ -147,6 +283,7 @@ export default function ChatPage() {
   const [savingMessageId, setSavingMessageId] = useState<string | null>(null);
   const [showSourceScope, setShowSourceScope] = useState(false);
   const [sourcePreview, setSourcePreview] = useState<SourcePreview | null>(null);
+  const [selectedPreviewLectureIds, setSelectedPreviewLectureIds] = useState<string[]>([]);
   const [previewingSources, setPreviewingSources] = useState(false);
   const [error, setError] = useState('');
 
@@ -154,6 +291,7 @@ export default function ChatPage() {
     () => actionModes.find((action) => action.id === mode) || actionModes[0],
     [mode],
   );
+  const hasStreamingAssistant = messages.some((chatMessage) => chatMessage.role === 'assistant' && chatMessage.isStreaming);
   const sourceLabel = confirmedSources.length === 0
     ? 'Auto scope'
     : `${confirmedSources.length} ${confirmedSources.length === 1 ? 'source' : 'sources'}`;
@@ -288,6 +426,7 @@ export default function ChatPage() {
   const clearSources = () => {
     setConfirmedSources([]);
     setSourcePreview(null);
+    setSelectedPreviewLectureIds([]);
   };
 
   const previewSources = async () => {
@@ -315,7 +454,9 @@ export default function ChatPage() {
         throw new Error(payload.error || 'Could not preview source context.');
       }
 
-      setSourcePreview(payload.data as SourcePreview);
+      const nextPreview = payload.data as SourcePreview;
+      setSourcePreview(nextPreview);
+      setSelectedPreviewLectureIds(nextPreview.materials.map((material) => material.lectureId));
     } catch (previewError) {
       setError(previewError instanceof Error ? previewError.message : 'Could not preview source context.');
     } finally {
@@ -323,11 +464,27 @@ export default function ChatPage() {
     }
   };
 
-  const usePreviewMaterials = () => {
-    if (!sourcePreview?.materials.length) return;
+  const togglePreviewMaterial = (lectureId: string) => {
+    setSelectedPreviewLectureIds((current) => (
+      current.includes(lectureId)
+        ? current.filter((id) => id !== lectureId)
+        : [...current, lectureId]
+    ));
+  };
 
-    setConfirmedSources(sourcePreview.materials.map((material) => material.lectureId));
-    setShowSourceScope(true);
+  const selectAllPreviewMaterials = () => {
+    setSelectedPreviewLectureIds(sourcePreview?.materials.map((material) => material.lectureId) || []);
+  };
+
+  const clearPreviewMaterials = () => {
+    setSelectedPreviewLectureIds([]);
+  };
+
+  const usePreviewMaterials = () => {
+    if (!sourcePreview?.materials.length || selectedPreviewLectureIds.length === 0) return;
+
+    setConfirmedSources(selectedPreviewLectureIds);
+    setShowSourceScope(false);
   };
 
   const submitCurrentMessage = async () => {
@@ -346,6 +503,8 @@ export default function ChatPage() {
     setMessages((current) => [...current, userMessage]);
     setMessage('');
     setSourcePreview(null);
+    setSelectedPreviewLectureIds([]);
+    setShowSourceScope(false);
     setSending(true);
     setError('');
 
@@ -577,101 +736,6 @@ export default function ChatPage() {
             </p>
           </div>
 
-          <div className="chat-turn chat-turn-assistant">
-            <div className="chat-avatar">S</div>
-            <div className="chat-turn-content">
-              <div className="chat-source-card chat-source-card-compact">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-[#000000]">Source scope</p>
-                    <p className="mt-1 text-xs text-[#737373]">
-                      {confirmedSources.length === 0
-                        ? 'Auto-selecting relevant context from all ready Library sources.'
-                        : `Searching only ${sourceLabel} from your Library.`}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowSourceScope((current) => !current)}
-                    className="chat-source-toggle"
-                  >
-                    {loadingSources ? 'Loading sources' : sourceLabel}
-                    <span>{showSourceScope ? 'Hide' : 'Edit'}</span>
-                  </button>
-                </div>
-
-                {error ? (
-                  <div className="mt-4 border-l-2 border-red-700 bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {error}
-                  </div>
-                ) : null}
-
-                {showSourceScope ? (
-                  <>
-                    <div className="mt-4 ai-terminal">
-                      <div className="ai-terminal-lights">
-                        <span className="bg-[#ff5f56]" />
-                        <span className="bg-[#ffbd2e]" />
-                        <span className="bg-[#27c93f]" />
-                      </div>
-                      <div>retrieval: hybrid vector + lexical when available</div>
-                      <div>mode: {selectedMode.label}</div>
-                      <div>scope: {confirmedSources.length > 0 ? `${confirmedSources.length} selected and locked` : 'auto searches all ready sources'}</div>
-                    </div>
-                    <div className="chat-source-tools">
-                      <button type="button" onClick={() => loadSources()} className="chat-message-action">
-                        Refresh sources
-                      </button>
-                      <button type="button" onClick={selectAllSources} disabled={sources.length === 0} className="chat-message-action">
-                        Lock all sources
-                      </button>
-                      <button type="button" onClick={clearSources} className="chat-message-action">
-                        Auto scope
-                      </button>
-                    </div>
-                    <div className="mt-3 divide-y divide-[#e5e5e5]">
-                      {loadingSources ? (
-                        <div className="space-y-2 py-2">
-                          <div className="h-4 w-2/3 rounded bg-[#f2f2f2]" />
-                          <div className="h-4 w-1/2 rounded bg-[#f2f2f2]" />
-                        </div>
-                      ) : sources.length > 0 ? (
-                        sources.map((source) => {
-                          const active = confirmedSources.includes(source.id);
-
-                          return (
-                            <button
-                              key={source.id}
-                              type="button"
-                              onClick={() => toggleSource(source.id)}
-                              className="chat-source-row"
-                            >
-                              <span className="min-w-0">
-                                <span className="block truncate text-sm text-[#000000]">{source.label}</span>
-                                <span className="mt-1 block truncate text-xs text-[#737373]">{source.detail}</span>
-                              </span>
-                              <span className={active ? 'status-pill status-ready' : 'status-pill'}>
-                                {active ? 'Use' : 'Skip'}
-                              </span>
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <div className="py-4 text-sm leading-6 text-[#737373]">
-                          No ready sources yet. Go to{' '}
-                          <Link href="/library" className="text-link">
-                            Library
-                          </Link>{' '}
-                          and upload a PDF or TXT file first.
-                        </div>
-                      )}
-                    </div>
-                  </>
-                ) : null}
-              </div>
-            </div>
-          </div>
-
           {messages.map((chatMessage) => (
             <div
               key={chatMessage.id}
@@ -679,26 +743,23 @@ export default function ChatPage() {
             >
               {chatMessage.role === 'assistant' ? <div className="chat-avatar">S</div> : null}
               <div className={chatMessage.role === 'user' ? 'chat-turn-body' : 'chat-turn-content'}>
-                {chatMessage.title ? (
+                {shouldShowMessageTitle(chatMessage) ? (
                   <p className="mb-2 text-sm font-medium text-[#000000]">{chatMessage.title}</p>
                 ) : null}
-                <p>
-                  {formatAssistantContent(chatMessage.content)}
-                  {chatMessage.isStreaming ? <span className="chat-typing-cursor" aria-hidden="true" /> : null}
-                </p>
-
-                {chatMessage.retrieval ? (
-                  <div className="mt-4 ai-terminal">
-                    <div>retrieval: {chatMessage.retrieval.strategy}</div>
-                    <div>chunks: {chatMessage.retrieval.count}</div>
-                    <div>scope: {chatMessage.retrieval.scopedLectureCount ?? 0} sources</div>
-                    {chatMessage.retrieval.generation ? (
-                      <div>generation: {chatMessage.retrieval.generation.provider}</div>
-                    ) : null}
+                {chatMessage.role === 'assistant' ? (
+                  <div className="chat-markdown">
+                    {chatMessage.isStreaming && !chatMessage.content.trim() ? (
+                      <p><span className="chat-thinking-text">Thinking...</span></p>
+                    ) : (
+                      formatAssistantContent(chatMessage.content)
+                    )}
+                    {chatMessage.isStreaming ? <span className="chat-typing-cursor" aria-hidden="true" /> : null}
                   </div>
-                ) : null}
+                ) : (
+                  <p>{chatMessage.content}</p>
+                )}
 
-                {chatMessage.sourceRefs?.length ? (
+                {!chatMessage.isStreaming && chatMessage.content.trim() && chatMessage.sourceRefs?.length ? (
                   <>
                     <div className="chat-used-sources">
                       <p>Used materials</p>
@@ -730,7 +791,7 @@ export default function ChatPage() {
                   </>
                 ) : null}
 
-                {chatMessage.role === 'assistant' && chatMessage.sourceRefs?.length ? (
+                {chatMessage.role === 'assistant' && !chatMessage.isStreaming && chatMessage.content.trim() && chatMessage.sourceRefs?.length ? (
                   <div className="chat-message-actions">
                     <button
                       type="button"
@@ -755,7 +816,7 @@ export default function ChatPage() {
             </div>
           ))}
 
-          {sending ? (
+          {sending && !hasStreamingAssistant ? (
             <div className="chat-turn chat-turn-assistant">
               <div className="chat-avatar">S</div>
               <div className="chat-turn-content">
@@ -765,7 +826,7 @@ export default function ChatPage() {
                     <span className="ai-dot" />
                     <span className="ai-dot" />
                   </span>
-                  Retrieving source context
+                  Looking through your materials
                 </span>
               </div>
             </div>
@@ -788,40 +849,136 @@ export default function ChatPage() {
               ))}
             </div>
 
+            <div className="chat-scope-line">
+              <span>{confirmedSources.length === 0 ? 'Using auto source search' : `Using ${sourceLabel}`}</span>
+              <button type="button" onClick={() => setShowSourceScope((current) => !current)}>
+                {showSourceScope ? 'Hide sources' : 'Choose sources'}
+              </button>
+            </div>
+
+            {error ? (
+              <div className="chat-error-panel">
+                {error}
+              </div>
+            ) : null}
+
+            {showSourceScope ? (
+              <div className="chat-source-picker">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p>Source range</p>
+                    <span>
+                      {confirmedSources.length === 0
+                        ? 'I will search all ready Library materials and cite what I use.'
+                        : 'Only selected materials will be searched for the next answer.'}
+                    </span>
+                  </div>
+                  <div className="chat-source-tools">
+                    <button type="button" onClick={() => loadSources()} className="chat-message-action">
+                      Refresh
+                    </button>
+                    <button type="button" onClick={selectAllSources} disabled={sources.length === 0} className="chat-message-action">
+                      Lock all
+                    </button>
+                    <button type="button" onClick={clearSources} className="chat-message-action">
+                      Auto
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-3 divide-y divide-[#e5e5e5]">
+                  {loadingSources ? (
+                    <div className="space-y-2 py-2">
+                      <div className="h-4 w-2/3 rounded bg-[#f2f2f2]" />
+                      <div className="h-4 w-1/2 rounded bg-[#f2f2f2]" />
+                    </div>
+                  ) : sources.length > 0 ? (
+                    sources.map((source) => {
+                      const active = confirmedSources.includes(source.id);
+
+                      return (
+                        <button
+                          key={source.id}
+                          type="button"
+                          onClick={() => toggleSource(source.id)}
+                          className="chat-source-row"
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm text-[#000000]">{source.label}</span>
+                            <span className="mt-1 block truncate text-xs text-[#737373]">{source.detail}</span>
+                          </span>
+                          <span className={active ? 'status-pill status-ready' : 'status-pill'}>
+                            {active ? 'Use' : 'Skip'}
+                          </span>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="py-4 text-sm leading-6 text-[#737373]">
+                      No ready sources yet. Go to{' '}
+                      <Link href="/library" className="text-link">
+                        Library
+                      </Link>{' '}
+                      and upload a PDF or TXT file first.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
             {sourcePreview ? (
               <div className="chat-source-preview">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <p>Suggested materials</p>
                     <span>
-                      {sourcePreview.retrieval.strategy} · {sourcePreview.retrieval.count} chunks from {sourcePreview.retrieval.scopedLectureCount} scoped sources
+                      I found {sourcePreview.materials.length} likely {sourcePreview.materials.length === 1 ? 'material' : 'materials'} · {sourcePreview.retrieval.count} relevant chunks
+                      {sourcePreview.materials.length > 0 ? ` · ${selectedPreviewLectureIds.length} selected` : ''}
                     </span>
                   </div>
-                  <div className="flex shrink-0 gap-2">
-                    <button type="button" onClick={usePreviewMaterials} className="chat-message-action">
-                      Use these
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <button type="button" onClick={usePreviewMaterials} disabled={selectedPreviewLectureIds.length === 0} className="chat-message-action">
+                      Use selected
                     </button>
-                    <button type="button" onClick={() => setSourcePreview(null)} className="chat-message-action">
+                    <button type="button" onClick={selectAllPreviewMaterials} className="chat-message-action">
+                      Select all
+                    </button>
+                    <button type="button" onClick={clearPreviewMaterials} className="chat-message-action">
+                      Clear
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSourcePreview(null);
+                        setSelectedPreviewLectureIds([]);
+                      }}
+                      className="chat-message-action"
+                    >
                       Hide
                     </button>
                   </div>
                 </div>
                 <div className="chat-source-preview-list">
                   {sourcePreview.materials.length > 0 ? (
-                    sourcePreview.materials.map((material) => (
-                      <button
-                        key={material.lectureId}
-                        type="button"
-                        onClick={() => {
-                          setConfirmedSources([material.lectureId]);
-                          setShowSourceScope(true);
-                        }}
-                        className="chat-source-preview-item"
-                      >
-                        <span className="truncate">{material.title}</span>
-                        <span>{material.count} chunks · {material.detail}</span>
-                      </button>
-                    ))
+                    sourcePreview.materials.map((material) => {
+                      const selected = selectedPreviewLectureIds.includes(material.lectureId);
+
+                      return (
+                        <button
+                          key={material.lectureId}
+                          type="button"
+                          onClick={() => togglePreviewMaterial(material.lectureId)}
+                          className={selected ? 'chat-source-preview-item chat-source-preview-item-selected' : 'chat-source-preview-item'}
+                        >
+                          <span className="chat-source-preview-check" aria-hidden="true">
+                            {selected ? '✓' : ''}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate">{material.title}</span>
+                            <span>{material.count} chunks · {material.detail}</span>
+                          </span>
+                        </button>
+                      );
+                    })
                   ) : (
                     <span className="text-sm text-[#737373]">No ready matching sources yet.</span>
                   )}

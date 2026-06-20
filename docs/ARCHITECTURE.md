@@ -132,6 +132,9 @@ StudyFlow Chat should be source-aware, not source-imprisoned. Retrieved RAG cont
 - Source confirmation should be based on the internal retrieval/source-preview API or future tool calls, not a generic confirmation modal.
 - If the student chooses a scope manually, the assistant should not repeatedly ask for confirmation.
 - Each answer should expose the sources it used and offer to open them in the reader.
+- The chat surface should feel conversational, not like a retrieval dashboard. Engineering details such as retrieval strategy ids should stay in traces, while the UI uses natural language like "I found likely materials."
+- Streamed answers should be paced so they read like a live assistant response instead of instantly dumping a full generated block.
+- Assistant Markdown should render as readable headings, lists, inline code, and code blocks.
 
 ## Ingestion Flow
 

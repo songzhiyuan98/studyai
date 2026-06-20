@@ -1091,6 +1091,51 @@
     animation: landing-cursor-blink 1s steps(2, start) infinite;
   }
 
+  .chat-thinking-text {
+    @apply text-[#737373];
+  }
+
+  .chat-markdown {
+    @apply text-[15px] leading-7 text-[#171717];
+  }
+
+  .chat-markdown > * + * {
+    @apply mt-3;
+  }
+
+  .chat-markdown h3 {
+    @apply pt-1 text-base font-semibold leading-6 text-[#000000];
+  }
+
+  .chat-markdown ul,
+  .chat-markdown ol {
+    @apply space-y-1 pl-5;
+  }
+
+  .chat-markdown ul {
+    @apply list-disc;
+  }
+
+  .chat-markdown ol {
+    @apply list-decimal;
+  }
+
+  .chat-markdown code {
+    @apply rounded bg-[#f5f5f5] px-1.5 py-0.5 font-mono text-[0.92em] text-[#000000];
+  }
+
+  .chat-markdown pre {
+    @apply overflow-x-auto rounded-2xl border border-[#e5e5e5] bg-[#0f0f0f] p-4 text-sm leading-6 text-white;
+  }
+
+  .chat-markdown pre span {
+    @apply mb-2 block text-xs uppercase tracking-wide text-white/50;
+  }
+
+  .chat-markdown pre code {
+    @apply bg-transparent p-0 text-white;
+  }
+
   .chat-composer-dock {
     @apply absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-white via-white via-80% to-white/0 px-4 pb-5 pt-20 sm:px-6;
   }
@@ -1116,6 +1161,30 @@
     @apply border-[#000000] bg-[#000000] text-white hover:border-[#000000] hover:text-white;
   }
 
+  .chat-scope-line {
+    @apply mb-3 flex items-center justify-between gap-3 px-1 text-xs text-[#737373];
+  }
+
+  .chat-scope-line button {
+    @apply shrink-0 font-medium text-[#000000] underline decoration-[#000000]/20 underline-offset-4 transition-colors hover:decoration-[#000000]/50;
+  }
+
+  .chat-error-panel {
+    @apply mb-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700;
+  }
+
+  .chat-source-picker {
+    @apply mb-3 rounded-2xl border border-[#e5e5e5] bg-white/95 px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)] backdrop-blur;
+  }
+
+  .chat-source-picker p {
+    @apply text-sm font-medium text-[#000000];
+  }
+
+  .chat-source-picker span {
+    @apply text-xs text-[#737373];
+  }
+
   .chat-source-preview {
     @apply mb-3 rounded-2xl border border-[#e5e5e5] bg-white/95 px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)] backdrop-blur;
   }
@@ -1129,16 +1198,19 @@
   }
 
   .chat-source-preview-list {
-    @apply mt-3 flex gap-2 overflow-x-auto pb-1;
-    scrollbar-width: none;
-  }
-
-  .chat-source-preview-list::-webkit-scrollbar {
-    display: none;
+    @apply mt-3 grid max-h-48 gap-2 overflow-y-auto pr-1;
   }
 
   .chat-source-preview-item {
-    @apply flex min-w-48 max-w-64 shrink-0 flex-col items-start rounded-md border border-[#e5e5e5] bg-white px-3 py-2 text-left transition-colors hover:border-[#000000];
+    @apply grid grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-2 rounded-xl border border-[#e5e5e5] bg-white px-3 py-2.5 text-left transition-colors hover:border-[#000000];
+  }
+
+  .chat-source-preview-item-selected {
+    @apply border-[#000000] bg-[#fafafa];
+  }
+
+  .chat-source-preview-check {
+    @apply mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-[#d4d4d4] text-[10px] font-semibold leading-none text-[#000000];
   }
 
   .chat-input-shell {

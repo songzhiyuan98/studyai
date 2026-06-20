@@ -40,9 +40,16 @@ type VectorSearchRow = {
 };
 
 const streamEncoder = new TextEncoder();
+const CHAT_STREAM_DELAY_MS = 28;
 
 function encodeSseEvent(event: string, data: unknown) {
   return streamEncoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+function waitForChatStreamPace() {
+  return new Promise((resolve) => {
+    setTimeout(resolve, CHAT_STREAM_DELAY_MS);
+  });
 }
 
 function buildSessionTitle(message: string) {
@@ -451,6 +458,7 @@ export async function POST(request: NextRequest) {
             for await (const delta of streamGroundedChatAnswer(generationInput)) {
               streamedFromModel = true;
               fullContent += delta;
+              await waitForChatStreamPace();
               controller.enqueue(encodeSseEvent('delta', { delta }));
             }
 
@@ -468,6 +476,7 @@ export async function POST(request: NextRequest) {
           if (!fullContent) {
             for (const delta of chunkTextForLocalStream(fallbackAnswerContent)) {
               fullContent += delta;
+              await waitForChatStreamPace();
               controller.enqueue(encodeSseEvent('delta', { delta }));
             }
           }

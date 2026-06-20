@@ -80,7 +80,7 @@ test('lecture reindex API can backfill missing segment embeddings', () => {
 
 test('chat page can refresh ready library sources after uploads finish indexing', () => {
   const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
-  assert.match(source, /Refresh sources/);
+  assert.match(source, /Refresh/);
   assert.match(source, /visibilitychange/);
   assert.match(source, /hasHydratedSourcesRef/);
 });
@@ -88,8 +88,9 @@ test('chat page can refresh ready library sources after uploads finish indexing'
 test('chat page defaults to auto scope instead of the first few sources', () => {
   const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
   assert.match(source, /Auto scope/);
-  assert.match(source, /auto searches all ready sources/);
-  assert.match(source, /Lock all sources/);
+  assert.match(source, /Using auto source search/);
+  assert.match(source, /I will search all ready Library materials/);
+  assert.match(source, /Lock all/);
   assert.doesNotMatch(source, /loadedSources\.slice\(0,\s*3\)/);
 });
 
@@ -98,6 +99,13 @@ test('chat page requests server-side streaming responses', () => {
   assert.match(source, /Accept: 'text\/event-stream'/);
   assert.match(source, /stream: true/);
   assert.match(source, /parseChatStreamEvent/);
+});
+
+test('chat API paces streamed answer deltas instead of dumping content instantly', () => {
+  const source = readFileSync(resolve(root, 'src/app/api/chat/route.ts'), 'utf8');
+  assert.match(source, /CHAT_STREAM_DELAY_MS = 28/);
+  assert.match(source, /waitForChatStreamPace/);
+  assert.match(source, /await waitForChatStreamPace\(\);\s*controller\.enqueue\(encodeSseEvent\('delta'/);
 });
 
 test('chat input sends on enter and keeps shift enter for new lines', () => {
@@ -136,14 +144,34 @@ test('chat answers summarize the materials used for retrieval', () => {
   assert.match(source, /chat-used-source-pill/);
 });
 
+test('chat keeps streaming answers conversational before showing metadata actions', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+  const styles = readFileSync(resolve(root, 'src/app/globals.css'), 'utf8');
+
+  assert.match(source, /function renderInlineMarkdown/);
+  assert.match(source, /function shouldShowMessageTitle/);
+  assert.match(source, /chatMessage\.title !== 'Study answer'/);
+  assert.match(source, /Thinking\.\.\./);
+  assert.match(source, /className="chat-markdown"/);
+  assert.match(source, /!chatMessage\.isStreaming && chatMessage\.content\.trim\(\) && chatMessage\.sourceRefs\?\.length/);
+  assert.match(source, /sending && !hasStreamingAssistant/);
+  assert.match(styles, /\.chat-markdown pre/);
+});
+
 test('chat page can preview suggested sources before generation', () => {
   const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
 
   assert.match(source, /\/api\/chat\/preview/);
   assert.match(source, /Check sources/);
   assert.match(source, /Suggested materials/);
-  assert.match(source, /Use these/);
-  assert.match(source, /setConfirmedSources\(sourcePreview\.materials\.map/);
+  assert.match(source, /I found \{sourcePreview\.materials\.length\} likely/);
+  assert.match(source, /selectedPreviewLectureIds/);
+  assert.match(source, /Use selected/);
+  assert.match(source, /togglePreviewMaterial/);
+  assert.match(source, /selectAllPreviewMaterials/);
+  assert.match(source, /clearPreviewMaterials/);
+  assert.match(source, /setConfirmedSources\(selectedPreviewLectureIds\)/);
+  assert.doesNotMatch(source, /setConfirmedSources\(sourcePreview\.materials\.map/);
 });
 
 test('chat API loads recent session history before creating the next user message', () => {
