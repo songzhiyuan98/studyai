@@ -25,6 +25,12 @@ type UploadProgress = {
   error?: string;
 };
 
+type RenameTarget = {
+  type: 'folder' | 'lecture';
+  id: string;
+  name: string;
+};
+
 const ALLOWED_FILE_TYPES = {
   'application/pdf': '.pdf',
   'text/plain': '.txt',
@@ -58,6 +64,9 @@ export default function LibraryPage() {
   const [selectedLectureIds, setSelectedLectureIds] = useState<string[]>([]);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<RenameTarget | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renaming, setRenaming] = useState(false);
   const [reindexingVectors, setReindexingVectors] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -222,23 +231,58 @@ export default function LibraryPage() {
     await loadLibrary();
   };
 
-  const renameFolder = async (folder: Folder) => {
-    const name = window.prompt('Rename collection', folder.name)?.trim();
-    if (!name || name === folder.name) return;
+  const openRenameDialog = (target: RenameTarget) => {
+    setRenameTarget(target);
+    setRenameValue(target.name);
+    setActionMessage('');
+  };
 
-    const response = await fetch(`/api/folders/${folder.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    const result = await response.json();
+  const confirmRename = async () => {
+    if (!renameTarget || renaming) return;
 
-    if (!response.ok || !result.success) {
-      setActionMessage(result.error || 'Collection could not be renamed.');
+    const nextName = renameValue.trim();
+    if (!nextName || nextName === renameTarget.name) {
+      setRenameTarget(null);
+      setRenameValue('');
       return;
     }
 
-    await loadLibrary();
+    setRenaming(true);
+    setActionMessage('');
+
+    try {
+      const endpoint = renameTarget.type === 'folder'
+        ? `/api/folders/${renameTarget.id}`
+        : `/api/lectures/${renameTarget.id}`;
+      const response = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(renameTarget.type === 'folder' ? { name: nextName } : { title: nextName }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || (renameTarget.type === 'folder'
+          ? 'Collection could not be renamed.'
+          : 'Material could not be renamed.'));
+      }
+
+      setRenameTarget(null);
+      setRenameValue('');
+      await loadLibrary();
+    } catch (renameError) {
+      setActionMessage(renameError instanceof Error ? renameError.message : 'Item could not be renamed.');
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const renameFolder = (folder: Folder) => {
+    openRenameDialog({
+      type: 'folder',
+      id: folder.id,
+      name: folder.name,
+    });
   };
 
   const deleteFolder = async (folder: Folder) => {
@@ -260,23 +304,12 @@ export default function LibraryPage() {
     await loadLibrary();
   };
 
-  const renameLecture = async (lectureId: string, currentTitle: string) => {
-    const title = window.prompt('Rename material', currentTitle)?.trim();
-    if (!title || title === currentTitle) return;
-
-    const response = await fetch(`/api/lectures/${lectureId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title }),
+  const renameLecture = (lectureId: string, currentTitle: string) => {
+    openRenameDialog({
+      type: 'lecture',
+      id: lectureId,
+      name: currentTitle,
     });
-    const result = await response.json();
-
-    if (!response.ok || !result.success) {
-      setActionMessage(result.error || 'Material could not be renamed.');
-      return;
-    }
-
-    await loadLibrary();
   };
 
   const deleteLecture = async (lectureId: string, title: string) => {
@@ -985,6 +1018,51 @@ export default function LibraryPage() {
                   Done
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {renameTarget ? (
+        <div className="modal-backdrop">
+          <div className="modal-panel max-w-lg">
+            <p className="text-xs uppercase tracking-normal text-[#737373]">
+              {renameTarget.type === 'folder' ? 'Rename folder' : 'Rename file'}
+            </p>
+            <h2 className="mt-2 text-xl font-normal text-[#000000]">
+              Update name
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[#737373]">
+              Rename this {renameTarget.type === 'folder' ? 'folder' : 'source file'} without changing its parsed passages or saved study outputs.
+            </p>
+            <input
+              value={renameValue}
+              onChange={(event) => setRenameValue(event.target.value)}
+              onKeyDown={(event) => event.key === 'Enter' && confirmRename()}
+              className="input-field mt-5"
+              placeholder={renameTarget.type === 'folder' ? 'Folder name' : 'File title'}
+              autoFocus
+            />
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRenameTarget(null);
+                  setRenameValue('');
+                }}
+                disabled={renaming}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmRename}
+                disabled={renaming || !renameValue.trim()}
+                className="btn-primary"
+              >
+                {renaming ? 'Renaming...' : 'Rename'}
+              </button>
             </div>
           </div>
         </div>

@@ -264,6 +264,20 @@ test('library page can prepare confirmation for chat requested deletes', () => {
   assert.match(source, /Delete is ready for review/);
 });
 
+test('library page uses a shared rename modal instead of browser prompts', () => {
+  const source = readFileSync(resolve(root, 'src/app/library/page.tsx'), 'utf8');
+
+  assert.match(source, /type RenameTarget/);
+  assert.match(source, /const \[renameTarget, setRenameTarget\]/);
+  assert.match(source, /const \[renameValue, setRenameValue\]/);
+  assert.match(source, /openRenameDialog/);
+  assert.match(source, /confirmRename/);
+  assert.match(source, /renameTarget\.type === 'folder'/);
+  assert.match(source, /Rename folder/);
+  assert.match(source, /Rename file/);
+  assert.doesNotMatch(source, /window\.prompt/);
+});
+
 test('chat page surfaces saved-output tool replies without resaving them', () => {
   const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
 
