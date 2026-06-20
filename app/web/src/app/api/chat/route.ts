@@ -582,14 +582,15 @@ export async function POST(request: NextRequest) {
       const requestedPageRef = chatPlan.requestedPage
         ? recentRefs.find((sourceRef) => sourceRef.page === chatPlan.requestedPage)
         : undefined;
-      const fallbackSourceRef = requestedPageRef || recentRefs[0]
+      const recentTargetRef = requestedPageRef || (!chatPlan.requestedPage ? recentRefs[0] : undefined);
+      const fallbackSourceRef = recentTargetRef
         ? null
         : await findReaderFallbackSourceRef({
           userId: session.user.id,
           message: parsed.data.message,
           requestedPage: chatPlan.requestedPage,
         });
-      const targetRef = requestedPageRef || recentRefs[0] || fallbackSourceRef;
+      const targetRef = recentTargetRef || fallbackSourceRef;
       const readerResponseContent = targetRef
         ? `I found the source reference${chatPlan.requestedPage ? ` for page ${chatPlan.requestedPage}` : ''}. Open it from the citation below.`
         : 'I could not find a recent citation or matching Library source to open yet. Try naming the file, lecture, or page more directly.';

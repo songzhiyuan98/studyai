@@ -164,6 +164,8 @@ test('chat route can return reader links from planner intent', () => {
   assert.match(source, /tool_reader_open_v0/);
   assert.match(source, /parseChatSourceRefs\(assistantMessage\.sourceRefs\)/);
   assert.match(source, /sourceRef\.page === chatPlan\.requestedPage/);
+  assert.match(source, /const recentTargetRef/);
+  assert.match(source, /!chatPlan\.requestedPage \? recentRefs\[0\]/);
   assert.match(source, /findReaderFallbackSourceRef/);
   assert.match(source, /reader_library_fallback/);
   assert.match(source, /title:\s*true/);
