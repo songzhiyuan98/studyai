@@ -104,7 +104,9 @@ test('chat input sends on enter and keeps shift enter for new lines', () => {
   const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
   assert.match(source, /onKeyDown=\{\(event\) =>/);
   assert.match(source, /event\.key === 'Enter' && !event\.shiftKey/);
-  assert.match(source, /sendMessage\(event\)/);
+  assert.match(source, /event\.nativeEvent\.isComposing/);
+  assert.match(source, /composerFormRef\.current\?\.requestSubmit\(\)/);
+  assert.doesNotMatch(source, /sendMessage\(event\)/);
 });
 
 test('chat page can continue an existing chat session', () => {
@@ -142,4 +144,17 @@ test('chat page can preview suggested sources before generation', () => {
   assert.match(source, /Suggested materials/);
   assert.match(source, /Use these/);
   assert.match(source, /setConfirmedSources\(sourcePreview\.materials\.map/);
+});
+
+test('chat API loads recent session history before creating the next user message', () => {
+  const source = readFileSync(resolve(root, 'src/app/api/chat/route.ts'), 'utf8');
+  const historyIndex = source.indexOf('await prisma.chatMessage.findMany');
+  const createUserMessageIndex = source.indexOf("role: 'USER'");
+
+  assert.ok(historyIndex > -1, 'chat route should load recent chat history');
+  assert.ok(createUserMessageIndex > -1, 'chat route should persist user messages');
+  assert.ok(historyIndex < createUserMessageIndex, 'history should exclude the new user message');
+  assert.match(source, /orderBy:\s*\{\s*createdAt: 'desc'\s*\}/);
+  assert.match(source, /take: 8/);
+  assert.match(source, /history: recentHistory/);
 });

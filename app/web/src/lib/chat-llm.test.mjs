@@ -72,6 +72,36 @@ test('builds source-aware prompts with source markers and general tutoring room'
   assert.match(prompt, /Explain pattern matching/);
 });
 
+test('builds prompts with recent conversation history for follow-up questions', () => {
+  const prompt = buildGroundedPrompt({
+    mode: 'free',
+    message: 'Can you continue from that example?',
+    contextText: 'Pattern matching chooses the first matching equation.',
+    history: [
+      {
+        role: 'user',
+        content: 'What is pattern matching?',
+      },
+      {
+        role: 'assistant',
+        content: 'Pattern matching checks values against ordered cases.',
+      },
+    ],
+    sources: [
+      {
+        label: 'haskell · page 2',
+        text: 'Pattern matching chooses the first matching equation.',
+      },
+    ],
+  });
+
+  assert.match(prompt, /Recent conversation:/);
+  assert.match(prompt, /user: What is pattern matching\?/);
+  assert.match(prompt, /assistant: Pattern matching checks values against ordered cases\./);
+  assert.match(prompt, /Use recent conversation to resolve follow-up references/);
+  assert.match(prompt, /Can you continue from that example\?/);
+});
+
 test('skips remote generation when chat model is not configured', async () => {
   process.env.OPENAI_API_KEY = '';
 

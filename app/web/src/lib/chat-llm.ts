@@ -20,10 +20,17 @@ type GroundedSource = {
   text: string;
 };
 
+export type ChatHistoryTurn = {
+  role: 'user' | 'assistant';
+  content: string;
+  title?: string | null;
+};
+
 type GenerateGroundedAnswerInput = {
   mode: ChatMode;
   message: string;
   contextText: string;
+  history?: ChatHistoryTurn[];
   sources: GroundedSource[];
 };
 
@@ -46,7 +53,37 @@ export function isChatModelConfigured() {
   return apiKey.startsWith('sk-') && !PLACEHOLDER_KEYS.has(apiKey);
 }
 
-export function buildGroundedPrompt({ mode, message, sources }: GenerateGroundedAnswerInput) {
+function truncateText(text: string, maxLength: number) {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1)}…` : normalized;
+}
+
+export function compactChatHistory(history: ChatHistoryTurn[] = [], maxTurns = 8, maxChars = 2200) {
+  const cleanHistory = history
+    .map((turn) => ({
+      ...turn,
+      content: turn.content.replace(/\s+/g, ' ').trim(),
+    }))
+    .filter((turn) => turn.content.length > 0);
+
+  if (cleanHistory.length === 0) {
+    return 'No prior conversation in this chat.';
+  }
+
+  const recentTurns = cleanHistory.slice(-maxTurns);
+  const earlierTurns = cleanHistory.slice(0, Math.max(0, cleanHistory.length - recentTurns.length));
+  const recentBlock = recentTurns
+    .map((turn) => `${turn.role}: ${truncateText(turn.content, 420)}`)
+    .join('\n');
+  const earlierSummary = earlierTurns.length > 0
+    ? `Earlier compressed context: ${truncateText(earlierTurns.map((turn) => `${turn.role}: ${turn.content}`).join(' | '), 650)}\n`
+    : '';
+  const historyBlock = `${earlierSummary}${recentBlock}`.trim();
+
+  return truncateText(historyBlock, maxChars);
+}
+
+export function buildGroundedPrompt({ mode, message, history, sources }: GenerateGroundedAnswerInput) {
   const sourceBlock = sources.length > 0
     ? sources.map((source, index) => (
       [
@@ -55,16 +92,21 @@ export function buildGroundedPrompt({ mode, message, sources }: GenerateGrounded
       ].join('\n')
     )).join('\n\n')
     : 'No retrieved source context.';
+  const historyBlock = compactChatHistory(history);
 
   return [
     `Mode: ${chatModeLabels[mode]}`,
     `Student request: ${message}`,
+    '',
+    'Recent conversation:',
+    historyBlock,
     '',
     'Retrieved source context:',
     sourceBlock,
     '',
     'Answer requirements:',
     '- Use the retrieved sources to understand the student’s course context, terminology, and likely intent.',
+    '- Use recent conversation to resolve follow-up references like "this", "that", "continue", and "quiz me on it".',
     '- Answer like ChatGPT with full tutoring ability: explain, connect concepts, provide examples, and fill in basic background when helpful.',
     '- Mention source markers such as [S1] only when a specific sentence or bullet is directly grounded in a retrieved source.',
     '- Do not fabricate citations or claim the sources say something they do not say.',

@@ -16,6 +16,7 @@ import {
   generateGroundedChatAnswer,
   getChatModelConfig,
   streamGroundedChatAnswer,
+  type ChatHistoryTurn,
 } from '@/lib/chat-llm';
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 
@@ -239,6 +240,23 @@ export async function POST(request: NextRequest) {
       message: parsed.data.message,
       lectureIds: scopedLectureIds,
     });
+    const recentHistory: ChatHistoryTurn[] = (await prisma.chatMessage.findMany({
+      where: {
+        sessionId: chatSession.id,
+        userId: session.user.id,
+      },
+      select: {
+        role: true,
+        title: true,
+        content: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 8,
+    })).reverse().map((chatMessage) => ({
+      role: chatMessage.role === 'USER' ? 'user' : 'assistant',
+      title: chatMessage.title,
+      content: chatMessage.content,
+    }));
 
     await prisma.chatMessage.create({
       data: {
@@ -395,6 +413,7 @@ export async function POST(request: NextRequest) {
       mode: parsed.data.mode,
       message: parsed.data.message,
       contextText,
+      history: recentHistory,
       sources: context.map(({ segment }, index) => ({
         label: sourceRefs[index]?.label || formatSourceRef(segment),
         text: segment.text,
@@ -404,6 +423,7 @@ export async function POST(request: NextRequest) {
       strategy: retrievalStrategy,
       count: context.length,
       scopedLectureCount: lectures.length,
+      historyCount: recentHistory.length,
     };
 
     if (parsed.data.stream) {

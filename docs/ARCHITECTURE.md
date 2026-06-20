@@ -85,6 +85,8 @@ User action
 ```text
 User chat message
   -> Conversation state
+     - latest turns are preserved for follow-up references
+     - older turns are compacted when context grows long
   -> Intent and study-goal extraction
      - free-form chat
      - fixed action pill mode
@@ -94,7 +96,8 @@ User chat message
      - fallback clarification when scope is ambiguous
   -> Optional source confirmation
      - skip when scope is explicit
-     - ask when retrieval spans multiple plausible folders or lectures
+     - recommend candidate folders, lectures, or page ranges when retrieval spans multiple plausible sources
+     - let the student approve, remove, or adjust the recommended source set
   -> Retrieval query builder
      - natural-language query
      - optional rewritten query for lecture terminology
@@ -126,6 +129,7 @@ StudyFlow Chat should be source-aware, not source-imprisoned. Retrieved RAG cont
 - Quick action pills are optional accelerators, not separate pages.
 - A selected pill controls the output format of the next assistant response.
 - The assistant may ask one short source-confirmation question before generation when the scope is ambiguous.
+- Source confirmation should be based on the internal retrieval/source-preview API or future tool calls, not a generic confirmation modal.
 - If the student chooses a scope manually, the assistant should not repeatedly ask for confirmation.
 - Each answer should expose the sources it used and offer to open them in the reader.
 

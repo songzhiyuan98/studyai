@@ -133,6 +133,7 @@ export default function ChatPage() {
   const searchParams = useSearchParams();
   const requestedSessionId = searchParams.get('sessionId');
   const chatScrollRef = useRef<HTMLElement>(null);
+  const composerFormRef = useRef<HTMLFormElement>(null);
   const hasHydratedSourcesRef = useRef(false);
   const mountedRef = useRef(true);
   const [mode, setMode] = useState<ActionMode>('free');
@@ -329,8 +330,7 @@ export default function ChatPage() {
     setShowSourceScope(true);
   };
 
-  const sendMessage = async (event: { preventDefault: () => void }) => {
-    event.preventDefault();
+  const submitCurrentMessage = async () => {
     const trimmedMessage = message.trim();
 
     if (!trimmedMessage || sending) {
@@ -509,6 +509,11 @@ export default function ChatPage() {
     } finally {
       setSending(false);
     }
+  };
+
+  const sendMessage = (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+    void submitCurrentMessage();
   };
 
   const saveAssistantMessage = async (chatMessage: ChatMessage) => {
@@ -767,7 +772,7 @@ export default function ChatPage() {
           ) : null}
         </section>
 
-        <form className="chat-composer-dock" onSubmit={sendMessage}>
+        <form ref={composerFormRef} className="chat-composer-dock" onSubmit={sendMessage}>
           <div className="chat-floating-composer">
             <div className="chat-action-strip" aria-label="Quick study actions">
               {actionModes.map((action) => (
@@ -829,9 +834,13 @@ export default function ChatPage() {
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 onKeyDown={(event) => {
+                  if (event.nativeEvent.isComposing) {
+                    return;
+                  }
+
                   if (event.key === 'Enter' && !event.shiftKey) {
                     event.preventDefault();
-                    sendMessage(event);
+                    composerFormRef.current?.requestSubmit();
                   }
                 }}
                 className="chat-input"

@@ -21,7 +21,7 @@ The chat should feel conversational, but the architecture must remain citation-f
 ```text
 student asks what to study
   -> resolve study scope from library
-  -> confirm source when needed
+  -> recommend and confirm likely sources when needed
   -> retrieve grounded source context
   -> stream answer
   -> show citations
@@ -35,7 +35,7 @@ student asks what to study
 - Reader micro actions use retrieval v0:
   - selected `sourceRefs`
   - lexical/page-aware `relatedRefs`
-- Embeddings are not generated yet in the upload path.
+- Embeddings are generated during upload when a real OpenAI key is configured; otherwise retrieval falls back to lexical ranking until reindexing fills missing vectors.
 - pgvector schema support exists through `Segment.embedding vector(1536)`.
 - Recommended MVP embedding model: `text-embedding-3-small`.
 
@@ -62,8 +62,9 @@ student asks what to study
   - recent uploads
 - Add a source confirmation state:
   - ask when the user intent matches several plausible sources
-  - show candidate folders, lectures, or page ranges
+  - show AI/retriever-recommended candidate folders, lectures, or page ranges
   - let the student approve, remove, or change sources before generation
+  - support manual "Check sources" now and future model/tool-triggered source checks
   - skip confirmation when the student has already selected an explicit scope
 - Show cited sources beside or below assistant messages.
 - Let citations open `/documents/[id]` at the referenced segment.
@@ -73,6 +74,7 @@ student asks what to study
 - Add chat session storage. Implemented with `ChatSession`.
 - Add chat message storage. Implemented with `ChatMessage`.
 - Store message role, content, status, model, token usage, and timestamps. Current implementation stores role, content, mode, title, retrieval trace, source refs, and timestamps; token usage is still future work.
+- Pass recent chat history into generation prompts. Current implementation preserves recent turns and deterministically compacts older context when the prompt would grow too long; future work can replace this with a model-generated conversation memory.
 - Store retrieval traces. Current implementation stores retrieval JSON and source refs:
   - selected scope
   - source confirmation decision
