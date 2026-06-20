@@ -73,6 +73,7 @@ test('saved page supports selecting and deleting saved outputs', () => {
   assert.match(source, /Select visible outputs/);
   assert.match(source, /\/api\/study\/actions\/\$\{artifactId\}/);
   assert.match(source, /Delete saved outputs/);
+  assert.match(source, /href=\{`\/documents\/\$\{ref\.lectureId\}\?segmentId=\$\{encodeURIComponent\(ref\.segmentId\)\}`\}/);
 });
 
 test('lecture reindex API can backfill missing segment embeddings', () => {

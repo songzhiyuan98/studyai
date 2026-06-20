@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { StudyArtifact } from '@/lib/study-actions';
 
 type StudyArtifactsResponse = {
@@ -283,9 +284,13 @@ export default function ReviewPage() {
                           <span className="text-sm text-[#a3a3a3]">No source refs</span>
                         ) : (
                           artifact.sourceRefs.map((ref) => (
-                            <span key={`${artifact.id}-${ref.segmentId}`} className="status-pill">
+                            <Link
+                              key={`${artifact.id}-${ref.segmentId}`}
+                              href={`/documents/${ref.lectureId}?segmentId=${encodeURIComponent(ref.segmentId)}`}
+                              className="status-pill"
+                            >
                               {ref.label}
-                            </span>
+                            </Link>
                           ))
                         )}
                       </div>
@@ -294,9 +299,13 @@ export default function ReviewPage() {
                           <p className="text-xs text-[#737373]">Retrieved context</p>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {artifact.relatedRefs.map((ref) => (
-                              <span key={`${artifact.id}-related-${ref.segmentId}`} className="status-pill status-muted">
+                              <Link
+                                key={`${artifact.id}-related-${ref.segmentId}`}
+                                href={`/documents/${ref.lectureId}?segmentId=${encodeURIComponent(ref.segmentId)}`}
+                                className="status-pill status-muted"
+                              >
                                 {ref.label}
-                              </span>
+                              </Link>
                             ))}
                           </div>
                         </div>
