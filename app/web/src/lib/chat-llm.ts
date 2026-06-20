@@ -64,9 +64,12 @@ export function buildGroundedPrompt({ mode, message, sources }: GenerateGrounded
     sourceBlock,
     '',
     'Answer requirements:',
-    '- Use only the retrieved source context. If the context is insufficient, say what is missing.',
-    '- Keep the tone like a concise study tutor.',
-    '- Include short inline source markers such as [S1] when making source-grounded claims.',
+    '- Use the retrieved sources to understand the student’s course context, terminology, and likely intent.',
+    '- Answer like ChatGPT with full tutoring ability: explain, connect concepts, provide examples, and fill in basic background when helpful.',
+    '- Mention source markers such as [S1] only when a specific sentence or bullet is directly grounded in a retrieved source.',
+    '- Do not fabricate citations or claim the sources say something they do not say.',
+    '- If the student explicitly asks to answer only from the material, stay within the retrieved sources and say what is missing when context is insufficient.',
+    '- Keep the tone natural, concise, and useful for studying.',
     '- For quiz or cheat-sheet modes, structure the answer so it is easy to review.',
   ].join('\n');
 }

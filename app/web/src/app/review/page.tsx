@@ -36,8 +36,12 @@ export default function ReviewPage() {
   const [artifacts, setArtifacts] = useState<StudyArtifact[]>([]);
   const [activeFilter, setActiveFilter] = useState<(typeof artifactFilters)[number]['id']>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedArtifactIds, setSelectedArtifactIds] = useState<string[]>([]);
+  const [deleteQueue, setDeleteQueue] = useState<StudyArtifact[]>([]);
+  const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -90,6 +94,74 @@ export default function ReviewPage() {
     });
   }, [activeFilter, artifacts, searchQuery]);
 
+  const visibleArtifactIds = useMemo(
+    () => visibleArtifacts.map((artifact) => artifact.id).filter((id): id is string => Boolean(id)),
+    [visibleArtifacts],
+  );
+  const selectedVisibleCount = selectedArtifactIds.filter((id) => visibleArtifactIds.includes(id)).length;
+  const allVisibleSelected = visibleArtifactIds.length > 0 && selectedVisibleCount === visibleArtifactIds.length;
+
+  useEffect(() => {
+    setSelectedArtifactIds((current) => current.filter((id) => artifacts.some((artifact) => artifact.id === id)));
+  }, [artifacts]);
+
+  const toggleArtifactSelection = (artifactId: string | undefined) => {
+    if (!artifactId) return;
+
+    setSelectedArtifactIds((current) => (
+      current.includes(artifactId)
+        ? current.filter((id) => id !== artifactId)
+        : [...current, artifactId]
+    ));
+  };
+
+  const toggleSelectAllVisible = () => {
+    setSelectedArtifactIds((current) => {
+      const selected = new Set(current);
+
+      if (allVisibleSelected) {
+        visibleArtifactIds.forEach((id) => selected.delete(id));
+      } else {
+        visibleArtifactIds.forEach((id) => selected.add(id));
+      }
+
+      return Array.from(selected);
+    });
+  };
+
+  const openDeleteDialog = (items: StudyArtifact[]) => {
+    setDeleteQueue(items.filter((artifact) => artifact.id));
+    setActionMessage('');
+  };
+
+  const deleteSelectedArtifacts = async () => {
+    const ids = deleteQueue.map((artifact) => artifact.id).filter((id): id is string => Boolean(id));
+    if (ids.length === 0) return;
+
+    setDeleting(true);
+    setActionMessage('');
+
+    try {
+      const responses = await Promise.all(
+        ids.map((artifactId) => fetch(`/api/study/actions/${artifactId}`, { method: 'DELETE' })),
+      );
+      const failedResponse = responses.find((response) => !response.ok);
+
+      if (failedResponse) {
+        const result = await failedResponse.json().catch(() => ({}));
+        throw new Error(result.error || 'Some saved outputs could not be deleted.');
+      }
+
+      setArtifacts((current) => current.filter((artifact) => !artifact.id || !ids.includes(artifact.id)));
+      setSelectedArtifactIds((current) => current.filter((id) => !ids.includes(id)));
+      setDeleteQueue([]);
+    } catch (deleteError) {
+      setActionMessage(deleteError instanceof Error ? deleteError.message : 'Saved outputs could not be deleted.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="tool-shell">
       <header className="tool-hero">
@@ -132,8 +204,31 @@ export default function ReviewPage() {
               );
             })}
           </nav>
-          <span className="hidden text-sm text-[#737373] sm:block">{visibleArtifacts.length} shown</span>
+          <div className="flex items-center gap-3">
+            {selectedArtifactIds.length > 0 ? (
+              <div className="bulk-action-bar">
+                <span>{selectedArtifactIds.length} selected</span>
+                <button
+                  type="button"
+                  onClick={() => openDeleteDialog(artifacts.filter((artifact) => artifact.id && selectedArtifactIds.includes(artifact.id)))}
+                  className="text-link text-red-700"
+                >
+                  Delete
+                </button>
+                <button type="button" onClick={() => setSelectedArtifactIds([])} className="text-link">
+                  Clear
+                </button>
+              </div>
+            ) : null}
+            <span className="hidden text-sm text-[#737373] sm:block">{visibleArtifacts.length} shown</span>
+          </div>
         </div>
+
+        {actionMessage ? (
+          <div className="mb-4 border-l-2 border-[#ff7759] bg-[#ffad9b]/20 px-4 py-3 text-sm text-[#000000]">
+            {actionMessage}
+          </div>
+        ) : null}
 
         <main className="saved-board">
           {loading ? (
@@ -154,8 +249,26 @@ export default function ReviewPage() {
             </div>
           ) : (
             <div className="artifact-stream">
+              <label className="saved-select-all">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  disabled={visibleArtifactIds.length === 0}
+                  onChange={toggleSelectAllVisible}
+                  aria-label="Select all visible saved outputs"
+                />
+                <span>Select visible outputs</span>
+              </label>
               {visibleArtifacts.map((artifact) => (
                 <article key={artifact.id} className="artifact-row">
+                  <label className="bulk-select-control saved-row-check">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(artifact.id && selectedArtifactIds.includes(artifact.id))}
+                      onChange={() => toggleArtifactSelection(artifact.id)}
+                      aria-label={`Select ${artifact.title}`}
+                    />
+                  </label>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="status-pill status-ready">{artifact.type.replace('_', ' ')}</span>
@@ -190,12 +303,62 @@ export default function ReviewPage() {
                       ) : null}
                     </div>
                   </div>
+                  <div className="artifact-row-actions">
+                    <button
+                      type="button"
+                      onClick={() => openDeleteDialog([artifact])}
+                      disabled={!artifact.id}
+                      className="text-link text-red-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
           )}
         </main>
       </section>
+
+      {deleteQueue.length > 0 ? (
+        <div className="modal-backdrop">
+          <div className="modal-panel max-w-lg">
+            <p className="text-xs uppercase tracking-normal text-[#737373]">Delete saved outputs</p>
+            <h2 className="mt-2 text-xl font-normal text-[#000000]">
+              Delete {deleteQueue.length} saved {deleteQueue.length === 1 ? 'output' : 'outputs'}?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[#737373]">
+              This removes the saved generated material from your archive. The original Library sources and parsed chunks stay available for Chat.
+            </p>
+            <div className="mt-5 max-h-40 overflow-y-auto border-y border-[#e5e5e5]">
+              {deleteQueue.map((artifact) => (
+                <div key={artifact.id} className="py-3">
+                  <div className="truncate text-sm font-medium text-[#000000]">{artifact.title}</div>
+                  <div className="mt-1 text-xs text-[#737373]">{artifact.type.replace('_', ' ')}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteQueue([])}
+                disabled={deleting}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={deleteSelectedArtifacts}
+                disabled={deleting}
+                className="btn-primary bg-red-700 hover:bg-red-800"
+              >
+                {deleting ? 'Deleting...' : 'Delete outputs'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

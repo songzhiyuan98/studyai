@@ -52,7 +52,7 @@ test('returns chat model defaults from environment', () => {
   restoreEnv();
 });
 
-test('builds grounded prompts with source markers and context limits', () => {
+test('builds source-aware prompts with source markers and general tutoring room', () => {
   const prompt = buildGroundedPrompt({
     mode: 'explain',
     message: 'Explain pattern matching',
@@ -66,7 +66,9 @@ test('builds grounded prompts with source markers and context limits', () => {
   });
 
   assert.match(prompt, /\[S1\] haskell · page 2/);
-  assert.match(prompt, /Use only the retrieved source context/);
+  assert.match(prompt, /understand the student’s course context/);
+  assert.match(prompt, /Answer like ChatGPT with full tutoring ability/);
+  assert.match(prompt, /Do not fabricate citations/);
   assert.match(prompt, /Explain pattern matching/);
 });
 

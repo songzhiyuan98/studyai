@@ -108,7 +108,8 @@ User chat message
      - retrieve small chunks
      - pack larger page/slide context for generation
   -> Prompt builder
-     - instructions to stay inside retrieved context
+     - instructions to use retrieved context as course grounding
+     - permission to add clearly labeled general tutoring explanations
      - source ids visible to the model
   -> Streaming LLM response
   -> Citation validation
@@ -116,6 +117,8 @@ User chat message
 ```
 
 The chat response should stream token-by-token for the user, while the backend preserves the full trace of retrieved source references. This gives the product the familiar ChatGPT feeling without losing the source-grounded study workflow.
+
+StudyFlow Chat should be source-aware, not source-imprisoned. Retrieved RAG context helps the model understand the student's course materials, terminology, and citation targets; it is not a hard ceiling on the model's tutoring ability. The assistant should answer naturally like ChatGPT, using general model knowledge to explain concepts, provide examples, connect ideas, and fill in basic background when helpful. Source markers such as `[S1]` are reserved for specific source-supported claims, and the UI keeps a citation trace attached to the answer. The assistant must not fabricate citations or imply that general knowledge came from the student's files.
 
 ### Chat Interaction Rules
 

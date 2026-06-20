@@ -55,6 +55,14 @@ test('library page is positioned as knowledge base management', () => {
   assert.match(source, /'list', 'grid', 'compact'/);
 });
 
+test('saved page supports selecting and deleting saved outputs', () => {
+  const source = readFileSync(resolve(root, 'src/app/review/page.tsx'), 'utf8');
+  assert.match(source, /selectedArtifactIds/);
+  assert.match(source, /Select visible outputs/);
+  assert.match(source, /\/api\/study\/actions\/\$\{artifactId\}/);
+  assert.match(source, /Delete saved outputs/);
+});
+
 test('lecture reindex API can backfill missing segment embeddings', () => {
   const source = readFileSync(resolve(root, 'src/app/api/lectures/reindex/route.ts'), 'utf8');
   assert.match(source, /s\.embedding IS NULL/);
