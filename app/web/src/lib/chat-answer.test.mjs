@@ -67,6 +67,8 @@ test('builds teacher-like fallback for beginner learning requests', () => {
   });
 
   assert.match(answer, /为什么要学它/);
+  assert.match(answer, /心智模型/);
+  assert.match(answer, /小例子/);
   assert.match(answer, /小练习/);
   assert.doesNotMatch(answer, /What part should we unpack next/);
 });
