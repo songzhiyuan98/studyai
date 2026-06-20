@@ -22,6 +22,22 @@ test('builds mini quiz output with evidence and application prompts', () => {
   assert.match(answer, /Source notes considered/);
 });
 
+test('builds assessment-style fallback for mock exam requests', () => {
+  const answer = buildChatAnswer({
+    mode: 'mini_quiz',
+    message: '我马上要考 114A，请把材料整理成一份模拟 midterm 测试',
+    contextText,
+  });
+
+  assert.match(answer, /Mock midterm/i);
+  assert.match(answer, /Part A/);
+  assert.match(answer, /Part B/);
+  assert.match(answer, /Part C/);
+  assert.match(answer, /Answer key/);
+  assert.match(answer, /代表性覆盖/);
+  assert.doesNotMatch(answer, /Source notes considered/);
+});
+
 test('builds cheat sheet output with must-know bullets', () => {
   const answer = buildChatAnswer({
     mode: 'cheat_sheet',

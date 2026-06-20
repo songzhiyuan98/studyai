@@ -32,6 +32,11 @@ function isTeacherLikeRequest(message: string) {
   return /(\bteach\b|\blearn\b|\breview\b|\bfrom scratch\b|\bbeginner\b|\bwalk me through\b|\beach page\b|学习|复习|带我|教我|学会|从头|小白|没接触过|每一页|逐页|详细讲|讲讲|听你的安排)/i.test(message);
 }
 
+function isAssessmentLikeRequest(message: string) {
+  return /\b(midterm|final|exam|mock|practice test|test)\b/i.test(message)
+    || /(期中|期末|考试|要考|备考|模拟|测试|卷子|试卷)/i.test(message);
+}
+
 export function buildCasualChatAnswer({ message }: { message: string }): string {
   const normalized = message.trim().toLowerCase();
 
@@ -60,6 +65,33 @@ export function buildChatAnswer({
   const bullets = bulletizeContext(context);
 
   if (mode === 'mini_quiz') {
+    if (isAssessmentLikeRequest(message)) {
+      return [
+        'Mock midterm draft based on representative coverage from the selected materials.',
+        '',
+        `Scope: ${question}`,
+        '',
+        'Part A: Core concepts',
+        '1. Define the main concept in your own words, then name the problem it solves.',
+        '2. Compare two related ideas from the material and explain when each one is useful.',
+        '',
+        'Part B: Reading and reasoning',
+        '3. Given a short source-style example, identify the rule or definition being used.',
+        '4. Explain why a common wrong answer is tempting, then correct it.',
+        '',
+        'Part C: Application',
+        '5. Create a small example that uses the concept correctly.',
+        '6. Modify the example so that one assumption changes, then predict the result.',
+        '',
+        'Answer key:',
+        ...(bullets.length > 0
+          ? bullets.map((bullet, index) => `- Q${index + 1} anchor: ${bullet}`)
+          : [`- Use the source context as the grading anchor: ${context}`]),
+        '',
+        '代表性覆盖：这份草稿按材料范围组织题型，不是只围绕一两个 passage 出题。',
+      ].join('\n');
+    }
+
     return [
       'Here is a short practice quiz grounded in the retrieved source context.',
       '',
