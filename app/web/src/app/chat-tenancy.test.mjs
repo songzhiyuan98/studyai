@@ -15,3 +15,13 @@ test('lecture uploads store objects under a user-scoped key prefix', () => {
 
   assert.match(routeSource, /uploads\/\$\{session\.user\.id\}\//);
 });
+
+test('lecture deletes are user-scoped and cascade segment embeddings', () => {
+  const routeSource = readFileSync(new URL('./api/lectures/[id]/route.ts', import.meta.url), 'utf8');
+  const schemaSource = readFileSync(new URL('../../../../packages/db/prisma/schema.prisma', import.meta.url), 'utf8');
+
+  assert.match(routeSource, /prisma\.lecture\.findFirst\(\{\s*where:\s*\{\s*id: params\.id,\s*userId: session\.user\.id,/s);
+  assert.match(routeSource, /prisma\.lecture\.delete\(\{\s*where:\s*\{\s*id: params\.id,/s);
+  assert.match(routeSource, /deleteStoredLectureObject\(lecture\.fileKey\)/);
+  assert.match(schemaSource, /lecture Lecture @relation\(fields: \[lectureId\], references: \[id\], onDelete: Cascade\)/);
+});
