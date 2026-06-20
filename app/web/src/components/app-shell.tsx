@@ -78,6 +78,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [session?.user, pathname]);
 
+  useEffect(() => {
+    if (!session?.user) return;
+
+    const startNewChat = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping = target?.tagName === 'INPUT'
+        || target?.tagName === 'TEXTAREA'
+        || target?.isContentEditable;
+
+      if (isTyping) return;
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        router.push('/chat');
+      }
+    };
+
+    window.addEventListener('keydown', startNewChat);
+    return () => window.removeEventListener('keydown', startNewChat);
+  }, [router, session?.user]);
+
   const deleteChatSession = async () => {
     if (!chatToDelete || deletingChatId) return;
 
@@ -132,7 +152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="block truncate text-xs leading-5 text-[#737373]">Library-grounded AI</span>
             </span>
           </Link>
-          <Link href="/chat" className="app-new-chat">
+          <Link href="/chat" className="app-new-chat" aria-label="Start a new chat">
             <span className="app-new-chat-plus">+</span>
             <span className="min-w-0 flex-1">New chat</span>
             <span className="font-mono text-[11px] text-[#a3a3a3]">⌘K</span>

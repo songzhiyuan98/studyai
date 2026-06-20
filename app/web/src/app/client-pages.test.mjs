@@ -68,6 +68,16 @@ test('authenticated sidebar uses real recent chat sessions', () => {
   assert.doesNotMatch(source, /Mini quiz from lambda notes/);
 });
 
+test('authenticated sidebar command-k shortcut opens a new chat', () => {
+  const source = readFileSync(resolve(root, 'src/components/app-shell.tsx'), 'utf8');
+
+  assert.match(source, /keydown/);
+  assert.match(source, /event\.key\.toLowerCase\(\) === 'k'/);
+  assert.match(source, /event\.metaKey \|\| event\.ctrlKey/);
+  assert.match(source, /router\.push\('\/chat'\)/);
+  assert.match(source, /aria-label="Start a new chat"/);
+});
+
 test('authenticated sidebar can delete chat sessions', () => {
   const source = readFileSync(resolve(root, 'src/components/app-shell.tsx'), 'utf8');
   assert.match(source, /setChatToDelete\(chat\)/);
