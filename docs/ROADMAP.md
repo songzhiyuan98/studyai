@@ -56,7 +56,7 @@
 
 - Current: local typed planner chooses intent, tools, delegated agent, context breadth, and context strategy.
 - Current: teaching agent prompt owns natural explanation, examples, pacing, and follow-up style.
-- Current: tool-shaped internal capabilities include catalog inspection, scope resolve, source preview, retrieval, artifact save, reader open, and confirmation-gated library management.
+- Current: tool-shaped internal capabilities include catalog inspection, scope resolve, source preview, retrieval, artifact save, reader open, and confirmation-gated library management. Chat can draft upload/delete/rename/move requests, while Library prepares product-native confirmation modals for exact file matches instead of changing files silently.
 - Next: add richer tool traces and explicit evaluation cases for planner decisions.
 - Next: split specialized agents only where it improves product behavior:
   - planner/coordinator
