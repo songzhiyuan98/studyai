@@ -320,6 +320,13 @@ export default function ChatPage() {
   const sourcePreviewChunkLabel = isSourceRangePreview
     ? 'coverage samples'
     : 'relevant chunks';
+  const sourcePreviewGroundingLabel = isLecturePackPreview
+    ? 'source-order lecture pack'
+    : sourcePreview?.retrieval.contextStrategy === 'long_document_map'
+      ? 'document map coverage'
+      : isSourceRangePreview
+        ? 'scope coverage'
+        : 'focused retrieval';
   const sourceScopeLabel = sourcePreview?.retrieval.libraryScope?.matchedLabels?.length
     ? sourcePreview.retrieval.libraryScope.matchedLabels.join(', ')
     : sourcePreview?.retrieval.sourceScope === 'selected_sources'
@@ -331,7 +338,7 @@ export default function ChatPage() {
           : 'Auto scope';
   const sourcePreviewTitle = isSourceRangePreview ? 'Suggested study scope' : 'Suggested materials';
   const sourcePreviewDescription = isSourceRangePreview
-    ? `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} in scope · ${sourcePreview?.retrieval.count || 0} ${isLecturePackPreview ? 'source-order segments' : 'coverage samples'} for grounding`
+    ? `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} in scope · ${sourcePreviewGroundingLabel}`
     : `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} likely ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} · ${sourcePreview?.retrieval.count || 0} ${sourcePreviewChunkLabel}`;
 
   const loadSources = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -1054,7 +1061,11 @@ export default function ChatPage() {
                           </span>
                           <span className="min-w-0">
                             <span className="block truncate">{material.title}</span>
-                            <span>{material.count} {sourcePreviewChunkLabel} · {material.detail}</span>
+                            <span>
+                              {isSourceRangePreview
+                                ? `Ready material · ${material.detail} · ${material.count} indexed chunks`
+                                : `${material.count} ${sourcePreviewChunkLabel} · ${material.detail}`}
+                            </span>
                           </span>
                         </button>
                       );

@@ -173,7 +173,9 @@ test('chat page can preview suggested sources before generation', () => {
   assert.match(source, /sourcePreview\?\.retrieval\.contextStrategy === 'lecture_pack'/);
   assert.match(source, /sourceScopeLabel/);
   assert.match(source, /study scope/);
-  assert.match(source, /coverage samples/);
+  assert.match(source, /sourcePreviewGroundingLabel/);
+  assert.match(source, /source-order lecture pack/);
+  assert.match(source, /indexed chunks/);
   assert.match(source, /sourcePreviewDescription/);
   assert.match(source, /selectedPreviewLectureIds/);
   assert.match(source, /Use selected/);
