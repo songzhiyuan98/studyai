@@ -252,6 +252,22 @@ test('detects Chinese learning requests as teacher mode hints', () => {
   assert.match(prompt, /Teacher Mode hint: likely/);
 });
 
+test('detects Chinese study requests as retrieval-worthy in free chat', () => {
+  assert.equal(shouldUseStudyRetrieval({
+    mode: 'free',
+    message: '我需要复习 haskell 相关内容，你带我学会每一页',
+    history: [],
+    hasExplicitScope: false,
+  }), true);
+
+  assert.equal(shouldUseStudyRetrieval({
+    mode: 'free',
+    message: '我马上要考 114a，帮我整理模拟 midterm',
+    history: [],
+    hasExplicitScope: false,
+  }), true);
+});
+
 test('skips remote generation when chat model is not configured', async () => {
   process.env.OPENAI_API_KEY = '';
 

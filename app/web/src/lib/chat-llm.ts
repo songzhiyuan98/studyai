@@ -91,7 +91,8 @@ export function compactChatHistory(history: ChatHistoryTurn[] = [], maxTurns = 8
 }
 
 export function hasStudyRetrievalSignal(content: string) {
-  return /\b(study|learn|review|explain|teach|understand|quiz|test|exam|homework|assignment|lecture|slide|chapter|page|pdf|txt|notes?|sources?|materials?|haskell|lambda|functions?|types?|syntax|code|programming|definitions?|concepts?|terms?|examples?)\b/i.test(content);
+  return /\b(study|learn|review|explain|teach|understand|quiz|test|exam|midterm|final|homework|assignment|lecture|slide|chapter|page|pdf|txt|notes?|sources?|materials?|haskell|lambda|functions?|types?|syntax|code|programming|definitions?|concepts?|terms?|examples?)\b/i.test(content)
+    || /(学习|复习|教我|带我|讲讲|详细讲|学会|考试|要考|备考|测验|测试|题目|作业|lecture|文件|材料|来源|第\s*\d+\s*页|每一页|逐页|概念|例子|代码|语法)/i.test(content);
 }
 
 function hasConcreteStudyRetrievalSignal(turn: ChatHistoryTurn) {
@@ -118,7 +119,7 @@ export function shouldUseStudyRetrieval({
   history?: ChatHistoryTurn[];
   hasExplicitScope?: boolean;
 }) {
-  if (mode !== 'free' || hasExplicitScope || hasStudyRetrievalSignal(message)) {
+  if (mode !== 'free' || hasExplicitScope || hasStudyRetrievalSignal(message) || shouldUseTeacherMode(message, mode)) {
     return true;
   }
 

@@ -197,6 +197,7 @@ test('chat send automatically asks for source confirmation on ambiguous auto sco
   assert.match(source, /sourcePreview\?\.materials\.length && selectedPreviewLectureIds\.length > 0/);
   assert.match(source, /const updateDraftMessage/);
   assert.match(source, /hasStudySignalForAutoScope/);
+  assert.match(source, /学习\|复习\|教我/);
   assert.match(source, /mode !== 'free' \|\| hasStudySignalForAutoScope\(trimmedMessage\)/);
   assert.match(source, /sourcePreviewChunkLabel/);
   assert.match(source, /retrieval\.strategy\.startsWith\('broad_'\)/);

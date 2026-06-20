@@ -88,7 +88,8 @@ const actionModes: Array<{ id: ActionMode; label: string; hint: string }> = [
 ];
 
 function hasStudySignalForAutoScope(text: string) {
-  return /\b(study|learn|review|explain|teach|understand|quiz|test|exam|homework|assignment|lecture|slide|chapter|page|pdf|txt|notes?|sources?|materials?|haskell|lambda|functions?|types?|syntax|code|programming|definitions?|concepts?|terms?|examples?)\b/i.test(text);
+  return /\b(study|learn|review|explain|teach|understand|quiz|test|exam|midterm|final|homework|assignment|lecture|slide|chapter|page|pdf|txt|notes?|sources?|materials?|haskell|lambda|functions?|types?|syntax|code|programming|definitions?|concepts?|terms?|examples?)\b/i.test(text)
+    || /(学习|复习|教我|带我|讲讲|详细讲|学会|考试|要考|备考|测验|测试|题目|作业|文件|材料|来源|第\s*\d+\s*页|每一页|逐页|概念|例子|代码|语法)/i.test(text);
 }
 
 function renderInlineMarkdown(text: string, keyPrefix: string) {
