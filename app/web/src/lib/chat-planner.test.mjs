@@ -89,6 +89,22 @@ test('chat planner resolves library scope before retrieval and agent response', 
   assert.match(source, /Delegate final response to the teaching agent/);
 });
 
+test('chat planner only treats explicit file management verbs as library operations', () => {
+  const source = readFileSync(resolve(root, 'src/lib/chat-planner.ts'), 'utf8');
+
+  assert.match(source, /hasLibraryOperationIntent/);
+  assert.match(source, /hasExplicitLibraryManagementVerb/);
+  assert.match(source, /upload/);
+  assert.match(source, /rename/);
+  assert.match(source, /delete/);
+  assert.match(source, /move/);
+  assert.match(source, /上传/);
+  assert.match(source, /重命名/);
+  assert.match(source, /删除/);
+  assert.match(source, /移动/);
+  assert.doesNotMatch(source, /upload\|rename\|delete\|move\|folder\|file\|library/);
+});
+
 test('chat route stores planner trace with retrieval metadata', () => {
   const source = readFileSync(resolve(root, 'src/app/api/chat/route.ts'), 'utf8');
 

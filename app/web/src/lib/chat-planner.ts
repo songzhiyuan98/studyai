@@ -104,8 +104,13 @@ function hasReaderNavigationIntent(message: string) {
   return /\b(open|show|go to|source|citation|reader|打开|跳到|来源|原文)\b/i.test(message);
 }
 
+function hasExplicitLibraryManagementVerb(message: string) {
+  return /\b(upload|rename|delete|remove|move|organize|archive|create folder|new folder)\b/i.test(message)
+    || /(上传|重命名|删除|移除|移动|归档|整理到|新建文件夹|创建文件夹|放进)/i.test(message);
+}
+
 function hasLibraryOperationIntent(message: string) {
-  return /\b(upload|rename|delete|move|folder|file|library|上传|重命名|删除|移动|文件夹|归档)\b/i.test(message);
+  return hasExplicitLibraryManagementVerb(message);
 }
 
 function hasAssessmentIntent(message: string, mode: ChatMode) {
