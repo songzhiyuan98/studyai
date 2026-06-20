@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   compactContextText,
   extractRequestedPageNumber,
+  expandRetrievedContextWithNeighbors,
   mergeHybridContext,
   retrieveBroadCoverageContext,
   retrieveContextForPageRequest,
@@ -167,6 +168,27 @@ test('merges vector and lexical retrieval into hybrid ranked context', () => {
   assert.equal(results[0].reason, 'hybrid');
   assert.equal(results.some((result) => result.reason === 'vector'), true);
   assert.equal(results.some((result) => result.reason === 'lexical'), true);
+});
+
+test('expands focused retrieval with neighboring source-order context', () => {
+  const seed = { ...baseSegment, id: 'seed', page: 2, charStart: 50, charEnd: 90, text: 'Pattern matching chooses equations.' };
+  const results = expandRetrievedContextWithNeighbors({
+    retrieved: [{ segment: seed, score: 0.8, reason: 'lexical' }],
+    candidateSegments: [
+      { ...baseSegment, id: 'far', page: 8, charStart: 0, charEnd: 40, text: 'Far away material.' },
+      { ...baseSegment, id: 'before', page: 2, charStart: 0, charEnd: 49, text: 'Before the seed.' },
+      seed,
+      { ...baseSegment, id: 'after', page: 2, charStart: 91, charEnd: 130, text: 'After the seed.' },
+      { ...baseSegment, id: 'other-lecture', lectureId: 'lec_2', page: 2, charStart: 0, charEnd: 40, text: 'Other lecture.' },
+    ],
+    neighborsPerSeed: 1,
+    limit: 3,
+  });
+
+  assert.deepEqual(results.map((result) => result.segment.id), ['before', 'seed', 'after']);
+  assert.equal(results.find((result) => result.segment.id === 'seed')?.reason, 'lexical');
+  assert.equal(results.find((result) => result.segment.id === 'before')?.reason, 'nearby');
+  assert.equal(results.some((result) => result.segment.id === 'far'), false);
 });
 
 test('compacts retrieved context to a bounded string', () => {

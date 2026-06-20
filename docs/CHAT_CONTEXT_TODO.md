@@ -169,9 +169,9 @@ student asks what to study
 - Hybrid vector + keyword retrieval. Implemented for Chat as `hybrid_vector_lexical_v0`.
 - Query rewriting for course terminology. Initial bilingual study-term hints are implemented in the history-aware retrieval query, so Chinese study/exam/function/type requests carry retrieval-friendly English terms without importing casual chat.
 - Model/tool-based intent classification for Teacher Mode and source selection. Current implementation provides prompt-level model judgment plus deterministic hints; future work should make this an explicit classifier/tool trace.
-- Parent-child retrieval:
+- Parent-child retrieval. Initial v0 is implemented for focused Chat retrieval: search still ranks small passages, then generation context expands each selected passage with neighboring source-order chunks before packing.
   - small passages for search
-  - larger page/slide context for generation
+  - neighboring page/source-order context for generation
 - Reranking.
 - MMR or equivalent deduplication.
 

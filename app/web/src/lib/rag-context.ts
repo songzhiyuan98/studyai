@@ -373,6 +373,61 @@ export function mergeHybridContext({
     .slice(0, limit);
 }
 
+function compareSourceOrder(first: RetrievalSegment, second: RetrievalSegment) {
+  const lectureDiff = first.lectureId.localeCompare(second.lectureId);
+  if (lectureDiff !== 0) return lectureDiff;
+  const pageDiff = (first.page || 0) - (second.page || 0);
+  if (pageDiff !== 0) return pageDiff;
+  const slideDiff = (first.slide || 0) - (second.slide || 0);
+  if (slideDiff !== 0) return slideDiff;
+  return (first.charStart || 0) - (second.charStart || 0);
+}
+
+export function expandRetrievedContextWithNeighbors({
+  retrieved,
+  candidateSegments,
+  neighborsPerSeed = 1,
+  limit = 10,
+}: {
+  retrieved: RetrievedContext[];
+  candidateSegments: RetrievalSegment[];
+  neighborsPerSeed?: number;
+  limit?: number;
+}): RetrievedContext[] {
+  if (retrieved.length === 0 || neighborsPerSeed <= 0) {
+    return retrieved.slice(0, limit);
+  }
+
+  const orderedSegments = [...candidateSegments].sort(compareSourceOrder);
+  const candidateIndexById = new Map(orderedSegments.map((segment, index) => [segment.id, index]));
+  const selected = new Map<string, RetrievedContext>();
+
+  retrieved.forEach((result) => {
+    selected.set(result.segment.id, result);
+    const seedIndex = candidateIndexById.get(result.segment.id);
+    if (seedIndex === undefined) return;
+
+    for (let offset = -neighborsPerSeed; offset <= neighborsPerSeed; offset += 1) {
+      if (offset === 0) continue;
+
+      const neighbor = orderedSegments[seedIndex + offset];
+      if (!neighbor || neighbor.lectureId !== result.segment.lectureId || selected.has(neighbor.id)) {
+        continue;
+      }
+
+      selected.set(neighbor.id, {
+        segment: neighbor,
+        score: Math.max(0.01, result.score - Math.abs(offset) * 0.05),
+        reason: 'nearby',
+      });
+    }
+  });
+
+  return Array.from(selected.values())
+    .sort((first, second) => compareSourceOrder(first.segment, second.segment))
+    .slice(0, limit);
+}
+
 export function compactContextText(segments: RetrievalSegment[], maxChars = 900): string {
   const joined = segments
     .map((segment) => segment.text.trim())

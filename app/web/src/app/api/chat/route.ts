@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/auth';
 import { formatSourceRef } from '@/lib/reader-format';
 import {
   compactContextText,
+  expandRetrievedContextWithNeighbors,
   mergeHybridContext,
   retrieveBroadCoverageContext,
   retrieveContextForPageRequest,
@@ -953,7 +954,16 @@ export async function POST(request: NextRequest) {
       score: 0,
       reason: 'lexical' as const,
     }));
-    const context = retrieved.length > 0 ? retrieved : fallbackSegments;
+    const seedContext = retrieved.length > 0 ? retrieved : fallbackSegments;
+    const context = effectiveContextStrategy === 'focused_rag'
+      ? expandRetrievedContextWithNeighbors({
+        retrieved: seedContext,
+        candidateSegments,
+        neighborsPerSeed: 1,
+        limit: 10,
+      })
+      : seedContext;
+    const parentChildExpandedCount = Math.max(0, context.length - seedContext.length);
     const contextSummary = lecturePackSummary || {
       totalSegments: candidateSegments.length,
       includedSegments: context.length,
@@ -1018,6 +1028,8 @@ export async function POST(request: NextRequest) {
       plannedContextStrategy: chatPlan.contextStrategy,
       contextStrategyAdjusted: effectiveContextStrategy !== chatPlan.contextStrategy,
       contextSummary,
+      seedContextCount: seedContext.length,
+      parentChildExpandedCount,
       contextCharBudget,
       candidateSegmentCount: candidateSegments.length,
       activeSegmentCount,
