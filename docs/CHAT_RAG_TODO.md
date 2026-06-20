@@ -4,7 +4,7 @@ This document tracks the product and technical work needed to make library-groun
 
 ## Product Goal
 
-Build a ChatGPT-like study assistant that starts from the student's intent, searches their StudyFlow library, streams a grounded answer, and keeps citations connected to the original lecture pages or segments.
+Build a ChatGPT-like study assistant that starts from the student's intent, selects the right StudyFlow library scope, packages the useful course context, streams a natural tutoring answer, and keeps citations connected to the original lecture pages or segments.
 
 After login, StudyFlow should prioritize two product entries: Chat and Library. Library is the AI knowledge base management surface, not a study workflow page. Saved remains a quieter archive for reusable generated outputs. This keeps new users focused on the product's two core jobs: ask AI with course context, or manage retrievable sources.
 
@@ -16,14 +16,14 @@ Chat    -> learn from those sources
 Saved   -> revisit reusable generated outputs
 ```
 
-The chat should feel conversational, but the architecture must remain citation-first:
+The chat should feel conversational, but the architecture must remain scope-first and citation-aware:
 
 ```text
 student asks what to study
   -> planner infers intent and chooses internal tools
   -> resolve study scope from library
   -> recommend and confirm likely sources when needed
-  -> retrieve grounded source context
+  -> package or retrieve grounded source context when needed
   -> stream answer
   -> show citations
   -> let student continue, quiz, summarize, or open the source
@@ -49,6 +49,7 @@ student asks what to study
   - mock exam and midterm requests use representative coverage across the selected course materials
 - Optional AI planner v1 is implemented. When a chat model is configured, the planner receives recent conversation plus a compact Library catalog summary, returns a validated structured plan, and falls back to deterministic planning if unavailable or invalid.
 - Full-lecture learning now uses a larger lecture-pack context budget and a higher segment prefetch limit than focused RAG, so "teach this whole lecture" is not treated like a top-k chunk query.
+- The core product model is agentic context orchestration, not a generic RAG chatbot. General explanations should use the model's normal tutoring ability; Library materials decide scope, order, course terminology, source-specific examples, and citations. Focused RAG is one context strategy, mostly for local questions, long documents, and precise source grounding.
 
 ## Milestone 1: Chat Product Surface
 
@@ -151,6 +152,7 @@ student asks what to study
 - Let the model decide Teacher Mode intent, with deterministic hints as fallback.
 - Let the planner ask one concise confirmation question before calling tools that change state, such as save, delete, upload, move, or AI-assisted filing.
 - Future upgrade: split planner, retrieval specialist, teacher, artifact curator, and library operator into separate agents while keeping the same internal tool contracts.
+- LangChain/LangGraph is a future orchestration option, not an MVP requirement. Keep current planner/tool contracts local and typed first; adopt a graph runtime when branching, checkpoints, retries, human approval, or multi-agent handoffs become painful to maintain in local code.
 
 ## Milestone 5: Streaming Generation
 
