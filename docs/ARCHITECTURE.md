@@ -154,9 +154,9 @@ Source scope should be catalog-first, then strategy-specific context loading. Th
 - `lecture_pack`: for full-lecture, page-by-page, or short complete-source learning. The backend packs selected passages in document order so the model can teach the source coherently instead of seeing only a few similar passages.
 - `focused_rag`: for specific questions, page references, definitions, or local confusion.
 - `broad_rag`: for exams, quizzes, and broad review across a course/folder.
-- `long_document_map`: for long papers or large PDFs where full packing would exceed useful context. The system uses representative coverage and later can add section-map summarization.
+- `long_document_map`: for long papers or large PDFs where full packing would exceed useful context. The system now builds a document map with page ranges plus representative page/source-order passages, so the model receives a sense of the whole source instead of only top-k matches.
 
-Current context budgets are strategy-specific: focused retrieval stays compact, broad review and long-document maps get larger representative coverage, and `lecture_pack` gets the largest ordered source budget. This is intentionally different from classic top-k retrieval because lecture teaching often needs continuity more than nearest-neighbor similarity.
+Current context budgets are strategy-specific: focused retrieval stays compact, broad review and long-document maps get larger representative coverage, and `lecture_pack` gets the largest ordered source budget. This is intentionally different from classic top-k retrieval because lecture teaching often needs continuity more than nearest-neighbor similarity. When a lecture-pack request is too large for direct packing, the plan is preserved but execution adjusts to `long_document_map`, and the trace records both the planned and effective context strategies.
 
 Retrieval runs inside the resolved scope only when the chosen strategy needs retrieval. For broad requests like "help me review 114A for a midterm," the scope is usually the whole relevant course folder, while retrieved passages are representative samples for grounding. For "teach me every page of this lecture," the preferred strategy is `lecture_pack`, not top-k retrieval.
 
@@ -172,6 +172,7 @@ Conversation memory and retrieval memory are related but not identical. The assi
 - Default free chat should feel like a teacher-led conversation: gradual explanation, short checks for what the student wants next, and no unsolicited quiz or cheat-sheet dump.
 - The local deterministic fallback should follow the same teacher-led default so degraded mode does not become a template generator.
 - The model should decide the teaching posture from the user's intent. When the student asks to learn from scratch, be taught page by page, or signals they are a beginner, the assistant should enter Teacher Mode: explain why the concept exists, build the mental model, teach details in order, give concrete examples, and end with a small understanding check.
+- Teaching-agent prompts include a response-depth contract. For Chinese beginner/lesson requests, the first teaching turn targets a full 600-1000 Chinese-character lesson step unless the student explicitly asks for something short; casual chat remains concise.
 - The assistant may ask one short source-confirmation question before generation when the scope is ambiguous.
 - Source confirmation should be based on the internal retrieval/source-preview API or future tool calls, not a generic confirmation modal.
 - In auto scope, the current Chat UI automatically runs source preview before sending when the request matches multiple likely materials, then lets the student approve or adjust the recommended sources.

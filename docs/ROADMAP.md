@@ -44,7 +44,7 @@
   - `lecture_pack` for complete lecture or page-by-page teaching.
   - `focused_rag` for local questions.
   - `broad_rag` for exams and wide review.
-  - `long_document_map` for large documents.
+  - `long_document_map` for large documents, with page-range maps and representative passages when full lecture packing is too large.
 - Parent-child retrieval so small search passages retrieve larger page/slide context.
 - MMR or equivalent context deduplication.
 - Context packing by topic and source order.
@@ -56,7 +56,7 @@
 **Goal:** Keep the product flexible enough for real agentic workflows without adding orchestration weight too early.
 
 - Current: local typed planner chooses intent, tools, delegated agent, context breadth, and context strategy.
-- Current: teaching agent prompt owns natural explanation, examples, pacing, and follow-up style.
+- Current: teaching agent prompt owns natural explanation, examples, pacing, response depth, and follow-up style.
 - Current: tool-shaped internal capabilities include catalog inspection, scope resolve, source preview, retrieval, artifact save, reader open, and confirmation-gated library management. Chat can draft upload/delete/rename/move requests, while Library prepares product-native confirmation modals for exact file matches instead of changing files silently.
 - Current: AI planner output is validated through typed local contracts. Reader navigation is guarded so "source materials" study requests stay in the teaching flow unless the student explicitly asks to open, jump to, or inspect a citation/source in the reader.
 - Next: add richer tool traces and explicit evaluation cases for planner decisions.

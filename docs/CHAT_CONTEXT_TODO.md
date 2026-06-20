@@ -135,7 +135,7 @@ student asks what to study
   - `lecture_pack` for complete lecture, short source, and page-by-page teaching.
   - `focused_rag` for specific questions.
   - `broad_rag` for exams, quizzes, and wide review.
-  - `long_document_map` for large PDFs/papers where full packing would waste context.
+  - `long_document_map` for large PDFs/papers where full packing would waste context. Current implementation builds a page-range document map and representative source-order passages when a lecture-pack request is too large for direct packing.
 - Represent internal product capabilities as typed tools:
   - `library.catalog`. Initial deterministic catalog inspection is implemented for chat scope resolution, and the compact catalog summary is now also passed into the optional AI planner.
   - `scope.resolve`. Initial deterministic folder/course/file-title scope resolution is implemented before retrieval.
@@ -150,7 +150,7 @@ student asks what to study
 - Keep agent roles bounded but not over-scripted. The planner coordinates intent, Library scope, and internal API/tool use; the teaching agent has freedom to choose the lesson shape, examples, pacing, and follow-up style.
 - Resolve scope from Library catalog before any search. Course/folder labels like `CSE 114A`, file titles like `lambda`, and manual selected sources should decide the context scope before embedding or lexical passage search runs.
 - Do not use top-k retrieval as the default for every study request. For "teach this lecture" or "take me page by page," pack source-ordered lecture context first. Use retrieval when the question is focused, the source is long, or representative coverage is enough.
-- Let the model decide Teacher Mode intent, with deterministic hints as fallback.
+- Let the model decide Teacher Mode intent, with deterministic hints as fallback. Current teaching prompts include a response-depth contract so broad Chinese lesson requests do not collapse into one or two short sentences.
 - Let the planner ask one concise confirmation question before calling tools that change state, such as save, delete, upload, move, or AI-assisted filing. Initial Library operation drafts are implemented: Chat now extracts explicit upload/delete/rename/move/filing intent, target, optional destination, and returns a confirmation-gated draft without changing files silently. Generic phrases like "use this file to teach me" should stay in the learning/retrieval path rather than becoming a Library operation. Library can receive those URL intents and prepare matching delete, rename, and move confirmation modals when exactly one source file matches.
 - Future upgrade: split planner, retrieval specialist, teacher, artifact curator, and library operator into separate agents while keeping the same internal tool contracts.
 - LangChain/LangGraph is a future orchestration option, not an MVP requirement. Keep current planner/tool contracts local and typed first; adopt a graph runtime when branching, checkpoints, retries, human approval, or multi-agent handoffs become painful to maintain in local code.
