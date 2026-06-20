@@ -286,7 +286,12 @@ test('chat send automatically asks for source confirmation on ambiguous auto sco
   const userMessageIndex = source.indexOf('const userMessage: ChatMessage');
 
   assert.match(source, /const shouldConfirmSourcesBeforeSend/);
-  assert.match(source, /autoPreview\.materials\.length > 1/);
+  assert.match(source, /function shouldPreviewSourceScopeBeforeSend/);
+  assert.match(source, /preview\.materials\.length > 1/);
+  assert.match(source, /preview\.retrieval\.contextStrategy === 'lecture_pack'/);
+  assert.match(source, /preview\.retrieval\.contextStrategy === 'long_document_map'/);
+  assert.match(source, /preview\.retrieval\.strategy\.startsWith\('broad_'\)/);
+  assert.match(source, /shouldPreviewSourceScopeBeforeSend\(autoPreview\)/);
   assert.ok(confirmationIndex > -1, 'chat submit should decide whether source confirmation is needed');
   assert.ok(userMessageIndex > -1, 'chat submit should create the user message');
   assert.ok(confirmationIndex < userMessageIndex, 'source confirmation should happen before the message is sent');

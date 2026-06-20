@@ -101,6 +101,13 @@ function hasStudySignalForAutoScope(text: string) {
     || /(学习|复习|教我|带我|讲讲|详细讲|学会|考试|要考|备考|测验|测试|题目|作业|文件|材料|来源|第\s*\d+\s*页|每一页|逐页|概念|例子|代码|语法)/i.test(text);
 }
 
+function shouldPreviewSourceScopeBeforeSend(preview: SourcePreview) {
+  return preview.materials.length > 1
+    || preview.retrieval.contextStrategy === 'lecture_pack'
+    || preview.retrieval.contextStrategy === 'long_document_map'
+    || preview.retrieval.strategy.startsWith('broad_');
+}
+
 function renderInlineMarkdown(text: string, keyPrefix: string) {
   const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).filter(Boolean);
 
@@ -612,7 +619,7 @@ export default function ChatPage() {
 
       try {
         const autoPreview = await requestSourcePreview(trimmedMessage, []);
-        if (autoPreview.materials.length > 1) {
+        if (shouldPreviewSourceScopeBeforeSend(autoPreview)) {
           showSourcePreview(autoPreview);
           return;
         }
