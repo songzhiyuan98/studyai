@@ -21,6 +21,8 @@ const artifactFilters = [
   { id: 'translate', label: 'Translations' },
 ] as const;
 
+const artifactChatModes = new Set(['explain', 'summarize', 'key_terms', 'mini_quiz', 'cheat_sheet']);
+
 function formatArtifactDate(value: string | Date | undefined): string {
   if (!value) {
     return 'Saved recently';
@@ -42,6 +44,7 @@ function buildContinueInChatHref(artifact: StudyArtifact) {
   const lectureIds = Array.from(new Set(artifact.sourceRefs.map((ref) => ref.lectureId).filter(Boolean)));
 
   chatParams.set('draft', draft);
+  chatParams.set('mode', artifactChatModes.has(artifact.type) ? artifact.type : 'free');
   if (lectureIds.length > 0) {
     chatParams.set('lectureIds', lectureIds.join(','));
   }

@@ -105,6 +105,10 @@ const actionModes: Array<{ id: ActionMode; label: string; hint: string }> = [
   { id: 'cheat_sheet', label: 'Cheat sheet', hint: 'Printable draft' },
 ];
 
+function isActionMode(value: string | null): value is ActionMode {
+  return Boolean(value && actionModes.some((action) => action.id === value));
+}
+
 function hasStudySignalForAutoScope(text: string) {
   return /\b(study|learn|review|explain|teach|understand|quiz|test|exam|midterm|final|homework|assignment|lecture|slide|chapter|page|pdf|txt|notes?|sources?|materials?|haskell|lambda|functions?|types?|syntax|code|programming|definitions?|concepts?|terms?|examples?)\b/i.test(text)
     || /(学习|复习|教我|带我|讲讲|详细讲|学会|考试|要考|备考|测验|测试|题目|作业|文件|材料|来源|第\s*\d+\s*页|每一页|逐页|概念|例子|代码|语法)/i.test(text);
@@ -372,6 +376,7 @@ export default function ChatPage() {
   const searchParams = useSearchParams();
   const requestedSessionId = searchParams.get('sessionId');
   const requestedDraft = searchParams.get('draft');
+  const requestedMode = searchParams.get('mode');
   const requestedLectureIds = searchParams.get('lectureIds');
   const chatScrollRef = useRef<HTMLElement>(null);
   const composerFormRef = useRef<HTMLFormElement>(null);
@@ -497,13 +502,16 @@ export default function ChatPage() {
       : [];
 
     setMessage(decodedDraft);
+    if (isActionMode(requestedMode)) {
+      setMode(requestedMode);
+    }
     setSourcePreview(null);
     setSelectedPreviewLectureIds([]);
     if (draftLectureIds.length > 0) {
       setConfirmedSources(draftLectureIds);
       setShowSourceScope(false);
     }
-  }, [requestedDraft, requestedLectureIds]);
+  }, [requestedDraft, requestedLectureIds, requestedMode]);
 
   useEffect(() => {
     const refreshOnFocus = () => {

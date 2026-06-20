@@ -131,14 +131,18 @@ test('saved outputs can be continued in chat as a draft prompt', () => {
   assert.match(savedSource, /function buildContinueInChatHref/);
   assert.match(savedSource, /artifact\.sourceRefs\.map\(\(ref\) => ref\.lectureId\)/);
   assert.match(savedSource, /chatParams\.set\('draft'/);
+  assert.match(savedSource, /chatParams\.set\('mode'/);
   assert.match(savedSource, /chatParams\.set\('lectureIds'/);
   assert.match(savedSource, /Continue in Chat/);
   assert.match(savedSource, /href=\{buildContinueInChatHref\(artifact\)\}/);
   assert.match(chatSource, /const requestedDraft = searchParams\.get\('draft'\)/);
+  assert.match(chatSource, /const requestedMode = searchParams\.get\('mode'\)/);
   assert.match(chatSource, /const requestedLectureIds = searchParams\.get\('lectureIds'\)/);
+  assert.match(chatSource, /isActionMode\(requestedMode\)/);
   assert.match(chatSource, /decodeURIComponent\(requestedDraft\)/);
   assert.match(chatSource, /requestedLectureIds\.split\(','\)/);
   assert.match(chatSource, /setMessage\(decodedDraft\)/);
+  assert.match(chatSource, /setMode\(requestedMode\)/);
   assert.match(chatSource, /setConfirmedSources\(draftLectureIds\)/);
 });
 
