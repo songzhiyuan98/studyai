@@ -1,6 +1,6 @@
-# StudyFlow Chat RAG Todo
+# StudyFlow Chat Context Todo
 
-This document tracks the product and technical work needed to make library-grounded chat the core StudyFlow experience.
+This document tracks the product and technical work needed to make agent-organized, library-grounded chat the core StudyFlow experience.
 
 ## Product Goal
 
@@ -33,7 +33,7 @@ student asks what to study
 
 - Real PDF/TXT ingestion exists.
 - Segments store source text, page anchors, character offsets, token estimates, and stable hashes.
-- Reader micro actions use retrieval v0:
+- Reader micro actions use source-context v0:
   - selected `sourceRefs`
   - lexical/page-aware `relatedRefs`
 - Embeddings are generated during upload when a real OpenAI key is configured; otherwise retrieval falls back to lexical ranking until reindexing fills missing vectors.
@@ -43,12 +43,12 @@ student asks what to study
 - Teacher Mode prompt guidance is implemented as model-decided behavior with a deterministic hint/fallback. Beginner, from-scratch, and page-by-page learning requests should now produce fuller teacher-style explanations with examples.
 - Explicit lecture-title topic narrowing is implemented for Chat and source preview. Named topics such as "lambda" prefer the matching material before broader hybrid retrieval.
 - Exact page retrieval is implemented for Chat and source preview. Requests like "page 9" or "第九页" prioritize that page inside the selected or inferred source scope.
-- Retrieval breadth planning is partially implemented:
-  - focused questions use top relevant chunks
+- Context breadth planning is partially implemented:
+  - focused questions use top relevant passages
   - broad lessons use representative coverage across the selected lecture/topic
   - mock exam and midterm requests use representative coverage across the selected course materials
 - Optional AI planner v1 is implemented. When a chat model is configured, the planner receives recent conversation plus a compact Library catalog summary, returns a validated structured plan, and falls back to deterministic planning if unavailable or invalid.
-- Full-lecture learning now uses a larger lecture-pack context budget and a higher segment prefetch limit than focused RAG, so "teach this whole lecture" is not treated like a top-k chunk query.
+- Full-lecture learning now uses a larger lecture-pack context budget and a higher segment prefetch limit than focused retrieval, so "teach this whole lecture" is not treated like a top-k passage query.
 - The core product model is agentic context orchestration, not a generic RAG chatbot. General explanations should use the model's normal tutoring ability; Library materials decide scope, order, course terminology, source-specific examples, and citations. Focused RAG is one context strategy, mostly for local questions, long documents, and precise source grounding.
 
 ## Milestone 1: Chat Product Surface
@@ -104,14 +104,14 @@ student asks what to study
 - Keep `OPENAI_MODEL_EMBEDDING` configurable.
 - Default to `text-embedding-3-small` for 1536-dimensional pgvector compatibility.
 
-## Milestone 4: Retrieval Endpoint
+## Milestone 4: Context Retrieval Service
 
 - Add a shared retrieval service used by chat and reader micro actions.
 - Accept:
   - user id
   - natural-language query
   - optional folder/lecture/page/saved-scope filters
-  - retrieval mode
+  - context mode
 - Return:
   - selected query
   - ranked segments
@@ -126,10 +126,10 @@ student asks what to study
   - page/slide adjacency expansion
   - deduplication before context packing
 
-## Milestone 4.5: Chat Planner and Internal Tools
+## Milestone 4.5: Planner and Internal Tools
 
 - Add a lightweight planner before generation. It should infer whether the user needs casual chat, Teacher Mode, source preview, retrieval, save, quiz, cheat sheet, or library/file management. Current implementation includes an optional AI planner that receives recent conversation and Library catalog context, then returns a validated structured plan when a chat model is configured, with deterministic fallback when the model is unavailable or returns invalid JSON.
-- Planner should decide retrieval breadth: focused chunks for specific questions, broad lesson coverage for learning a section/lecture, and broad assessment coverage for exams.
+- Planner should decide context breadth: focused passages for specific questions, broad lesson coverage for learning a section/lecture, and broad assessment coverage for exams.
 - Planner should decide context strategy, not just retrieval breadth:
   - `lecture_pack` for complete lecture, short source, and page-by-page teaching.
   - `focused_rag` for specific questions.
@@ -147,8 +147,8 @@ student asks what to study
   - `reader.open`. Initial planner-backed reader link handling is implemented for recent cited source refs.
 - Store planner/tool traces on chat messages or sessions so failures can be debugged and evaluated. Current traces include `plannerSource` (`ai_planner` or `deterministic`), model, rationale, chosen tools, context strategy, and context coverage.
 - Keep agent roles bounded but not over-scripted. The planner coordinates intent, Library scope, and internal API/tool use; the teaching agent has freedom to choose the lesson shape, examples, pacing, and follow-up style.
-- Resolve scope from Library catalog before RAG. Course/folder labels like `CSE 114A`, file titles like `lambda`, and manual selected sources should decide the retrieval scope before embedding or lexical chunk search runs.
-- Do not use top-k RAG as the default for every study request. For "teach this lecture" or "take me page by page," pack source-ordered lecture context first. Use RAG when the question is focused, the source is long, or representative coverage is enough.
+- Resolve scope from Library catalog before any search. Course/folder labels like `CSE 114A`, file titles like `lambda`, and manual selected sources should decide the context scope before embedding or lexical passage search runs.
+- Do not use top-k retrieval as the default for every study request. For "teach this lecture" or "take me page by page," pack source-ordered lecture context first. Use retrieval when the question is focused, the source is long, or representative coverage is enough.
 - Let the model decide Teacher Mode intent, with deterministic hints as fallback.
 - Let the planner ask one concise confirmation question before calling tools that change state, such as save, delete, upload, move, or AI-assisted filing.
 - Future upgrade: split planner, retrieval specialist, teacher, artifact curator, and library operator into separate agents while keeping the same internal tool contracts.
@@ -164,13 +164,13 @@ student asks what to study
 - Save the final assistant answer after stream completion. Current UI receives the final full message over the `done` event; persistent chat history is still future work.
 - Show partial response in the UI while preserving the final citation trace. Implemented for the active Chat page.
 
-## Milestone 6: RAG Quality Upgrades
+## Milestone 6: Context Quality Upgrades
 
 - Hybrid vector + keyword retrieval. Implemented for Chat as `hybrid_vector_lexical_v0`.
 - Query rewriting for course terminology.
 - Model/tool-based intent classification for Teacher Mode and source selection. Current implementation provides prompt-level model judgment plus deterministic hints; future work should make this an explicit classifier/tool trace.
 - Parent-child retrieval:
-  - small chunks for search
+  - small passages for search
   - larger page/slide context for generation
 - Reranking.
 - MMR or equivalent deduplication.

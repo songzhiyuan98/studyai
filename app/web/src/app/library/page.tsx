@@ -742,7 +742,7 @@ export default function LibraryPage() {
                 <p className="eyebrow">Add source</p>
                 <h2 className="mt-2 text-2xl font-medium leading-tight text-[#000000]">Upload to knowledge base</h2>
                 <p className="mt-2 text-sm leading-6 text-[#737373]">
-                  New files will be parsed into source chunks and become available to Chat after indexing.
+                  New files will be parsed into source passages and become available to Chat after indexing.
                 </p>
               </div>
               <button

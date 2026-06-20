@@ -751,7 +751,7 @@ export async function POST(request: NextRequest) {
       : chatPlan.contextStrategy;
 
     if (candidateSegments.length === 0) {
-      const noSourcesContent = 'I could not find processed source chunks in your Library yet. Upload a PDF or TXT file in Library first, then come back and ask me to study it with you.';
+      const noSourcesContent = 'I could not find processed source passages in your Library yet. Upload a PDF or TXT file in Library first, then come back and ask me to study it with you.';
       await prisma.chatMessage.create({
         data: {
           sessionId: chatSession.id,

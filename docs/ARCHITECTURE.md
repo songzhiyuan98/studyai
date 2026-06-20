@@ -153,7 +153,7 @@ Source scope should be catalog-first, then strategy-specific context loading. Th
 - `broad_rag`: for exams, quizzes, and broad review across a course/folder.
 - `long_document_map`: for long papers or large PDFs where full packing would exceed useful context. The system uses representative coverage and later can add section-map summarization.
 
-Current context budgets are strategy-specific: focused retrieval stays compact, broad review and long-document maps get larger representative coverage, and `lecture_pack` gets the largest ordered source budget. This is intentionally different from classic top-k RAG because lecture teaching often needs continuity more than nearest-neighbor similarity.
+Current context budgets are strategy-specific: focused retrieval stays compact, broad review and long-document maps get larger representative coverage, and `lecture_pack` gets the largest ordered source budget. This is intentionally different from classic top-k retrieval because lecture teaching often needs continuity more than nearest-neighbor similarity.
 
 RAG runs inside the resolved scope only when the chosen strategy needs retrieval. For broad requests like "help me review 114A for a midterm," the scope is usually the whole relevant course folder, while retrieved chunks are representative samples for grounding. For "teach me every page of this lecture," the preferred strategy is `lecture_pack`, not top-k retrieval.
 

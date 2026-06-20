@@ -63,7 +63,7 @@ export default function ExamPage({ params }: { params: { id: string } }) {
         <aside className="card h-fit">
           <h2 className="section-title">Why this comes later</h2>
           <p className="mt-2 text-sm leading-6 text-gray-600">
-            Full mock exams depend on trustworthy source chunks, retrieval, and citation validation. The MVP should first make small actions reliable.
+            Full mock exams depend on trustworthy source passages, context selection, and citation validation. The MVP should first make small actions reliable.
           </p>
           <div className="mt-4 space-y-2">
             <span className="chip">source-backed questions</span>

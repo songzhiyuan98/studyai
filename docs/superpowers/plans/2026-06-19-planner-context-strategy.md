@@ -106,7 +106,7 @@ Expected: PASS.
 
 **Files:**
 - Modify: `docs/ARCHITECTURE.md`
-- Modify: `docs/CHAT_RAG_TODO.md`
+- Modify: `docs/CHAT_CONTEXT_TODO.md`
 
 **Interfaces:**
 - Documents planner-first context strategy.
