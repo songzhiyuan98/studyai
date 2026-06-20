@@ -111,6 +111,111 @@ function isArtifactSaveTrace(retrieval: unknown) {
   return trace.strategy === 'tool_artifact_save_v0' || typeof trace.savedArtifactId === 'string';
 }
 
+function normalizeReaderSearchText(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, ' ').trim();
+}
+
+function scoreReaderLectureMatch({
+  message,
+  title,
+  originalName,
+  courseId,
+  folderName,
+}: {
+  message: string;
+  title: string;
+  originalName?: string | null;
+  courseId?: string | null;
+  folderName?: string | null;
+}) {
+  const normalizedMessage = normalizeReaderSearchText(message);
+  const labels = [title, originalName, courseId, folderName]
+    .filter(Boolean)
+    .map((label) => normalizeReaderSearchText(label || ''))
+    .filter(Boolean);
+
+  return labels.reduce((score, label) => {
+    if (normalizedMessage.includes(label)) return Math.max(score, 4);
+    if (label.split(/\s+/).some((token) => token.length > 2 && normalizedMessage.includes(token))) {
+      return Math.max(score, 2);
+    }
+    return score;
+  }, 0);
+}
+
+async function findReaderFallbackSourceRef({
+  userId,
+  message,
+  requestedPage,
+}: {
+  userId: string;
+  message: string;
+  requestedPage: number | null;
+}) {
+  const lectures = await prisma.lecture.findMany({
+    where: {
+      userId,
+      status: 'PROCESSED',
+      segments: {
+        some: requestedPage ? { page: requestedPage } : {},
+      },
+    },
+    select: {
+      id: true,
+      title: true,
+      originalName: true,
+      courseId: true,
+      folder: {
+        select: {
+          name: true,
+        },
+      },
+      segments: {
+        where: requestedPage ? { page: requestedPage } : {},
+        orderBy: [
+          { page: 'asc' },
+          { slide: 'asc' },
+          { charStart: 'asc' },
+          { createdAt: 'asc' },
+        ],
+        take: 1,
+      },
+    },
+    take: 20,
+  });
+
+  const [matchedLecture] = lectures
+    .map((lecture) => ({
+      lecture,
+      score: scoreReaderLectureMatch({
+        message,
+        title: lecture.title,
+        originalName: lecture.originalName,
+        courseId: lecture.courseId,
+        folderName: lecture.folder?.name,
+      }),
+    }))
+    .filter((candidate) => candidate.score > 0 && candidate.lecture.segments.length > 0)
+    .sort((first, second) => second.score - first.score);
+
+  const segment = matchedLecture?.lecture.segments[0];
+  if (!matchedLecture || !segment) {
+    return null;
+  }
+
+  return {
+    lectureId: matchedLecture.lecture.id,
+    segmentId: segment.id,
+    page: segment.page,
+    slide: segment.slide,
+    charStart: segment.charStart,
+    charEnd: segment.charEnd,
+    label: `${matchedLecture.lecture.title || 'Source'} · ${formatSourceRef(segment)}`,
+    score: matchedLecture.score,
+    reason: 'nearby' as const,
+  };
+}
+
 async function getOrCreateChatSession({
   userId,
   sessionId,
@@ -477,11 +582,23 @@ export async function POST(request: NextRequest) {
       const requestedPageRef = chatPlan.requestedPage
         ? recentRefs.find((sourceRef) => sourceRef.page === chatPlan.requestedPage)
         : undefined;
-      const targetRef = requestedPageRef || recentRefs[0];
+      const fallbackSourceRef = requestedPageRef || recentRefs[0]
+        ? null
+        : await findReaderFallbackSourceRef({
+          userId: session.user.id,
+          message: parsed.data.message,
+          requestedPage: chatPlan.requestedPage,
+        });
+      const targetRef = requestedPageRef || recentRefs[0] || fallbackSourceRef;
       const readerResponseContent = targetRef
         ? `I found the source reference${chatPlan.requestedPage ? ` for page ${chatPlan.requestedPage}` : ''}. Open it from the citation below.`
-        : 'I could not find a recent cited source to open yet. Ask me a source-grounded question first, then I can jump you to the original material.';
+        : 'I could not find a recent citation or matching Library source to open yet. Try naming the file, lecture, or page more directly.';
       const sourceRefs = targetRef ? [targetRef] : [];
+      const toolResult = targetRef
+        ? fallbackSourceRef
+          ? 'reader_library_fallback'
+          : 'reader_link_ready'
+        : 'no_matching_source';
       const retrievalTrace = {
         strategy: 'tool_reader_open_v0',
         count: sourceRefs.length,
@@ -493,7 +610,7 @@ export async function POST(request: NextRequest) {
         plan: chatPlan,
         ...getPlannerTrace(chatPlan),
         plannerCatalogCount: plannerCatalogLectures.length,
-        toolResult: targetRef ? 'reader_link_ready' : 'no_recent_source',
+        toolResult,
       };
 
       await prisma.chatMessage.create({
