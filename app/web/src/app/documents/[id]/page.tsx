@@ -192,7 +192,7 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
             <span>Source diagnostics</span>
           </div>
           <h1 className="mt-2 truncate text-2xl font-normal text-[#000000]">{lecture.title}</h1>
-          <p className="mt-1 truncate text-sm text-[#737373]">{lecture.metaLine.replace('segments', 'chunks')}</p>
+          <p className="mt-1 truncate text-sm text-[#737373]">{lecture.metaLine.replace('segments', 'passages')}</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="status-pill">{selectedSegments.length} selected</span>
@@ -206,7 +206,7 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
           <div className="reader-section-header">
             <div className="min-w-0">
               <p className="text-xs text-[#737373]">Parsed source</p>
-              <h2 className="mt-1 text-lg font-medium text-[#000000]">{lecture.segments.length} chunks extracted</h2>
+              <h2 className="mt-1 text-lg font-medium text-[#000000]">{lecture.segments.length} passages extracted</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[#737373]">
                 Inspect parsed text and source references before Chat uses this file for grounded answers.
               </p>
@@ -238,8 +238,8 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
 
           {lecture.segments.length === 0 ? (
             <div className="empty-state border-y border-[#e5e5e5]">
-              <h3>No readable chunks yet</h3>
-              <p>This source is still processing or did not produce readable chunks.</p>
+              <h3>No readable passages yet</h3>
+              <p>This source is still processing or did not produce readable passages.</p>
             </div>
           ) : (
             <div className="reader-document">
@@ -262,11 +262,11 @@ export default function DocumentReaderPage({ params }: { params: { id: string } 
             </div>
           )}
           <section className="reader-inline-section">
-            <p className="text-xs text-[#737373]">Selected chunks</p>
+            <p className="text-xs text-[#737373]">Selected passages</p>
             <div className="mt-3 space-y-3">
               {selectedText.length === 0 ? (
                 <p className="text-sm leading-6 text-[#737373]">
-                  Select one or more chunks from the parsed source list.
+                  Select one or more passages from the parsed source list.
                 </p>
               ) : (
                 selectedText.map((segment) => (

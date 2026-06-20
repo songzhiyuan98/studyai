@@ -588,7 +588,7 @@ export default function LibraryPage() {
                     <span className="text-sm text-[#737373]">{document.type}</span>
                     <span className="flex min-w-0 flex-wrap gap-2">
                       <span className={document.status === 'Processed' ? 'status-pill status-ready' : 'status-pill'}>
-                        {formatSourceStatus(document.status)} · {document.segments} chunks
+                        {formatSourceStatus(document.status)} · {document.segments} passages
                       </span>
                       <span className={document.vectorStatus === 'Vector ready' ? 'status-pill status-ready' : 'status-pill status-muted'}>
                         {document.vectorStatus}
@@ -651,7 +651,7 @@ export default function LibraryPage() {
                       <span className={document.status === 'Processed' ? 'status-pill status-ready' : 'status-pill'}>
                         {formatSourceStatus(document.status)}
                       </span>
-                      <span className="status-pill status-muted">{document.segments} chunks</span>
+                      <span className="status-pill status-muted">{document.segments} passages</span>
                       <span className={document.vectorStatus === 'Vector ready' ? 'status-pill status-ready' : 'status-pill status-muted'}>
                         {document.vectorStatus}
                       </span>
@@ -942,7 +942,7 @@ export default function LibraryPage() {
               Delete {selectedLectureIds.length} selected {selectedLectureIds.length === 1 ? 'file' : 'files'}?
             </h2>
             <p className="mt-2 text-sm leading-6 text-[#737373]">
-              This removes the source files, parsed chunks, and generated study data connected to them.
+              This removes the source files, parsed passages, and generated study data connected to them.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button

@@ -81,10 +81,24 @@ test('library page is positioned as knowledge base management', () => {
   assert.match(source, /Knowledge base/);
   assert.match(source, /Organize lecture files and folders/);
   assert.match(source, /'list', 'grid', 'compact'/);
+  assert.match(source, /source passages/);
   assert.match(source, /needsVectorReindex/);
   assert.match(source, /Reindex vectors/);
   assert.match(source, /\/api\/lectures\/reindex/);
   assert.match(source, /Vector ready/);
+  assert.doesNotMatch(source, /document\.segments\} chunks/);
+  assert.doesNotMatch(source, /parsed chunks/);
+});
+
+test('reader page uses product language for parsed passages', () => {
+  const source = readFileSync(resolve(root, 'src/app/documents/[id]/page.tsx'), 'utf8');
+
+  assert.match(source, /passages extracted/);
+  assert.match(source, /No readable passages yet/);
+  assert.match(source, /Selected passages/);
+  assert.doesNotMatch(source, /chunks extracted/);
+  assert.doesNotMatch(source, /Selected chunks/);
+  assert.doesNotMatch(source, /readable chunks/);
 });
 
 test('saved page supports selecting and deleting saved outputs', () => {
