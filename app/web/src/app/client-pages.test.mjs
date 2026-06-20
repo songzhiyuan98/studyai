@@ -224,6 +224,15 @@ test('chat page can continue an existing chat session', () => {
   assert.match(source, /studyflow:chat-sessions-changed/);
 });
 
+test('chat page writes a new generated session id into the URL', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+
+  assert.match(source, /useRouter/);
+  assert.match(source, /function adoptResponseSession/);
+  assert.match(source, /router\.replace\(`\/chat\?sessionId=\$\{sessionId\}`/);
+  assert.match(source, /!activeSessionId && !requestedSessionId/);
+});
+
 test('chat page surfaces safe actions for library operation replies', () => {
   const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
 
