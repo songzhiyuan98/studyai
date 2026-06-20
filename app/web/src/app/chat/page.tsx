@@ -290,7 +290,7 @@ function shouldShowMessageTitle(chatMessage: ChatMessage) {
 
 function getContextStrategyLabel(strategy?: NonNullable<ChatMessage['retrieval']>['contextStrategy']) {
   if (strategy === 'lecture_pack') {
-    return 'lecture pack';
+    return 'lesson context';
   }
 
   if (strategy === 'long_document_map') {
@@ -302,7 +302,7 @@ function getContextStrategyLabel(strategy?: NonNullable<ChatMessage['retrieval']
   }
 
   if (strategy === 'focused_rag') {
-    return 'focused retrieval';
+    return 'focused context';
   }
 
   return 'source grounded';
@@ -358,14 +358,14 @@ export default function ChatPage() {
   const isLecturePackPreview = sourcePreview?.retrieval.contextStrategy === 'lecture_pack';
   const sourcePreviewChunkLabel = isSourceRangePreview
     ? 'coverage samples'
-    : 'relevant chunks';
+    : 'relevant passages';
   const sourcePreviewGroundingLabel = isLecturePackPreview
-    ? 'source-order lecture pack'
+    ? 'lecture order'
     : sourcePreview?.retrieval.contextStrategy === 'long_document_map'
       ? 'document map coverage'
       : isSourceRangePreview
         ? 'scope coverage'
-        : 'focused retrieval';
+        : 'focused context';
   const sourceScopeLabel = sourcePreview?.retrieval.libraryScope?.matchedLabels?.length
     ? sourcePreview.retrieval.libraryScope.matchedLabels.join(', ')
     : sourcePreview?.retrieval.sourceScope === 'selected_sources'
@@ -902,7 +902,7 @@ export default function ChatPage() {
                             className="chat-used-source-pill"
                           >
                             <span>{material.title}</span>
-                            <span>{material.count} chunks</span>
+                            <span>{material.count} passages</span>
                           </Link>
                         ))}
                       </div>
@@ -1112,7 +1112,7 @@ export default function ChatPage() {
                             <span className="block truncate">{material.title}</span>
                             <span>
                               {isSourceRangePreview
-                                ? `Ready material · ${material.detail} · ${material.count} indexed chunks`
+                                ? `Ready material · ${material.detail} · ${material.count} indexed passages`
                                 : `${material.count} ${sourcePreviewChunkLabel} · ${material.detail}`}
                             </span>
                           </span>
