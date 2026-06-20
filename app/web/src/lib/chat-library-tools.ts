@@ -11,6 +11,7 @@ function cleanLabel(value: string) {
   return value
     .replace(/^["'`]+|["'`]+$/g, '')
     .replace(/[。.!?？]+$/g, '')
+    .replace(/\s*(?:folder|collection|文件夹|资料夹)$/i, '')
     .trim();
 }
 
@@ -18,7 +19,7 @@ function pickAction(message: string): LibraryOperationAction {
   if (/\b(upload|add|import)\b|上传|导入|新增文件/i.test(message)) return 'upload';
   if (/\b(delete|remove|trash)\b|删除|移除|删掉/i.test(message)) return 'delete';
   if (/\b(rename)\b|重命名|改名/i.test(message)) return 'rename';
-  if (/\b(move|file into|put .* into)\b|移动|归档|放到/i.test(message)) return 'move';
+  if (/\b(move|file into|put .* into)\b|移动|归档|放到|放进/i.test(message)) return 'move';
   return 'organize';
 }
 

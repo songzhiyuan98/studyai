@@ -22,6 +22,18 @@ test('infers rename and move library operation drafts', () => {
   assert.equal(moveDraft.destinationLabel, 'CSE 114A');
 });
 
+test('infers Chinese rename and move operation details', () => {
+  const renameDraft = inferLibraryOperationDraft('把 lambda 改名为 lambda calculus');
+  const moveDraft = inferLibraryOperationDraft('把 typeclasses.pdf 放进 CSE 114A 文件夹');
+
+  assert.equal(renameDraft.action, 'rename');
+  assert.equal(renameDraft.targetLabel, 'lambda');
+  assert.equal(renameDraft.destinationLabel, 'lambda calculus');
+  assert.equal(moveDraft.action, 'move');
+  assert.equal(moveDraft.targetLabel, 'typeclasses.pdf');
+  assert.equal(moveDraft.destinationLabel, 'CSE 114A');
+});
+
 test('infers upload library operation drafts without pretending a file exists', () => {
   const draft = inferLibraryOperationDraft('我想上传一个新的 lecture 到 114a');
 
