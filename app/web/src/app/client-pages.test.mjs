@@ -116,3 +116,12 @@ test('chat citations open the cited reader segment', () => {
   assert.match(readerSource, /data-segment-id=\{segment\.id\}/);
   assert.match(readerSource, /scrollIntoView\(\{ behavior: 'smooth', block: 'center' \}\)/);
 });
+
+test('chat answers summarize the materials used for retrieval', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+
+  assert.match(source, /function getUsedMaterials/);
+  assert.match(source, /Used materials/);
+  assert.match(source, /material\.count\} chunks/);
+  assert.match(source, /chat-used-source-pill/);
+});

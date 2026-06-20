@@ -84,6 +84,34 @@ function parseChatStreamEvent(rawEvent: string): ChatStreamEvent | null {
   } as ChatStreamEvent;
 }
 
+function getUsedMaterials(sourceRefs: SourceRef[]) {
+  const materials = new Map<string, {
+    lectureId: string;
+    title: string;
+    firstSegmentId: string;
+    count: number;
+  }>();
+
+  sourceRefs.forEach((source) => {
+    const existing = materials.get(source.lectureId);
+    const title = source.label.split(' · ')[0] || 'Source';
+
+    if (existing) {
+      existing.count += 1;
+      return;
+    }
+
+    materials.set(source.lectureId, {
+      lectureId: source.lectureId,
+      title,
+      firstSegmentId: source.segmentId,
+      count: 1,
+    });
+  });
+
+  return Array.from(materials.values());
+}
+
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const requestedSessionId = searchParams.get('sessionId');
@@ -605,17 +633,35 @@ export default function ChatPage() {
                 ) : null}
 
                 {chatMessage.sourceRefs?.length ? (
-                  <div className="chat-citation-row">
-                    {chatMessage.sourceRefs.map((source) => (
-                      <Link
-                        key={`${source.lectureId}-${source.segmentId}`}
-                        href={`/documents/${source.lectureId}?segmentId=${encodeURIComponent(source.segmentId)}`}
-                        className="status-pill status-muted"
-                      >
-                        {source.label}
-                      </Link>
-                    ))}
-                  </div>
+                  <>
+                    <div className="chat-used-sources">
+                      <p>Used materials</p>
+                      <div>
+                        {getUsedMaterials(chatMessage.sourceRefs).map((material) => (
+                          <Link
+                            key={material.lectureId}
+                            href={`/documents/${material.lectureId}?segmentId=${encodeURIComponent(material.firstSegmentId)}`}
+                            className="chat-used-source-pill"
+                          >
+                            <span>{material.title}</span>
+                            <span>{material.count} chunks</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="chat-citation-row">
+                      {chatMessage.sourceRefs.map((source) => (
+                        <Link
+                          key={`${source.lectureId}-${source.segmentId}`}
+                          href={`/documents/${source.lectureId}?segmentId=${encodeURIComponent(source.segmentId)}`}
+                          className="status-pill status-muted"
+                        >
+                          {source.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </>
                 ) : null}
 
                 {chatMessage.role === 'assistant' && chatMessage.sourceRefs?.length ? (
