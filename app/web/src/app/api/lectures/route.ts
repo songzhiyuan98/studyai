@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { parseMinioEndpoint } from '@/lib/minio-config';
 import { createStableSegmentHash, parseDocumentBuffer } from '@/lib/document-ingestion';
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
+import { writeSegmentEmbeddings } from '@/lib/segment-embeddings';
 // import { DocumentParserFactory } from '@study-assistant/shared'; // Temporarily commented to test
 
 // 支持的文件类型
@@ -55,20 +56,6 @@ async function ensureBucketExists(minioClient: MinioClient, bucketName: string) 
     console.log('🪣 Bucket missing, creating:', bucketName);
     await minioClient.makeBucket(bucketName);
   }
-}
-
-async function writeSegmentEmbeddings(embeddings: Array<{ id: string; embedding: number[] }>) {
-  if (embeddings.length === 0) return;
-
-  await prisma.$transaction(
-    embeddings.map(({ id, embedding }) =>
-      prisma.$executeRaw`
-        UPDATE segments
-        SET embedding = ${JSON.stringify(embedding)}::vector
-        WHERE id = ${id}
-      `,
-    ),
-  );
 }
 
 export async function POST(request: NextRequest) {

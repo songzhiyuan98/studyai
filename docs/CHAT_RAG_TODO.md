@@ -86,7 +86,7 @@ student asks what to study
 - Generate embeddings after successful ingestion. Basic optional OpenAI generation is wired in the web ingestion route.
 - Write vectors to `Segment.embedding`. Basic pgvector writes are wired when a real `OPENAI_API_KEY` is configured.
 - Track embedding status on lecture or segment records.
-- Make embedding generation retryable.
+- Make embedding generation retryable. Current implementation adds a user-scoped `/api/lectures/reindex` backfill endpoint for processed segments missing embeddings.
 - Keep `OPENAI_MODEL_EMBEDDING` configurable.
 - Default to `text-embedding-3-small` for 1536-dimensional pgvector compatibility.
 

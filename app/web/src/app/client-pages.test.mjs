@@ -55,6 +55,13 @@ test('library page is positioned as knowledge base management', () => {
   assert.match(source, /'list', 'grid', 'compact'/);
 });
 
+test('lecture reindex API can backfill missing segment embeddings', () => {
+  const source = readFileSync(resolve(root, 'src/app/api/lectures/reindex/route.ts'), 'utf8');
+  assert.match(source, /s\.embedding IS NULL/);
+  assert.match(source, /backfillSegmentEmbeddings/);
+  assert.match(source, /user_id = \$\{session\.user\.id\}/);
+});
+
 test('chat page can refresh ready library sources after uploads finish indexing', () => {
   const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
   assert.match(source, /Refresh sources/);
