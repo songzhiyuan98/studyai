@@ -371,6 +371,8 @@ function getPlannerSourceLabel(source?: NonNullable<ChatMessage['retrieval']>['p
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const requestedSessionId = searchParams.get('sessionId');
+  const requestedDraft = searchParams.get('draft');
+  const requestedLectureIds = searchParams.get('lectureIds');
   const chatScrollRef = useRef<HTMLElement>(null);
   const composerFormRef = useRef<HTMLFormElement>(null);
   const hasHydratedSourcesRef = useRef(false);
@@ -456,7 +458,7 @@ export default function ChatPage() {
       setSources(loadedSources);
       setConfirmedSources((current) => {
         if (!hasHydratedSourcesRef.current) {
-          return [];
+          return current.filter((sourceId) => loadedIds.has(sourceId));
         }
 
         return current.filter((sourceId) => loadedIds.has(sourceId));
@@ -480,6 +482,28 @@ export default function ChatPage() {
       mountedRef.current = false;
     };
   }, [loadSources]);
+
+  useEffect(() => {
+    if (!requestedDraft) return;
+
+    let decodedDraft = requestedDraft;
+    try {
+      decodedDraft = decodeURIComponent(requestedDraft);
+    } catch {
+      decodedDraft = requestedDraft;
+    }
+    const draftLectureIds = requestedLectureIds
+      ? requestedLectureIds.split(',').map((lectureId) => lectureId.trim()).filter(Boolean)
+      : [];
+
+    setMessage(decodedDraft);
+    setSourcePreview(null);
+    setSelectedPreviewLectureIds([]);
+    if (draftLectureIds.length > 0) {
+      setConfirmedSources(draftLectureIds);
+      setShowSourceScope(false);
+    }
+  }, [requestedDraft, requestedLectureIds]);
 
   useEffect(() => {
     const refreshOnFocus = () => {

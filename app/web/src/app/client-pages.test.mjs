@@ -124,6 +124,24 @@ test('saved page supports selecting and deleting saved outputs', () => {
   assert.match(source, /href=\{`\/documents\/\$\{ref\.lectureId\}\?segmentId=\$\{encodeURIComponent\(ref\.segmentId\)\}`\}/);
 });
 
+test('saved outputs can be continued in chat as a draft prompt', () => {
+  const savedSource = readFileSync(resolve(root, 'src/app/review/page.tsx'), 'utf8');
+  const chatSource = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+
+  assert.match(savedSource, /function buildContinueInChatHref/);
+  assert.match(savedSource, /artifact\.sourceRefs\.map\(\(ref\) => ref\.lectureId\)/);
+  assert.match(savedSource, /chatParams\.set\('draft'/);
+  assert.match(savedSource, /chatParams\.set\('lectureIds'/);
+  assert.match(savedSource, /Continue in Chat/);
+  assert.match(savedSource, /href=\{buildContinueInChatHref\(artifact\)\}/);
+  assert.match(chatSource, /const requestedDraft = searchParams\.get\('draft'\)/);
+  assert.match(chatSource, /const requestedLectureIds = searchParams\.get\('lectureIds'\)/);
+  assert.match(chatSource, /decodeURIComponent\(requestedDraft\)/);
+  assert.match(chatSource, /requestedLectureIds\.split\(','\)/);
+  assert.match(chatSource, /setMessage\(decodedDraft\)/);
+  assert.match(chatSource, /setConfirmedSources\(draftLectureIds\)/);
+});
+
 test('lecture reindex API can backfill missing segment embeddings', () => {
   const source = readFileSync(resolve(root, 'src/app/api/lectures/reindex/route.ts'), 'utf8');
   assert.match(source, /s\.embedding IS NULL/);

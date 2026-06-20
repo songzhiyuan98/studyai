@@ -33,6 +33,22 @@ function formatArtifactDate(value: string | Date | undefined): string {
   }).format(new Date(value));
 }
 
+function buildContinueInChatHref(artifact: StudyArtifact) {
+  const chatParams = new URLSearchParams();
+  const draft = [
+    `Continue from my saved ${artifact.type.replace('_', ' ')}: ${artifact.title}`,
+    'Help me understand it more deeply, connect it back to the source material, and ask me what I want to practice next.',
+  ].join('\n\n');
+  const lectureIds = Array.from(new Set(artifact.sourceRefs.map((ref) => ref.lectureId).filter(Boolean)));
+
+  chatParams.set('draft', draft);
+  if (lectureIds.length > 0) {
+    chatParams.set('lectureIds', lectureIds.join(','));
+  }
+
+  return `/chat?${chatParams.toString()}`;
+}
+
 export default function ReviewPage() {
   const [artifacts, setArtifacts] = useState<StudyArtifact[]>([]);
   const [activeFilter, setActiveFilter] = useState<(typeof artifactFilters)[number]['id']>('all');
@@ -313,6 +329,12 @@ export default function ReviewPage() {
                     </div>
                   </div>
                   <div className="artifact-row-actions">
+                    <Link
+                      href={buildContinueInChatHref(artifact)}
+                      className="text-link"
+                    >
+                      Continue in Chat
+                    </Link>
                     <button
                       type="button"
                       onClick={() => openDeleteDialog([artifact])}
