@@ -185,6 +185,18 @@ export default function LibraryPage() {
   }, [chatIntentMatchedDocuments, libraryAction, libraryTarget, loading]);
 
   useEffect(() => {
+    if (libraryAction !== 'rename' || !libraryTarget || loading || renameTarget) return;
+    if (chatIntentMatchedDocuments.length !== 1) return;
+
+    setSelectedFolder(chatIntentMatchedDocuments[0].folderId || 'root');
+    openRenameDialog({
+      type: 'lecture',
+      id: chatIntentMatchedDocuments[0].id,
+      name: chatIntentMatchedDocuments[0].title,
+    });
+  }, [chatIntentMatchedDocuments, libraryAction, libraryTarget, loading, renameTarget]);
+
+  useEffect(() => {
     if (!hasIndexingSources) return;
 
     const timer = window.setInterval(() => {
@@ -552,7 +564,9 @@ export default function LibraryPage() {
                 <span>
                   {libraryAction === 'delete' && chatIntentMatchedDocuments.length === 1
                     ? 'Delete is ready for review'
-                    : libraryAction}
+                    : libraryAction === 'rename' && chatIntentMatchedDocuments.length === 1
+                      ? 'Rename is ready for review'
+                      : libraryAction}
                   {libraryTarget ? ` · ${libraryTarget}` : ''}
                   {libraryDestination ? ` -> ${libraryDestination}` : ''}
                 </span>
