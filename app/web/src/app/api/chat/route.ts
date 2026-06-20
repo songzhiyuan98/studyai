@@ -35,6 +35,7 @@ import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 import { resolveLibraryScope } from '@/lib/library-catalog';
 import { buildLecturePackContext } from '@/lib/lecture-pack';
 import { inferLibraryOperationDraft } from '@/lib/chat-library-tools';
+import { scoreReaderLectureMatch } from '@/lib/chat-reader-tools';
 const chatSchema = z.object({
   message: z.string().min(1).max(2000),
   mode: z.enum(['free', 'explain', 'summarize', 'key_terms', 'mini_quiz', 'cheat_sheet']).default('free'),
@@ -109,38 +110,6 @@ function isArtifactSaveTrace(retrieval: unknown) {
 
   const trace = retrieval as Record<string, unknown>;
   return trace.strategy === 'tool_artifact_save_v0' || typeof trace.savedArtifactId === 'string';
-}
-
-function normalizeReaderSearchText(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, ' ').trim();
-}
-
-function scoreReaderLectureMatch({
-  message,
-  title,
-  originalName,
-  courseId,
-  folderName,
-}: {
-  message: string;
-  title: string;
-  originalName?: string | null;
-  courseId?: string | null;
-  folderName?: string | null;
-}) {
-  const normalizedMessage = normalizeReaderSearchText(message);
-  const labels = [title, originalName, courseId, folderName]
-    .filter(Boolean)
-    .map((label) => normalizeReaderSearchText(label || ''))
-    .filter(Boolean);
-
-  return labels.reduce((score, label) => {
-    if (normalizedMessage.includes(label)) return Math.max(score, 4);
-    if (label.split(/\s+/).some((token) => token.length > 2 && normalizedMessage.includes(token))) {
-      return Math.max(score, 2);
-    }
-    return score;
-  }, 0);
 }
 
 async function findReaderFallbackSourceRef({
