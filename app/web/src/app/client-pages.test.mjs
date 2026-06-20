@@ -162,6 +162,7 @@ test('chat page can preview suggested sources before generation', () => {
   const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
 
   assert.match(source, /\/api\/chat\/preview/);
+  assert.match(source, /requestSourcePreview/);
   assert.match(source, /Check sources/);
   assert.match(source, /Suggested materials/);
   assert.match(source, /I found \{sourcePreview\.materials\.length\} likely/);
@@ -173,6 +174,22 @@ test('chat page can preview suggested sources before generation', () => {
   assert.match(source, /setConfirmedSources\(selectedPreviewLectureIds\)/);
   assert.match(source, /setSourcePreview\(null\)/);
   assert.doesNotMatch(source, /setConfirmedSources\(sourcePreview\.materials\.map/);
+});
+
+test('chat send automatically asks for source confirmation on ambiguous auto scope', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+  const confirmationIndex = source.indexOf('const shouldConfirmSourcesBeforeSend');
+  const userMessageIndex = source.indexOf('const userMessage: ChatMessage');
+
+  assert.match(source, /const shouldConfirmSourcesBeforeSend/);
+  assert.match(source, /autoPreview\.materials\.length > 1/);
+  assert.ok(confirmationIndex > -1, 'chat submit should decide whether source confirmation is needed');
+  assert.ok(userMessageIndex > -1, 'chat submit should create the user message');
+  assert.ok(confirmationIndex < userMessageIndex, 'source confirmation should happen before the message is sent');
+  assert.match(source, /showSourcePreview\(autoPreview\);\s*return;/);
+  assert.match(source, /lectureIds: lectureIdsForMessage/);
+  assert.match(source, /sourcePreview\?\.materials\.length && selectedPreviewLectureIds\.length > 0/);
+  assert.match(source, /const updateDraftMessage/);
 });
 
 test('chat API loads recent session history before creating the next user message', () => {

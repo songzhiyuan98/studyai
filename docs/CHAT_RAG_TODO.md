@@ -38,6 +38,7 @@ student asks what to study
 - Embeddings are generated during upload when a real OpenAI key is configured; otherwise retrieval falls back to lexical ranking until reindexing fills missing vectors.
 - pgvector schema support exists through `Segment.embedding vector(1536)`.
 - Recommended MVP embedding model: `text-embedding-3-small`.
+- Chat source preview is implemented. Manual "Check sources" previews likely materials, and auto-scope sends now pause for confirmation when multiple candidate materials are found.
 
 ## Milestone 1: Chat Product Surface
 
@@ -61,11 +62,11 @@ student asks what to study
   - current reader segment
   - recent uploads
 - Add a source confirmation state:
-  - ask when the user intent matches several plausible sources
-  - show AI/retriever-recommended candidate folders, lectures, or page ranges
-  - let the student approve, remove, or change sources before generation
-  - support manual "Check sources" now and future model/tool-triggered source checks
-  - skip confirmation when the student has already selected an explicit scope
+  - ask when the user intent matches several plausible sources. Implemented for auto-scope chat sends with multiple candidate materials.
+  - show AI/retriever-recommended candidate folders, lectures, or page ranges. Implemented at the lecture/material level.
+  - let the student approve, remove, or change sources before generation. Implemented with selectable source preview materials.
+  - support manual "Check sources" now and future model/tool-triggered source checks. Manual preview and automatic pre-send preview are implemented; model/tool orchestration remains future work.
+  - skip confirmation when the student has already selected an explicit scope. Implemented.
 - Show cited sources beside or below assistant messages.
 - Let citations open `/documents/[id]` at the referenced segment.
 

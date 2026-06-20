@@ -429,6 +429,32 @@ export default function ChatPage() {
     setSelectedPreviewLectureIds([]);
   };
 
+  const requestSourcePreview = async (trimmedMessage: string, lectureIds: string[]) => {
+    const response = await fetch('/api/chat/preview', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        message: trimmedMessage,
+        lectureIds,
+      }),
+    });
+    const payload = await response.json();
+
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.error || 'Could not preview source context.');
+    }
+
+    return payload.data as SourcePreview;
+  };
+
+  const showSourcePreview = (nextPreview: SourcePreview) => {
+    setSourcePreview(nextPreview);
+    setSelectedPreviewLectureIds(nextPreview.materials.map((material) => material.lectureId));
+  };
+
   const previewSources = async () => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage || previewingSources || sending) return;
@@ -437,26 +463,7 @@ export default function ChatPage() {
     setError('');
 
     try {
-      const response = await fetch('/api/chat/preview', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({
-          message: trimmedMessage,
-          lectureIds: confirmedSources,
-        }),
-      });
-      const payload = await response.json();
-
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.error || 'Could not preview source context.');
-      }
-
-      const nextPreview = payload.data as SourcePreview;
-      setSourcePreview(nextPreview);
-      setSelectedPreviewLectureIds(nextPreview.materials.map((material) => material.lectureId));
+      showSourcePreview(await requestSourcePreview(trimmedMessage, confirmedSources));
     } catch (previewError) {
       setError(previewError instanceof Error ? previewError.message : 'Could not preview source context.');
     } finally {
@@ -489,13 +496,43 @@ export default function ChatPage() {
     setShowSourceScope(false);
   };
 
+  const updateDraftMessage = (nextMessage: string) => {
+    setMessage(nextMessage);
+    if (sourcePreview) {
+      setSourcePreview(null);
+      setSelectedPreviewLectureIds([]);
+    }
+  };
+
   const submitCurrentMessage = async () => {
     const trimmedMessage = message.trim();
 
-    if (!trimmedMessage || sending) {
+    if (!trimmedMessage || sending || previewingSources) {
       return;
     }
 
+    const shouldConfirmSourcesBeforeSend = confirmedSources.length === 0 && !sourcePreview;
+    if (shouldConfirmSourcesBeforeSend) {
+      setPreviewingSources(true);
+      setError('');
+
+      try {
+        const autoPreview = await requestSourcePreview(trimmedMessage, []);
+        if (autoPreview.materials.length > 1) {
+          showSourcePreview(autoPreview);
+          return;
+        }
+      } catch (previewError) {
+        setError(previewError instanceof Error ? previewError.message : 'Could not preview source context.');
+        return;
+      } finally {
+        setPreviewingSources(false);
+      }
+    }
+
+    const lectureIdsForMessage = sourcePreview?.materials.length && selectedPreviewLectureIds.length > 0
+      ? selectedPreviewLectureIds
+      : confirmedSources;
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -520,7 +557,7 @@ export default function ChatPage() {
         body: JSON.stringify({
           message: trimmedMessage,
           mode,
-          lectureIds: confirmedSources,
+          lectureIds: lectureIdsForMessage,
           sessionId: activeSessionId || undefined,
           stream: true,
         }),
@@ -991,7 +1028,7 @@ export default function ChatPage() {
             <div className="chat-input-shell">
               <textarea
                 value={message}
-                onChange={(event) => setMessage(event.target.value)}
+                onChange={(event) => updateDraftMessage(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.nativeEvent.isComposing) {
                     return;

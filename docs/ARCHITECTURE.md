@@ -135,6 +135,7 @@ Conversation memory and retrieval memory are related but not identical. The assi
 - The local deterministic fallback should follow the same teacher-led default so degraded mode does not become a template generator.
 - The assistant may ask one short source-confirmation question before generation when the scope is ambiguous.
 - Source confirmation should be based on the internal retrieval/source-preview API or future tool calls, not a generic confirmation modal.
+- In auto scope, the current Chat UI automatically runs source preview before sending when the request matches multiple likely materials, then lets the student approve or adjust the recommended sources.
 - If the student chooses a scope manually, the assistant should not repeatedly ask for confirmation.
 - Each answer should expose the sources it used and offer to open them in the reader.
 - The chat surface should feel conversational, not like a retrieval dashboard. Engineering details such as retrieval strategy ids should stay in traces, while the UI uses natural language like "I found likely materials."
