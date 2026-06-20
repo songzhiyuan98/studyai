@@ -37,6 +37,9 @@ type ChatMessage = {
   retrieval?: {
     strategy: string;
     contextStrategy?: 'focused_rag' | 'broad_rag' | 'lecture_pack' | 'long_document_map';
+    plannerSource?: 'deterministic' | 'ai_planner';
+    plannerModel?: string;
+    plannerRationale?: string;
     count: number;
     scopedLectureCount?: number;
     generation?: {
@@ -62,6 +65,9 @@ type SourcePreview = {
   retrieval: {
     strategy: string;
     contextStrategy?: 'focused_rag' | 'broad_rag' | 'lecture_pack' | 'long_document_map';
+    plannerSource?: 'deterministic' | 'ai_planner';
+    plannerModel?: string;
+    plannerRationale?: string;
     count: number;
     scopedLectureCount: number;
     sourceScope?: 'selected_sources' | 'folder' | 'course' | 'lecture_title' | 'all_ready' | 'none';
@@ -302,6 +308,18 @@ function getContextStrategyLabel(strategy?: NonNullable<ChatMessage['retrieval']
   return 'source grounded';
 }
 
+function getPlannerSourceLabel(source?: NonNullable<ChatMessage['retrieval']>['plannerSource']) {
+  if (source === 'ai_planner') {
+    return 'AI planner';
+  }
+
+  if (source === 'deterministic') {
+    return 'deterministic fallback';
+  }
+
+  return 'planner pending';
+}
+
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const requestedSessionId = searchParams.get('sessionId');
@@ -359,8 +377,8 @@ export default function ChatPage() {
           : 'Auto scope';
   const sourcePreviewTitle = isSourceRangePreview ? 'Suggested study scope' : 'Suggested materials';
   const sourcePreviewDescription = isSourceRangePreview
-    ? `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} in scope · ${sourcePreviewGroundingLabel}`
-    : `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} likely ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} · ${sourcePreview?.retrieval.count || 0} ${sourcePreviewChunkLabel}`;
+    ? `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} in scope · ${sourcePreviewGroundingLabel} · ${getPlannerSourceLabel(sourcePreview?.retrieval.plannerSource)}`
+    : `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} likely ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} · ${sourcePreview?.retrieval.count || 0} ${sourcePreviewChunkLabel} · ${getPlannerSourceLabel(sourcePreview?.retrieval.plannerSource)}`;
 
   const loadSources = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) {
@@ -871,7 +889,7 @@ export default function ChatPage() {
                   <>
                     <div className="chat-used-sources">
                       <p>
-                        Used materials · {getContextStrategyLabel(chatMessage.retrieval?.contextStrategy)}
+                        Used materials · {getContextStrategyLabel(chatMessage.retrieval?.contextStrategy)} · {getPlannerSourceLabel(chatMessage.retrieval?.plannerSource)}
                       </p>
                       <div>
                         {getUsedMaterials(chatMessage.sourceRefs).map((material) => (

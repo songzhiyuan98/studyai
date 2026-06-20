@@ -381,6 +381,9 @@ export async function POST(request: NextRequest) {
             : libraryScope.source,
           libraryScope,
           plan: previewPlan,
+          plannerSource: previewPlan.plannerSource,
+          plannerModel: previewPlan.plannerModel,
+          plannerRationale: previewPlan.plannerRationale,
         },
       },
     });

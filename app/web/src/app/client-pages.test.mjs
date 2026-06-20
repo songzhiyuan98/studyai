@@ -158,7 +158,10 @@ test('chat answers summarize the materials used for retrieval', () => {
   assert.match(source, /contextStrategy\?:/);
   assert.match(source, /function getUsedMaterials/);
   assert.match(source, /function getContextStrategyLabel/);
+  assert.match(source, /function getPlannerSourceLabel/);
   assert.match(source, /Used materials/);
+  assert.match(source, /AI planner/);
+  assert.match(source, /deterministic fallback/);
   assert.match(source, /lecture pack/);
   assert.match(source, /document map/);
   assert.match(source, /material\.count\} chunks/);
@@ -197,6 +200,8 @@ test('chat page can preview suggested sources before generation', () => {
   assert.match(source, /source-order lecture pack/);
   assert.match(source, /indexed chunks/);
   assert.match(source, /sourcePreviewDescription/);
+  assert.match(source, /plannerSource\?:/);
+  assert.match(source, /getPlannerSourceLabel\(sourcePreview\?\.retrieval\.plannerSource\)/);
   assert.match(source, /selectedPreviewLectureIds/);
   assert.match(source, /Use selected/);
   assert.match(source, /togglePreviewMaterial/);

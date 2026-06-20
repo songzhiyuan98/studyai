@@ -14,7 +14,7 @@ import {
 } from '@/lib/rag-context';
 import { resolveExplicitLectureScope } from '@/lib/source-scope';
 import { buildCasualChatAnswer, buildChatAnswer, chatModeLabels } from '@/lib/chat-answer';
-import { planChatTurnWithAi } from '@/lib/chat-planner';
+import { planChatTurnWithAi, type ChatTurnPlan } from '@/lib/chat-planner';
 import { parseChatSourceRefs, saveChatOutputAsArtifact, saveChatOutputSchema } from '@/lib/chat-save-artifact';
 import {
   buildHistoryAwareRetrievalQuery,
@@ -27,7 +27,6 @@ import {
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 import { resolveLibraryScope } from '@/lib/library-catalog';
 import { buildLecturePackContext } from '@/lib/lecture-pack';
-
 const chatSchema = z.object({
   message: z.string().min(1).max(2000),
   mode: z.enum(['free', 'explain', 'summarize', 'key_terms', 'mini_quiz', 'cheat_sheet']).default('free'),
@@ -83,6 +82,14 @@ function waitForChatStreamPace() {
 function buildSessionTitle(message: string) {
   const trimmed = message.trim().replace(/\s+/g, ' ');
   return trimmed.length > 48 ? `${trimmed.slice(0, 45)}...` : trimmed || 'New study chat';
+}
+
+function getPlannerTrace(chatPlan: ChatTurnPlan) {
+  return {
+    plannerSource: chatPlan.plannerSource,
+    plannerModel: chatPlan.plannerModel,
+    plannerRationale: chatPlan.plannerRationale,
+  };
 }
 
 async function getOrCreateChatSession({
@@ -365,6 +372,7 @@ export async function POST(request: NextRequest) {
         historyCount: recentHistory.length,
         query: 'tool_call',
         plan: chatPlan,
+        ...getPlannerTrace(chatPlan),
         toolResult: artifact ? 'saved' : 'no_candidate',
       };
 
@@ -428,6 +436,7 @@ export async function POST(request: NextRequest) {
         historyCount: recentHistory.length,
         query: 'tool_call',
         plan: chatPlan,
+        ...getPlannerTrace(chatPlan),
         toolResult: targetRef ? 'reader_link_ready' : 'no_recent_source',
       };
 
@@ -469,6 +478,7 @@ export async function POST(request: NextRequest) {
         historyCount: recentHistory.length,
         query: 'not_requested',
         plan: chatPlan,
+        ...getPlannerTrace(chatPlan),
       };
       const generationInput = {
         mode: parsed.data.mode,
@@ -904,6 +914,7 @@ export async function POST(request: NextRequest) {
         : libraryScope.source,
       libraryScope,
       plan: chatPlan,
+      ...getPlannerTrace(chatPlan),
     };
 
     if (parsed.data.stream) {

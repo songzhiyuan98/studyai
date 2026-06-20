@@ -92,6 +92,10 @@ test('chat route stores planner trace with retrieval metadata', () => {
   assert.match(source, /const chatPlan = await planChatTurnWithAi/);
   assert.match(source, /shouldRetrieveSources = chatPlan\.requiresRetrieval/);
   assert.match(source, /plan: chatPlan/);
+  assert.match(source, /function getPlannerTrace/);
+  assert.match(source, /plannerSource: chatPlan\.plannerSource/);
+  assert.match(source, /plannerModel: chatPlan\.plannerModel/);
+  assert.match(source, /plannerRationale: chatPlan\.plannerRationale/);
   assert.match(source, /resolvedScope/);
   assert.match(source, /libraryScope\.matchedLabels/);
   assert.match(source, /contextSummary/);
