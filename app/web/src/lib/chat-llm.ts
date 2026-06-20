@@ -183,7 +183,7 @@ export function buildGroundedPrompt({
         source.text,
       ].join('\n')
     )).join('\n\n')
-    : 'No retrieved source context.';
+    : 'No packaged study context.';
   const historyBlock = compactChatHistory(history);
   const teacherModeHint = shouldUseTeacherMode(message, mode);
   const inferredAgentRole = mode === 'mini_quiz'
@@ -202,7 +202,7 @@ export function buildGroundedPrompt({
     : 'No resolved Library scope was provided.';
   const contextSummaryBlock = contextSummary
     ? [
-      `Included segments: ${contextSummary.includedSegments} of ${contextSummary.totalSegments}`,
+      `Included passages: ${contextSummary.includedSegments} of ${contextSummary.totalSegments}`,
       `Context budget: ${contextSummary.maxChars} chars`,
       `Truncated: ${contextSummary.truncated ? 'yes' : 'no'}`,
     ].join('\n')
@@ -247,10 +247,10 @@ export function buildGroundedPrompt({
     '- Agent boundary: planner coordinates intent, scope, and tools; you own the teaching experience. Do not expose internal tool steps unless useful to the student.',
     '- Agent freedom: adapt the teaching path to the student. The following lesson shape is a default, not a script: why this exists, mental model, core mechanics, concrete example, common confusion, small check question.',
     '- In Teacher Mode for beginners, define jargon before using it heavily, use analogies sparingly, and check understanding with one small question or exercise at the end.',
-    '- In Teacher Mode for page-by-page requests, follow the retrieved source/page order. For each page, provide: translation or source gist, teaching explanation, example, and what to remember.',
+    '- In Teacher Mode for page-by-page requests, follow the packaged source/page order. For each page, provide: translation or source gist, teaching explanation, example, and what to remember.',
     '- In Teacher Mode, answer in the student’s language. If the student writes Chinese, teach in Chinese unless they ask otherwise.',
     '- For broad beginner teaching requests, a useful answer is usually several short sections, not one or two sentences.',
-    '- For exam or mock-test requests, first infer the intended course/material scope from the provided sources, then generate representative questions across the scope instead of overfitting to one chunk.',
+    '- For exam or mock-test requests, first infer the intended course/material scope from the provided sources, then generate representative questions across the scope instead of overfitting to one passage.',
     '- Do not generate quizzes, cheat sheets, or long fixed templates unless the student asks for them or the matching quick action mode is selected.',
     '- Mention source markers such as [S1] only when a specific sentence or bullet is directly grounded in a retrieved source.',
     '- Do not fabricate citations or claim the sources say something they do not say.',

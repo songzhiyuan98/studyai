@@ -88,11 +88,11 @@ export function formatLibraryCatalogForPlanner(items: ChatPlannerCatalogItem[]) 
     const originalName = item.originalName && item.originalName !== item.title
       ? ` · file ${item.originalName}`
       : '';
-    const chunks = typeof item._count?.segments === 'number'
-      ? ` · ${item._count.segments} chunks`
+    const passages = typeof item._count?.segments === 'number'
+      ? ` · ${item._count.segments} passages`
       : '';
 
-    return `${index + 1}. ${folder} / ${item.title}${originalName}${course}${type}${chunks}`;
+    return `${index + 1}. ${folder} / ${item.title}${originalName}${course}${type}${passages}`;
   }).join('\n');
 }
 
@@ -148,7 +148,7 @@ function rebuildToolCalls({
     });
     tools.push({
       name: 'scope.resolve',
-      reason: 'Resolve the source scope from Library metadata before retrieving chunks.',
+      reason: 'Resolve the source scope from Library metadata before searching passages.',
     });
     if (!hasExplicitScope) {
       tools.push({ name: 'source.preview', reason: 'The source scope may need recommendation or confirmation.' });
@@ -156,7 +156,7 @@ function rebuildToolCalls({
     tools.push({
       name: 'rag.retrieve',
       reason: contextStrategy === 'lecture_pack'
-        ? 'Pack the selected lecture in source order instead of retrieving only a few chunks.'
+        ? 'Pack the selected lecture in source order instead of searching only a few passages.'
         : retrievalBreadth === 'broad_assessment'
         ? 'Retrieve representative coverage across the selected course materials for assessment generation.'
         : retrievalBreadth === 'broad_lesson'

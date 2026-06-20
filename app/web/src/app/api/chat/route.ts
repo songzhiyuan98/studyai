@@ -64,7 +64,7 @@ function getChatSourceVectorStatus(lecture: {
   if (meta.embeddingStatus === 'completed' && embeddedCount >= segmentCount) return 'Vector ready';
   if (meta.embeddingStatus === 'disabled') return 'Lexical ready';
   if (segmentCount > 0) return meta.embeddingStatus === 'completed' ? 'Partial vectors' : 'Needs vector index';
-  return 'No chunks yet';
+  return 'No passages yet';
 }
 
 const streamEncoder = new TextEncoder();
@@ -246,7 +246,7 @@ export async function GET() {
         sources: lectures.map((lecture) => ({
           id: lecture.id,
           label: lecture.title,
-          detail: `${lecture.folder?.name || 'Library'} · ${lecture.type} · ${lecture._count.segments} chunks · ${getChatSourceVectorStatus(lecture)}`,
+          detail: `${lecture.folder?.name || 'Library'} · ${lecture.type} · ${lecture._count.segments} passages · ${getChatSourceVectorStatus(lecture)}`,
           vectorStatus: getChatSourceVectorStatus(lecture),
           segments: lecture._count.segments,
         })),

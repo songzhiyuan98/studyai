@@ -83,7 +83,9 @@ test('chat planner resolves library scope before retrieval and agent response', 
   const source = readFileSync(resolve(root, 'src/lib/chat-planner.ts'), 'utf8');
 
   assert.match(source, /Inspect the student’s Library folders and files before deciding source scope/);
-  assert.match(source, /Resolve the source scope from Library metadata before retrieving chunks/);
+  assert.match(source, /Resolve the source scope from Library metadata before searching passages/);
+  assert.doesNotMatch(source, /retrieving chunks/);
+  assert.doesNotMatch(source, /few chunks/);
   assert.match(source, /Delegate final response to the teaching agent/);
 });
 
