@@ -132,6 +132,7 @@ Conversation memory and retrieval memory are related but not identical. The assi
 - Quick action pills are optional accelerators, not separate pages.
 - A selected pill controls the output format of the next assistant response.
 - Default free chat should feel like a teacher-led conversation: gradual explanation, short checks for what the student wants next, and no unsolicited quiz or cheat-sheet dump.
+- The local deterministic fallback should follow the same teacher-led default so degraded mode does not become a template generator.
 - The assistant may ask one short source-confirmation question before generation when the scope is ambiguous.
 - Source confirmation should be based on the internal retrieval/source-preview API or future tool calls, not a generic confirmation modal.
 - If the student chooses a scope manually, the assistant should not repeatedly ask for confirmation.

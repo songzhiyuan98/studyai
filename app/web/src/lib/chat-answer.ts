@@ -107,12 +107,14 @@ export function buildChatAnswer({
   }
 
   return [
-    'Here is a grounded study response based on your library context.',
+    "Let's start with the core idea.",
     '',
-    `Question: ${question}`,
+    bullets.length > 0 ? bullets[0] : context,
     '',
-    `Answer from retrieved context: ${context}`,
+    bullets.length > 1
+      ? `A useful next detail is this: ${bullets[1]}`
+      : `For your question, the important part is: ${question}`,
     '',
-    'Next step: ask for an explanation, mini quiz, or cheat sheet if you want to turn this into practice.',
+    'What part should we unpack next?',
   ].join('\n');
 }

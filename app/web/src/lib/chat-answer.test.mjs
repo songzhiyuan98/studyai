@@ -44,3 +44,17 @@ test('builds summary output as scannable bullets', () => {
   assert.match(answer, /compact summary/);
   assert.match(answer, /- Haskell functions/);
 });
+
+test('builds free chat fallback like a gradual tutor response', () => {
+  const answer = buildChatAnswer({
+    mode: 'free',
+    message: 'Explain Haskell functions',
+    contextText,
+  });
+
+  assert.match(answer, /Let's start with the core idea/);
+  assert.match(answer, /What part should we unpack next/);
+  assert.doesNotMatch(answer, /mini quiz/i);
+  assert.doesNotMatch(answer, /cheat sheet/i);
+  assert.doesNotMatch(answer, /Here is a grounded study response/);
+});
