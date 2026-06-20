@@ -31,6 +31,12 @@ type RenameTarget = {
   name: string;
 };
 
+type MoveTarget = {
+  id: string;
+  title: string;
+  folderId: string;
+};
+
 const ALLOWED_FILE_TYPES = {
   'application/pdf': '.pdf',
   'text/plain': '.txt',
@@ -67,6 +73,9 @@ export default function LibraryPage() {
   const [renameTarget, setRenameTarget] = useState<RenameTarget | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renaming, setRenaming] = useState(false);
+  const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
+  const [moveFolderId, setMoveFolderId] = useState('');
+  const [moving, setMoving] = useState(false);
   const [reindexingVectors, setReindexingVectors] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -151,6 +160,12 @@ export default function LibraryPage() {
       || document.originalName.toLowerCase().includes(normalizedLibraryTarget)
     ));
   }, [libraryItems, normalizedLibraryTarget]);
+  const normalizedLibraryDestination = libraryDestination?.trim().toLowerCase() || '';
+  const matchedDestinationFolder = useMemo(() => {
+    if (!normalizedLibraryDestination) return null;
+
+    return folders.find((folder) => folder.name.toLowerCase().includes(normalizedLibraryDestination)) || null;
+  }, [folders, normalizedLibraryDestination]);
   const targetFolderId = activeFolder?.id;
   const visibleLectureIds = useMemo(() => visibleItems.map((item) => item.id), [visibleItems]);
   const selectedVisibleCount = selectedLectureIds.filter((id) => visibleLectureIds.includes(id)).length;
@@ -195,6 +210,14 @@ export default function LibraryPage() {
       name: chatIntentMatchedDocuments[0].title,
     });
   }, [chatIntentMatchedDocuments, libraryAction, libraryTarget, loading, renameTarget]);
+
+  useEffect(() => {
+    if (libraryAction !== 'move' || !libraryTarget || loading || moveTarget) return;
+    if (chatIntentMatchedDocuments.length !== 1) return;
+
+    setSelectedFolder(chatIntentMatchedDocuments[0].folderId || 'root');
+    openMoveDialog(chatIntentMatchedDocuments[0], matchedDestinationFolder?.id);
+  }, [chatIntentMatchedDocuments, libraryAction, libraryTarget, loading, matchedDestinationFolder, moveTarget]);
 
   useEffect(() => {
     if (!hasIndexingSources) return;
@@ -322,6 +345,45 @@ export default function LibraryPage() {
       id: lectureId,
       name: currentTitle,
     });
+  };
+
+  const openMoveDialog = (document: MoveTarget, destinationFolderId?: string) => {
+    setMoveTarget(document);
+    setMoveFolderId(destinationFolderId || document.folderId);
+    setActionMessage('');
+  };
+
+  const confirmMove = async () => {
+    if (!moveTarget || moving || !moveFolderId || moveFolderId === moveTarget.folderId) {
+      setMoveTarget(null);
+      setMoveFolderId('');
+      return;
+    }
+
+    setMoving(true);
+    setActionMessage('');
+
+    try {
+      const response = await fetch(`/api/lectures/${moveTarget.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderId: moveFolderId }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'File could not be moved.');
+      }
+
+      setMoveTarget(null);
+      setMoveFolderId('');
+      setSelectedFolder(moveFolderId);
+      await loadLibrary();
+    } catch (moveError) {
+      setActionMessage(moveError instanceof Error ? moveError.message : 'File could not be moved.');
+    } finally {
+      setMoving(false);
+    }
   };
 
   const deleteLecture = async (lectureId: string, title: string) => {
@@ -566,6 +628,8 @@ export default function LibraryPage() {
                     ? 'Delete is ready for review'
                     : libraryAction === 'rename' && chatIntentMatchedDocuments.length === 1
                       ? 'Rename is ready for review'
+                      : libraryAction === 'move' && chatIntentMatchedDocuments.length === 1
+                        ? 'Move is ready for review'
                       : libraryAction}
                   {libraryTarget ? ` · ${libraryTarget}` : ''}
                   {libraryDestination ? ` -> ${libraryDestination}` : ''}
@@ -702,6 +766,9 @@ export default function LibraryPage() {
                       <button type="button" onClick={() => renameLecture(document.id, document.title)} className="text-link">
                         Rename
                       </button>
+                      <button type="button" onClick={() => openMoveDialog(document)} className="text-link">
+                        Move
+                      </button>
                       <button type="button" onClick={() => deleteLecture(document.id, document.title)} className="text-link text-red-700">
                         Delete
                       </button>
@@ -765,6 +832,9 @@ export default function LibraryPage() {
                         <button type="button" onClick={() => renameLecture(document.id, document.title)} className="text-link">
                           Rename
                         </button>
+                        <button type="button" onClick={() => openMoveDialog(document)} className="text-link">
+                          Move
+                        </button>
                         <button type="button" onClick={() => deleteLecture(document.id, document.title)} className="text-link text-red-700">
                           Delete
                         </button>
@@ -815,6 +885,9 @@ export default function LibraryPage() {
                     <span className="drive-action-group">
                       <button type="button" onClick={() => renameLecture(document.id, document.title)} className="text-link">
                         Rename
+                      </button>
+                      <button type="button" onClick={() => openMoveDialog(document)} className="text-link">
+                        Move
                       </button>
                       <button type="button" onClick={() => deleteLecture(document.id, document.title)} className="text-link text-red-700">
                         Delete
@@ -1076,6 +1149,53 @@ export default function LibraryPage() {
                 className="btn-primary"
               >
                 {renaming ? 'Renaming...' : 'Rename'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {moveTarget ? (
+        <div className="modal-backdrop">
+          <div className="modal-panel max-w-lg">
+            <p className="text-xs uppercase tracking-normal text-[#737373]">Move file</p>
+            <h2 className="mt-2 text-xl font-normal text-[#000000]">
+              Choose destination
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[#737373]">
+              Move "{moveTarget.title}" to another folder. The source passages, vectors, citations, and saved outputs stay attached to this file.
+            </p>
+            <select
+              value={moveFolderId}
+              onChange={(event) => setMoveFolderId(event.target.value)}
+              className="input-field mt-5"
+              autoFocus
+            >
+              {folders.map((folder) => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.name}
+                </option>
+              ))}
+            </select>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMoveTarget(null);
+                  setMoveFolderId('');
+                }}
+                disabled={moving}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmMove}
+                disabled={moving || !moveFolderId || moveFolderId === moveTarget.folderId}
+                className="btn-primary"
+              >
+                {moving ? 'Moving...' : 'Move file'}
               </button>
             </div>
           </div>

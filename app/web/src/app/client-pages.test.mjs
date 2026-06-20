@@ -274,6 +274,21 @@ test('library page can prepare rename modal for chat requested renames', () => {
   assert.match(source, /Rename is ready for review/);
 });
 
+test('library page supports moving files with a confirmation modal', () => {
+  const source = readFileSync(resolve(root, 'src/app/library/page.tsx'), 'utf8');
+
+  assert.match(source, /type MoveTarget/);
+  assert.match(source, /const \[moveTarget, setMoveTarget\]/);
+  assert.match(source, /const \[moveFolderId, setMoveFolderId\]/);
+  assert.match(source, /openMoveDialog/);
+  assert.match(source, /confirmMove/);
+  assert.match(source, /body: JSON\.stringify\(\{ folderId: moveFolderId \}\)/);
+  assert.match(source, /Move file/);
+  assert.match(source, /Move is ready for review/);
+  assert.match(source, /libraryAction === 'move'/);
+  assert.match(source, /matchedDestinationFolder/);
+});
+
 test('library page uses a shared rename modal instead of browser prompts', () => {
   const source = readFileSync(resolve(root, 'src/app/library/page.tsx'), 'utf8');
 
