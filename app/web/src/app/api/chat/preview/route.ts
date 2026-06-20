@@ -16,7 +16,11 @@ import { resolveExplicitLectureScope } from '@/lib/source-scope';
 import { formatLibraryCatalogForPlanner, planChatTurnWithAi } from '@/lib/chat-planner';
 import { resolveLibraryScope } from '@/lib/library-catalog';
 import { buildLecturePackContext } from '@/lib/lecture-pack';
-import { CHAT_CONTEXT_SEGMENT_FETCH_LIMIT, getChatContextCharBudget } from '@/lib/chat-context-budget';
+import {
+  CHAT_CONTEXT_SEGMENT_FETCH_LIMIT,
+  getChatContextCharBudget,
+  getChatContextCoverageLabel,
+} from '@/lib/chat-context-budget';
 import { buildHistoryAwareRetrievalQuery } from '@/lib/chat-llm';
 
 const previewSchema = z.object({
@@ -226,6 +230,10 @@ export async function POST(request: NextRequest) {
     const contextCharBudget = getChatContextCharBudget({
       contextStrategy: effectiveContextStrategy,
     });
+    const contextCoverageLabel = getChatContextCoverageLabel({
+      contextStrategy: effectiveContextStrategy,
+      retrievalBreadth: previewPlan.retrievalBreadth,
+    });
     const broadCoverageResults = usesBroadCoverage && !usesLecturePack
       ? retrieveBroadCoverageContext({
         query: retrievalQuery,
@@ -385,6 +393,7 @@ export async function POST(request: NextRequest) {
           plannedContextStrategy: previewPlan.contextStrategy,
           contextStrategyAdjusted: effectiveContextStrategy !== previewPlan.contextStrategy,
           contextSummary,
+          contextCoverageLabel,
           query: retrievalQuery === parsed.data.message ? 'current_message' : 'expanded_query',
           contextCharBudget,
           candidateSegmentCount: candidateSegments.length,

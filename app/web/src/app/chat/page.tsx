@@ -44,6 +44,7 @@ type ChatMessage = {
   retrieval?: {
     strategy: string;
     contextStrategy?: 'focused_rag' | 'broad_rag' | 'lecture_pack' | 'long_document_map';
+    contextCoverageLabel?: string;
     plannerSource?: 'deterministic' | 'ai_planner';
     plannerModel?: string;
     plannerRationale?: string;
@@ -74,6 +75,7 @@ type SourcePreview = {
   retrieval: {
     strategy: string;
     contextStrategy?: 'focused_rag' | 'broad_rag' | 'lecture_pack' | 'long_document_map';
+    contextCoverageLabel?: string;
     plannerSource?: 'deterministic' | 'ai_planner';
     plannerModel?: string;
     plannerRationale?: string;
@@ -348,7 +350,12 @@ function shouldShowSourceRefs(chatMessage: ChatMessage) {
   return Boolean(chatMessage.content.trim() && chatMessage.sourceRefs?.length && !isArtifactSaveMessage(chatMessage));
 }
 
-function getContextStrategyLabel(strategy?: NonNullable<ChatMessage['retrieval']>['contextStrategy']) {
+function getContextStrategyLabel(retrieval?: ChatMessage['retrieval']) {
+  if (retrieval?.contextCoverageLabel) {
+    return retrieval.contextCoverageLabel;
+  }
+
+  const strategy = retrieval?.contextStrategy;
   if (strategy === 'lecture_pack') {
     return 'lesson context';
   }
@@ -433,6 +440,7 @@ export default function ChatPage() {
       : isSourceRangePreview
         ? 'scope coverage'
         : 'focused context';
+  const sourcePreviewCoverageLabel = sourcePreview?.retrieval.contextCoverageLabel || sourcePreviewGroundingLabel;
   const sourceScopeLabel = sourcePreview?.retrieval.libraryScope?.matchedLabels?.length
     ? sourcePreview.retrieval.libraryScope.matchedLabels.join(', ')
     : sourcePreview?.retrieval.sourceScope === 'selected_sources'
@@ -444,7 +452,7 @@ export default function ChatPage() {
           : 'Auto scope';
   const sourcePreviewTitle = isSourceRangePreview ? 'Suggested study scope' : 'Suggested materials';
   const sourcePreviewDescription = isSourceRangePreview
-    ? `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} in ${isAssessmentPreview ? 'exam scope' : 'scope'} · ${sourcePreviewGroundingLabel} · ${getPlannerSourceLabel(sourcePreview?.retrieval.plannerSource)}`
+    ? `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} in ${isAssessmentPreview ? 'exam scope' : 'scope'} · ${sourcePreviewCoverageLabel} · ${getPlannerSourceLabel(sourcePreview?.retrieval.plannerSource)}`
     : `${sourceScopeLabel} · ${sourcePreview?.materials.length || 0} likely ${(sourcePreview?.materials.length || 0) === 1 ? 'material' : 'materials'} · ${sourcePreview?.retrieval.count || 0} ${sourcePreviewChunkLabel} · ${getPlannerSourceLabel(sourcePreview?.retrieval.plannerSource)}`;
   const sourcePreviewCoverageNote = isAssessmentPreview
     ? 'I will use representative coverage across the selected materials, not just one or two passages.'
@@ -1008,7 +1016,7 @@ export default function ChatPage() {
                   <>
                     <div className="chat-used-sources">
                       <p>
-                        Used materials · {getContextStrategyLabel(chatMessage.retrieval?.contextStrategy)} · {getPlannerSourceLabel(chatMessage.retrieval?.plannerSource)}
+                        Used materials · {getContextStrategyLabel(chatMessage.retrieval)} · {getPlannerSourceLabel(chatMessage.retrieval?.plannerSource)}
                       </p>
                       <div>
                         {getUsedMaterials(chatMessage.sourceRefs).map((material) => (

@@ -26,7 +26,11 @@ import {
   streamGroundedChatAnswer,
   type ChatHistoryTurn,
 } from '@/lib/chat-llm';
-import { CHAT_CONTEXT_SEGMENT_FETCH_LIMIT, getChatContextCharBudget } from '@/lib/chat-context-budget';
+import {
+  CHAT_CONTEXT_SEGMENT_FETCH_LIMIT,
+  getChatContextCharBudget,
+  getChatContextCoverageLabel,
+} from '@/lib/chat-context-budget';
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 import { resolveLibraryScope } from '@/lib/library-catalog';
 import { buildLecturePackContext } from '@/lib/lecture-pack';
@@ -874,6 +878,10 @@ export async function POST(request: NextRequest) {
     const contextCharBudget = getChatContextCharBudget({
       contextStrategy: effectiveContextStrategy,
     });
+    const contextCoverageLabel = getChatContextCoverageLabel({
+      contextStrategy: effectiveContextStrategy,
+      retrievalBreadth: chatPlan.retrievalBreadth,
+    });
     const broadCoverageResults = usesBroadCoverage && !usesLecturePack
       ? retrieveBroadCoverageContext({
         query: retrievalQuery,
@@ -1047,6 +1055,7 @@ export async function POST(request: NextRequest) {
       plannedContextStrategy: chatPlan.contextStrategy,
       contextStrategyAdjusted: effectiveContextStrategy !== chatPlan.contextStrategy,
       contextSummary,
+      contextCoverageLabel,
       seedContextCount: seedContext.length,
       dedupedContextCount,
       parentChildExpandedCount,
