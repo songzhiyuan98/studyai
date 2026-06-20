@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import test from 'node:test';
 import {
   buildGroundedPrompt,
@@ -14,6 +16,7 @@ import {
 const originalApiKey = process.env.OPENAI_API_KEY;
 const originalBaseUrl = process.env.OPENAI_BASE_URL;
 const originalModel = process.env.OPENAI_MODEL_CHAT;
+const sourcePath = resolve(new URL('.', import.meta.url).pathname, 'chat-llm.ts');
 
 function restoreEnv() {
   if (originalApiKey === undefined) {
@@ -52,6 +55,13 @@ test('returns chat model defaults from environment', () => {
     model: 'gpt-4o-mini',
   });
   restoreEnv();
+});
+
+test('uses a natural tutoring temperature for model generation', () => {
+  const source = readFileSync(sourcePath, 'utf8');
+
+  assert.match(source, /temperature: 0\.45/);
+  assert.doesNotMatch(source, /temperature: 0\.2/);
 });
 
 test('builds source-aware prompts with source markers and general tutoring room', () => {

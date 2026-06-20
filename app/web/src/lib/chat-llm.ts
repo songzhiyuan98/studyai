@@ -284,7 +284,7 @@ export async function generateGroundedChatAnswer(
     },
     body: JSON.stringify({
       model,
-      temperature: 0.2,
+      temperature: 0.45,
       messages: [
         {
           role: 'system',
@@ -339,7 +339,7 @@ export async function* streamGroundedChatAnswer(
     },
     body: JSON.stringify({
       model,
-      temperature: 0.2,
+      temperature: 0.45,
       stream: true,
       messages: [
         {

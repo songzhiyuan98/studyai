@@ -32,6 +32,7 @@ test('chat planner models broad assessment generation separately from focused re
   assert.match(source, /hasAssessmentIntent/);
   assert.match(source, /broad_assessment/);
   assert.match(source, /broad_lesson/);
+  assert.match(source, /要考\|备考/);
   assert.match(source, /representative coverage across the selected course materials/);
   assert.match(source, /broad coverage across the selected lecture or topic/);
 });

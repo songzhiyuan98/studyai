@@ -57,7 +57,8 @@ function hasLibraryOperationIntent(message: string) {
 
 function hasAssessmentIntent(message: string, mode: ChatMode) {
   return mode === 'mini_quiz' && /\b(midterm|final|exam|mock|practice test|test)\b/i.test(message)
-    || /(期中|期末|考试|模拟|测试|卷子|试卷|114a)/i.test(message);
+    || /\b(midterm|final|exam|mock|practice test)\b/i.test(message)
+    || /(期中|期末|考试|要考|备考|模拟|测试|卷子|试卷|114a)/i.test(message);
 }
 
 export function planChatTurn({
