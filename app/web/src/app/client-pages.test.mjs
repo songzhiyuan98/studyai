@@ -231,6 +231,7 @@ test('chat page writes a new generated session id into the URL', () => {
   assert.match(source, /function adoptResponseSession/);
   assert.match(source, /router\.replace\(`\/chat\?sessionId=\$\{sessionId\}`/);
   assert.match(source, /!activeSessionId && !requestedSessionId/);
+  assert.match(source, /requestedSessionId === adoptedSessionIdRef\.current && activeSessionId === requestedSessionId/);
 });
 
 test('chat page surfaces safe actions for library operation replies', () => {

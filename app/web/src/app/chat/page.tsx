@@ -586,6 +586,10 @@ export default function ChatPage() {
       return;
     }
 
+    if (requestedSessionId === adoptedSessionIdRef.current && activeSessionId === requestedSessionId) {
+      return;
+    }
+
     let cancelled = false;
 
     const loadChatSession = async () => {
@@ -617,7 +621,7 @@ export default function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [requestedSessionId]);
+  }, [activeSessionId, requestedSessionId]);
 
   const toggleSource = (sourceId: string) => {
     setConfirmedSources((current) => (
