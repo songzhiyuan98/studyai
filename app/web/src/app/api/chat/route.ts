@@ -30,6 +30,7 @@ import { CHAT_CONTEXT_SEGMENT_FETCH_LIMIT, getChatContextCharBudget } from '@/li
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 import { resolveLibraryScope } from '@/lib/library-catalog';
 import { buildLecturePackContext } from '@/lib/lecture-pack';
+import { inferLibraryOperationDraft } from '@/lib/chat-library-tools';
 const chatSchema = z.object({
   message: z.string().min(1).max(2000),
   mode: z.enum(['free', 'explain', 'summarize', 'key_terms', 'mini_quiz', 'cheat_sheet']).default('free'),
@@ -521,10 +522,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (chatPlan.intent === 'library_operation') {
+      const operationDraft = inferLibraryOperationDraft(parsed.data.message);
+      const destinationLine = operationDraft.destinationLabel
+        ? `Destination: ${operationDraft.destinationLabel}`
+        : 'Destination: not specified yet';
       const libraryResponseContent = [
-        'I can help organize your Library, but I need confirmation before changing files or folders.',
+        'I can prepare that Library change, but I need confirmation before changing files or folders.',
         '',
-        'Open Library to upload, rename, move, or delete materials now. In chat, tell me the exact file or folder and the action you want, and I will prepare the next confirmation step instead of changing anything silently.',
+        `Action: ${operationDraft.action}`,
+        `Target: ${operationDraft.targetLabel}`,
+        destinationLine,
+        '',
+        'Open Library to review the item and complete the change. I will not upload, rename, move, or delete anything silently from chat.',
       ].join('\n');
       const retrievalTrace = {
         strategy: 'tool_library_manage_v0',
@@ -539,6 +548,8 @@ export async function POST(request: NextRequest) {
         plannerCatalogCount: plannerCatalogLectures.length,
         toolResult: 'confirmation_required',
         requiresConfirmation: true,
+        operationDraft,
+        targetLabel: operationDraft.targetLabel,
       };
 
       await prisma.chatMessage.create({

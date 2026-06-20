@@ -156,7 +156,24 @@ test('chat route handles library operations as confirmation-gated tool requests'
 
   assert.match(source, /chatPlan\.intent === 'library_operation'/);
   assert.match(source, /tool_library_manage_v0/);
+  assert.match(source, /inferLibraryOperationDraft/);
+  assert.match(source, /operationDraft/);
+  assert.match(source, /targetLabel/);
   assert.match(source, /requiresConfirmation: true/);
-  assert.match(source, /I can help organize your Library/);
+  assert.match(source, /I can prepare that Library change/);
   assert.match(source, /Open Library/);
+});
+
+test('library operation draft helper extracts safe confirmation details', () => {
+  const source = readFileSync(resolve(root, 'src/lib/chat-library-tools.ts'), 'utf8');
+
+  assert.match(source, /export type LibraryOperationAction/);
+  assert.match(source, /export function inferLibraryOperationDraft/);
+  assert.match(source, /'upload'/);
+  assert.match(source, /'delete'/);
+  assert.match(source, /'rename'/);
+  assert.match(source, /'move'/);
+  assert.match(source, /requiresConfirmation: true/);
+  assert.match(source, /targetLabel/);
+  assert.match(source, /destinationLabel/);
 });

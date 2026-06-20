@@ -150,7 +150,7 @@ student asks what to study
 - Resolve scope from Library catalog before any search. Course/folder labels like `CSE 114A`, file titles like `lambda`, and manual selected sources should decide the context scope before embedding or lexical passage search runs.
 - Do not use top-k retrieval as the default for every study request. For "teach this lecture" or "take me page by page," pack source-ordered lecture context first. Use retrieval when the question is focused, the source is long, or representative coverage is enough.
 - Let the model decide Teacher Mode intent, with deterministic hints as fallback.
-- Let the planner ask one concise confirmation question before calling tools that change state, such as save, delete, upload, move, or AI-assisted filing.
+- Let the planner ask one concise confirmation question before calling tools that change state, such as save, delete, upload, move, or AI-assisted filing. Initial Library operation drafts are implemented: Chat now extracts upload/delete/rename/move intent, target, optional destination, and returns a confirmation-gated draft without changing files silently.
 - Future upgrade: split planner, retrieval specialist, teacher, artifact curator, and library operator into separate agents while keeping the same internal tool contracts.
 - LangChain/LangGraph is a future orchestration option, not an MVP requirement. Keep current planner/tool contracts local and typed first; adopt a graph runtime when branching, checkpoints, retries, human approval, or multi-agent handoffs become painful to maintain in local code.
 
