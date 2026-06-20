@@ -329,7 +329,7 @@ export default function ChatPage() {
     setShowSourceScope(true);
   };
 
-  const sendMessage = async (event: React.FormEvent) => {
+  const sendMessage = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
     const trimmedMessage = message.trim();
 
@@ -828,6 +828,12 @@ export default function ChatPage() {
               <textarea
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    sendMessage(event);
+                  }
+                }}
                 className="chat-input"
                 rows={1}
                 placeholder={`Message StudyFlow · ${selectedMode.hint}`}

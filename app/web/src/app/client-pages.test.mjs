@@ -100,6 +100,13 @@ test('chat page requests server-side streaming responses', () => {
   assert.match(source, /parseChatStreamEvent/);
 });
 
+test('chat input sends on enter and keeps shift enter for new lines', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+  assert.match(source, /onKeyDown=\{\(event\) =>/);
+  assert.match(source, /event\.key === 'Enter' && !event\.shiftKey/);
+  assert.match(source, /sendMessage\(event\)/);
+});
+
 test('chat page can continue an existing chat session', () => {
   const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
   assert.match(source, /useSearchParams/);
