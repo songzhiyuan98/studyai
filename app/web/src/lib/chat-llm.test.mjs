@@ -74,6 +74,34 @@ test('builds source-aware prompts with source markers and general tutoring room'
   assert.match(prompt, /Explain pattern matching/);
 });
 
+test('builds prompts with planner-resolved library scope for the teaching agent', () => {
+  const prompt = buildGroundedPrompt({
+    mode: 'mini_quiz',
+    message: '我马上要考 114a，帮我整理模拟 midterm',
+    contextText: 'Haskell functions and types are core course topics.',
+    delegatedAgent: 'assessment_agent',
+    resolvedScope: {
+      source: 'course',
+      confidence: 'high',
+      matchedLabels: ['CSE 114A'],
+      reason: 'The planner matched the request against Library folders and course labels before retrieval.',
+    },
+    sources: [
+      {
+        label: 'lambda · page 1',
+        text: 'Functions are first-class values.',
+      },
+    ],
+  });
+
+  assert.match(prompt, /Delegated agent: assessment_agent/);
+  assert.match(prompt, /Resolved Library scope from planner:/);
+  assert.match(prompt, /Source: course/);
+  assert.match(prompt, /Matched labels: CSE 114A/);
+  assert.match(prompt, /Agent boundary: planner coordinates intent, scope, and tools/);
+  assert.match(prompt, /Agent freedom: adapt the teaching path to the student/);
+});
+
 test('builds prompts with recent conversation history for follow-up questions', () => {
   const prompt = buildGroundedPrompt({
     mode: 'free',

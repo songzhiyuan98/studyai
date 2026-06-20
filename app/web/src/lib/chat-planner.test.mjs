@@ -51,6 +51,8 @@ test('chat route stores planner trace with retrieval metadata', () => {
   assert.match(source, /const chatPlan = planChatTurn/);
   assert.match(source, /shouldRetrieveSources = chatPlan\.requiresRetrieval/);
   assert.match(source, /plan: chatPlan/);
+  assert.match(source, /resolvedScope/);
+  assert.match(source, /libraryScope\.matchedLabels/);
 });
 
 test('chat route can call the artifact save tool from planner intent', () => {

@@ -798,6 +798,12 @@ export async function POST(request: NextRequest) {
         text: segment.text,
       })),
       delegatedAgent: chatPlan.delegatedAgent,
+      resolvedScope: {
+        source: libraryScope.source,
+        confidence: libraryScope.confidence,
+        matchedLabels: libraryScope.matchedLabels,
+        reason: libraryScope.reason,
+      },
     };
     const retrievalTrace = {
       strategy: retrievalStrategy,

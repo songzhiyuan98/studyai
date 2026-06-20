@@ -33,6 +33,12 @@ type GenerateGroundedAnswerInput = {
   history?: ChatHistoryTurn[];
   sources: GroundedSource[];
   delegatedAgent?: 'teaching_agent' | 'assessment_agent' | 'chat_agent' | 'tool_agent';
+  resolvedScope?: {
+    source: string;
+    confidence: string;
+    matchedLabels: string[];
+    reason: string;
+  };
 };
 
 export type GeneratedChatAnswer = {
@@ -158,6 +164,7 @@ export function buildGroundedPrompt({
   history,
   sources,
   delegatedAgent,
+  resolvedScope,
 }: GenerateGroundedAnswerInput) {
   const sourceBlock = sources.length > 0
     ? sources.map((source, index) => (
@@ -175,6 +182,14 @@ export function buildGroundedPrompt({
       ? 'teaching_agent'
       : 'chat_agent';
   const agentRole = delegatedAgent || inferredAgentRole;
+  const scopeBlock = resolvedScope
+    ? [
+      `Source: ${resolvedScope.source}`,
+      `Confidence: ${resolvedScope.confidence}`,
+      `Matched labels: ${resolvedScope.matchedLabels.length > 0 ? resolvedScope.matchedLabels.join(', ') : 'none'}`,
+      `Reason: ${resolvedScope.reason}`,
+    ].join('\n')
+    : 'No resolved Library scope was provided.';
 
   return [
     `Mode: ${chatModeLabels[mode]}`,
@@ -186,6 +201,9 @@ export function buildGroundedPrompt({
     '',
     'Recent conversation:',
     historyBlock,
+    '',
+    'Resolved Library scope from planner:',
+    scopeBlock,
     '',
     'Retrieved source context:',
     sourceBlock,
