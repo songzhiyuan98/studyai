@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/auth';
 import { formatSourceRef } from '@/lib/reader-format';
 import { retrieveContextForQuery, compactContextText } from '@/lib/rag-context';
 import { buildChatAnswer, chatModeLabels } from '@/lib/chat-answer';
+import { generateGroundedChatAnswer } from '@/lib/chat-llm';
 import { createEmbeddings, isEmbeddingConfigured } from '@/lib/embeddings';
 
 const chatSchema = z.object({
@@ -275,6 +276,36 @@ export async function POST(request: NextRequest) {
         reason,
       };
     });
+    let answerContent = buildChatAnswer({
+      mode: parsed.data.mode,
+      message: parsed.data.message,
+      contextText,
+    });
+    let generation = {
+      provider: 'local_fallback',
+      model: 'deterministic',
+    };
+
+    try {
+      const generatedAnswer = await generateGroundedChatAnswer({
+        mode: parsed.data.mode,
+        message: parsed.data.message,
+        contextText,
+        sources: context.map(({ segment }, index) => ({
+          label: sourceRefs[index]?.label || formatSourceRef(segment),
+          text: segment.text,
+        })),
+      });
+      if (generatedAnswer) {
+        answerContent = generatedAnswer.content;
+        generation = {
+          provider: generatedAnswer.provider,
+          model: generatedAnswer.model,
+        };
+      }
+    } catch (generationError) {
+      console.error('LLM generation failed, falling back to local chat answer:', generationError);
+    }
 
     return NextResponse.json({
       success: true,
@@ -282,16 +313,13 @@ export async function POST(request: NextRequest) {
         message: {
           role: 'assistant',
           title: chatModeLabels[parsed.data.mode],
-          content: buildChatAnswer({
-            mode: parsed.data.mode,
-            message: parsed.data.message,
-            contextText,
-          }),
+          content: answerContent,
           sourceRefs,
           retrieval: {
             strategy: retrievalStrategy,
             count: context.length,
             scopedLectureCount: lectures.length,
+            generation,
           },
         },
       },

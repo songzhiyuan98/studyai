@@ -34,6 +34,10 @@ type ChatMessage = {
     strategy: string;
     count: number;
     scopedLectureCount?: number;
+    generation?: {
+      provider: string;
+      model: string;
+    };
   };
   mode?: ActionMode;
   savedId?: string;
@@ -443,6 +447,9 @@ export default function ChatPage() {
                     <div>retrieval: {chatMessage.retrieval.strategy}</div>
                     <div>chunks: {chatMessage.retrieval.count}</div>
                     <div>scope: {chatMessage.retrieval.scopedLectureCount ?? 0} sources</div>
+                    {chatMessage.retrieval.generation ? (
+                      <div>generation: {chatMessage.retrieval.generation.provider}</div>
+                    ) : null}
                   </div>
                 ) : null}
 
