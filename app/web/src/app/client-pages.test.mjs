@@ -206,6 +206,7 @@ test('chat page surfaces saved-output tool replies without resaving them', () =>
 
   assert.match(source, /function isArtifactSaveMessage/);
   assert.match(source, /tool_artifact_save_v0/);
+  assert.match(source, /shouldShowSourceRefs\(chatMessage\)/);
   assert.match(source, /!isArtifactSaveMessage\(chatMessage\)/);
   assert.match(source, /Open Saved/);
   assert.match(source, /href="\/saved"/);
@@ -249,7 +250,7 @@ test('chat keeps streaming answers conversational before showing metadata action
   assert.match(source, /chatMessage\.title !== 'Study answer'/);
   assert.match(source, /Thinking\.\.\./);
   assert.match(source, /className="chat-markdown"/);
-  assert.match(source, /!chatMessage\.isStreaming && chatMessage\.content\.trim\(\) && chatMessage\.sourceRefs\?\.length/);
+  assert.match(source, /!chatMessage\.isStreaming && shouldShowSourceRefs\(chatMessage\)/);
   assert.match(source, /sending && !hasStreamingAssistant/);
   assert.match(styles, /\.chat-markdown pre/);
 });
