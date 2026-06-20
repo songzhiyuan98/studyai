@@ -315,13 +315,27 @@ export async function POST(request: NextRequest) {
       detail: string;
       count: number;
     }>();
+    const usesScopedMaterialList = usesLecturePack || usesBroadCoverage;
+
+    if (usesScopedMaterialList) {
+      activeLectures.forEach((lecture) => {
+        materialMap.set(lecture.id, {
+          lectureId: lecture.id,
+          title: lecture.title || lecture.originalName || 'Source',
+          detail: `${lecture.folder?.name || 'Library'} · ${lecture.type || 'Source'}`,
+          count: lecture._count?.segments || lecture.segments.length,
+        });
+      });
+    }
 
     sourceRefs.forEach((source) => {
       const lecture = lectureMap.get(source.lectureId);
       const existing = materialMap.get(source.lectureId);
 
       if (existing) {
-        existing.count += 1;
+        if (!usesScopedMaterialList) {
+          existing.count += 1;
+        }
         return;
       }
 

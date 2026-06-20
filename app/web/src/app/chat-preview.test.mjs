@@ -46,3 +46,12 @@ test('chat source preview reports planner context strategy', () => {
   assert.match(routeSource, /long_document_map_v0/);
   assert.match(routeSource, /buildLecturePackContext/);
 });
+
+test('chat source preview lists the full resolved scope for range strategies', () => {
+  const routeSource = readFileSync(new URL('./api/chat/preview/route.ts', import.meta.url), 'utf8');
+
+  assert.match(routeSource, /const usesScopedMaterialList = usesLecturePack \|\| usesBroadCoverage/);
+  assert.match(routeSource, /activeLectures\.forEach/);
+  assert.match(routeSource, /lecture\._count\?\.segments \|\| lecture\.segments\.length/);
+  assert.match(routeSource, /if \(!usesScopedMaterialList\)/);
+});
