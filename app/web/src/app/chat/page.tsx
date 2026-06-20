@@ -299,6 +299,10 @@ function isLibraryActionMessage(chatMessage: ChatMessage) {
   return chatMessage.retrieval?.strategy === 'tool_library_manage_v0';
 }
 
+function isArtifactSaveMessage(chatMessage: ChatMessage) {
+  return chatMessage.retrieval?.strategy === 'tool_artifact_save_v0';
+}
+
 function getContextStrategyLabel(strategy?: NonNullable<ChatMessage['retrieval']>['contextStrategy']) {
   if (strategy === 'lecture_pack') {
     return 'lesson context';
@@ -933,7 +937,11 @@ export default function ChatPage() {
                   </>
                 ) : null}
 
-                {chatMessage.role === 'assistant' && !chatMessage.isStreaming && chatMessage.content.trim() && chatMessage.sourceRefs?.length ? (
+                {chatMessage.role === 'assistant'
+                  && !chatMessage.isStreaming
+                  && chatMessage.content.trim()
+                  && chatMessage.sourceRefs?.length
+                  && !isArtifactSaveMessage(chatMessage) ? (
                   <div className="chat-message-actions">
                     <button
                       type="button"
@@ -951,6 +959,14 @@ export default function ChatPage() {
                     </button>
                     <Link href="/saved" className="chat-message-action">
                       Saved
+                    </Link>
+                  </div>
+                ) : null}
+
+                {chatMessage.role === 'assistant' && !chatMessage.isStreaming && isArtifactSaveMessage(chatMessage) ? (
+                  <div className="chat-message-actions">
+                    <Link href="/saved" className="chat-message-action">
+                      Open Saved
                     </Link>
                   </div>
                 ) : null}

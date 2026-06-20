@@ -201,6 +201,16 @@ test('chat page surfaces safe actions for library operation replies', () => {
   assert.match(source, /Open Library/);
 });
 
+test('chat page surfaces saved-output tool replies without resaving them', () => {
+  const source = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
+
+  assert.match(source, /function isArtifactSaveMessage/);
+  assert.match(source, /tool_artifact_save_v0/);
+  assert.match(source, /!isArtifactSaveMessage\(chatMessage\)/);
+  assert.match(source, /Open Saved/);
+  assert.match(source, /href="\/saved"/);
+});
+
 test('chat citations open the cited reader segment', () => {
   const chatSource = readFileSync(resolve(root, 'src/app/chat/page.tsx'), 'utf8');
   const readerSource = readFileSync(resolve(root, 'src/app/documents/[id]/page.tsx'), 'utf8');
