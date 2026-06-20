@@ -34,13 +34,19 @@ test('public product copy frames StudyFlow as agentic context orchestration', ()
   const layoutSource = readFileSync(resolve(root, 'src/app/layout.tsx'), 'utf8');
   const homeSource = readFileSync(resolve(root, 'src/app/page.tsx'), 'utf8');
   const dashboardSource = readFileSync(resolve(root, 'src/app/dashboard/page.tsx'), 'utf8');
+  const landingExperienceSource = readFileSync(resolve(root, 'src/components/landing-experience.tsx'), 'utf8');
 
   assert.match(layoutSource, /agentic study context/);
   assert.match(homeSource, /Plans the right study context/);
   assert.match(homeSource, /organizes the relevant lecture context before teaching/);
+  assert.match(landingExperienceSource, /Organize context/);
+  assert.match(landingExperienceSource, /source passages/);
   assert.match(dashboardSource, /agent-organized study desk/);
   assert.doesNotMatch(homeSource, /retrieves from your own lecture files before answering/);
   assert.doesNotMatch(homeSource, /building RAG/);
+  assert.doesNotMatch(homeSource, /chunks/);
+  assert.doesNotMatch(landingExperienceSource, /chunks/);
+  assert.doesNotMatch(landingExperienceSource, /Retrieve chunks/);
   assert.doesNotMatch(dashboardSource, /RAG retrieval are the next ingestion milestone/);
 });
 

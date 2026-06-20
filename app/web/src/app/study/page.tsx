@@ -28,7 +28,7 @@ export default function StudyPage() {
           <p className="eyebrow">Study scope</p>
           <h1 className="tool-title max-w-4xl">Choose context before asking AI.</h1>
           <p className="tool-subtitle">
-            Retrieval and generation should stay inside the lectures you select, with source references preserved.
+            Study answers should stay inside the lectures you select, with source references preserved.
           </p>
         </div>
         <div className="rounded-xl border border-[#e5e5e5] bg-[#000000] p-5 text-white lg:w-[320px]">
@@ -38,7 +38,7 @@ export default function StudyPage() {
             lectures selected, covering {segmentCount} source segments.
           </p>
           <div className="mt-4 rounded-full bg-white px-3 py-2 font-mono text-xs text-[#000000]">
-            retrieve --scope selected
+            context --scope selected
           </div>
         </div>
       </header>
@@ -47,12 +47,12 @@ export default function StudyPage() {
         <aside className="review-rail">
           <p className="text-xs text-[#737373]">Scope rules</p>
           <div className="mt-4 space-y-3 text-sm leading-6 text-[#737373]">
-            <p>Use selected lectures as the retrieval boundary.</p>
+            <p>Use selected lectures as the study boundary.</p>
             <p>Require citations on generated outputs.</p>
             <p>Keep actions small enough for quick iteration.</p>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
-            <span className="status-pill status-ready">metadata RAG</span>
+            <span className="status-pill status-ready">scoped context</span>
             <span className="status-pill">citation required</span>
           </div>
         </aside>

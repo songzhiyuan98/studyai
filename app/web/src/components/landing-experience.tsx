@@ -18,7 +18,7 @@ const modes = [
   {
     id: 'quiz',
     label: 'Mini quiz',
-    prompt: 'Make a mini quiz from the selected lecture chunks.',
+    prompt: 'Make a mini quiz from the selected lecture context.',
     answer: '1. Why are functions first-class values? 2. What does pattern matching choose first? 3. Write a binding for a function that swaps two arguments.',
   },
   {
@@ -30,12 +30,12 @@ const modes = [
 ];
 
 const sources = [
-  { id: 'lambda', title: 'Week 2 / lambda.pdf', meta: 'CSE 114A · 16 chunks', ref: 'p7' },
-  { id: 'haskell', title: 'Week 3 / haskell.pdf', meta: 'CSE 114A · 20 chunks', ref: 'p3' },
-  { id: 'review', title: 'midterm-outline.md', meta: 'Review notes · 8 chunks', ref: 'note 4' },
+  { id: 'lambda', title: 'Week 2 / lambda.pdf', meta: 'CSE 114A · 16 source passages', ref: 'p7' },
+  { id: 'haskell', title: 'Week 3 / haskell.pdf', meta: 'CSE 114A · 20 source passages', ref: 'p3' },
+  { id: 'review', title: 'midterm-outline.md', meta: 'Review notes · 8 source passages', ref: 'note 4' },
 ];
 
-const timeline = ['Read sources', 'Retrieve chunks', 'Draft answer', 'Attach citations'];
+const timeline = ['Read sources', 'Organize context', 'Draft answer', 'Attach citations'];
 
 export function LandingExperience() {
   const [mode, setMode] = useState(modes[0].id);

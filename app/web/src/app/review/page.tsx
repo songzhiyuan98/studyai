@@ -296,7 +296,7 @@ export default function ReviewPage() {
                       </div>
                       {artifact.relatedRefs?.length ? (
                         <div className="mt-3">
-                          <p className="text-xs text-[#737373]">Retrieved context</p>
+                          <p className="text-xs text-[#737373]">Related context</p>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {artifact.relatedRefs.map((ref) => (
                               <Link
@@ -337,7 +337,7 @@ export default function ReviewPage() {
               Delete {deleteQueue.length} saved {deleteQueue.length === 1 ? 'output' : 'outputs'}?
             </h2>
             <p className="mt-2 text-sm leading-6 text-[#737373]">
-              This removes the saved generated material from your archive. The original Library sources and parsed chunks stay available for Chat.
+              This removes the saved generated material from your archive. The original Library sources and parsed passages stay available for Chat.
             </p>
             <div className="mt-5 max-h-40 overflow-y-auto border-y border-[#e5e5e5]">
               {deleteQueue.map((artifact) => (

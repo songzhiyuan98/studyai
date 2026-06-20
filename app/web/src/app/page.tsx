@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 const workflow = [
   ['01', 'Build your library', 'Create course folders, upload lecture PDFs, and keep every source in one searchable place.'],
   ['02', 'Chat with context', 'Ask what to review, request explanations, translate difficult passages, or generate practice questions.'],
-  ['03', 'Check the evidence', 'Every useful answer can carry source references, pages, and selected chunks for fast verification.'],
+  ['03', 'Check the evidence', 'Every useful answer can carry source references, pages, and selected passages for fast verification.'],
   ['04', 'Save study assets', 'Keep strong answers, quiz drafts, cheat sheets, and review plans for later sessions.'],
 ];
 
@@ -18,7 +18,7 @@ const productMoments = [
   ['Agentic study chat', 'Plans the right study context, then organizes the relevant lecture context before teaching.'],
   ['Knowledge-base library', 'A Drive-style file manager for courses, folders, PDFs, notes, and future AI-assisted uploads.'],
   ['Micro-actions in chat', 'Quick pills for explain, summarize, translate, quiz, and cheat sheet generation without leaving the flow.'],
-  ['Reader diagnostics', 'A developer-facing source map to inspect chunks, citations, and context packaging while building the study loop.'],
+  ['Reader diagnostics', 'A developer-facing source map to inspect passages, citations, and context packaging while building the study loop.'],
 ];
 
 const comparison = [
