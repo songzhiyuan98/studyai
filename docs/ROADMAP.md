@@ -31,6 +31,7 @@
 - Implemented: streaming answers through SSE with OpenAI chat generation when configured and local fallback streaming when not.
 - Implemented: source confirmation for ambiguous or broad auto scopes, including lecture-pack and long-document strategies.
 - Implemented: planner trace storage with intent, delegated agent, context strategy, source scope, and context coverage metadata.
+- Implemented: source preview now presents selected materials as the study scope and retrieved passages as context coverage, so broad exam or lesson requests do not look like they are limited to a few chunks.
 - Next: improve long-term memory summaries, user preference memory, and follow-up actions such as "explain more simply", "translate this", and "save this as review notes".
 
 ## Phase 3: Context Quality
@@ -57,6 +58,7 @@
 - Current: local typed planner chooses intent, tools, delegated agent, context breadth, and context strategy.
 - Current: teaching agent prompt owns natural explanation, examples, pacing, and follow-up style.
 - Current: tool-shaped internal capabilities include catalog inspection, scope resolve, source preview, retrieval, artifact save, reader open, and confirmation-gated library management. Chat can draft upload/delete/rename/move requests, while Library prepares product-native confirmation modals for exact file matches instead of changing files silently.
+- Current: AI planner output is validated through typed local contracts. Reader navigation is guarded so "source materials" study requests stay in the teaching flow unless the student explicitly asks to open, jump to, or inspect a citation/source in the reader.
 - Next: add richer tool traces and explicit evaluation cases for planner decisions.
 - Next: split specialized agents only where it improves product behavior:
   - planner/coordinator

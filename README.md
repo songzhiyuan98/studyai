@@ -42,7 +42,7 @@ The primary AI surface should feel like a focused study chat, not a one-shot gen
 - Students can ask natural questions like "help me review Haskell functions for tomorrow's quiz".
 - StudyFlow resolves the intended course, lecture, chapter, page range, or folder from the library.
 - The default chat scope is automatic across all ready Library sources; manual source selection is available when the student wants a strict scope.
-- The planner resolves the likely study scope, chooses the right context strategy, then streams a conversational answer with citations.
+- The planner resolves the likely study scope, chooses the right context strategy, passes the selected material manifest to the teaching agent, then streams a conversational answer with citations.
 - Fixed-output actions appear as small pills above the composer, so students can quickly request Explain, Summarize, Key terms, Mini quiz, or Cheat sheet without leaving chat.
 - When the source scope is ambiguous, the assistant confirms the intended folder, lecture, or pages before generating.
 
@@ -73,7 +73,7 @@ Every generated artifact stores `sourceRefs` so students can jump back to the or
 
 Current implementation status:
 
-- Implemented: real PDF/TXT parsing, page-aware source segments, selected source refs, optional AI planner, scope resolution from Library metadata, lecture-pack context for full-source learning, lexical/page-aware retrieval v0, optional OpenAI embedding generation, pgvector writes, hybrid Chat retrieval that merges vector and lexical results, optional OpenAI chat generation, server-side SSE streaming with local fallback streaming, persisted chat sessions/messages, and Saved-to-Chat continuation for source-backed outputs.
+- Implemented: real PDF/TXT parsing, page-aware source segments, selected source refs, optional AI planner, scope resolution from Library metadata, selected material manifests for the teaching agent, lecture-pack context for full-source learning, lexical/page-aware retrieval v0, optional OpenAI embedding generation, pgvector writes, hybrid Chat retrieval that merges vector and lexical results, optional OpenAI chat generation, server-side SSE streaming with local fallback streaming, persisted chat sessions/messages, and Saved-to-Chat continuation for source-backed outputs.
 - Not implemented yet: reranking and deeper long-term chat memory.
 - Existing database direction: `Segment.embedding` is prepared for 1536-dimensional vectors.
 - Recommended embedding default: `text-embedding-3-small`, configurable through environment variables. It matches the existing 1536-dimensional schema and is the better default than the older `text-embedding-ada-002` for a student SaaS cost/quality profile.
@@ -98,6 +98,7 @@ Core chat context loop:
 student message
   -> planner infers intent and needed tools
   -> resolve course/folder/lecture/page scope from Library metadata
+  -> pass selected material manifest to the teaching agent
   -> choose context strategy: lecture_pack, focused retrieval, broad review, or long document map
   -> package source context with source refs
   -> streaming LLM answer
@@ -115,6 +116,8 @@ student action + selected study scope
   -> context packing by source order and topic
   -> generation with source references
 ```
+
+The material manifest and the retrieval window are intentionally different. For broad study goals such as exam review, the selected materials represent the intended learning scope, while retrieved passages are the current context window used to ground the next answer. For full-lecture or page-by-page teaching, `lecture_pack` sends source-ordered material instead of treating top-k retrieval as the lesson.
 
 Multi-tenant context isolation:
 
