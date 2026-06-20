@@ -185,6 +185,7 @@ test('builds teacher-mode prompt guidance for beginner page-by-page learning', (
   assert.match(prompt, /Do not lead with a generic menu/);
   assert.match(prompt, /first real lesson step/);
   assert.match(prompt, /not terse/);
+  assert.match(prompt, /translation or simpler explanation/);
   assert.doesNotMatch(prompt, /Keep the tone natural, concise, and useful for studying/);
 });
 
@@ -263,6 +264,33 @@ test('detects when a chat turn should use study retrieval', () => {
     message: 'continue',
     history: [],
     hasExplicitScope: true,
+  }), true);
+});
+
+test('detects translation and simpler-explanation follow-ups as study context', () => {
+  const history = [
+    {
+      role: 'user',
+      content: 'I am reviewing Haskell lambda expressions.',
+    },
+    {
+      role: 'assistant',
+      content: 'Lambda expressions define anonymous functions using course examples.',
+    },
+  ];
+
+  assert.equal(shouldUseStudyRetrieval({
+    mode: 'free',
+    message: '翻译这个并用中文讲简单点',
+    history,
+    hasExplicitScope: false,
+  }), true);
+
+  assert.equal(shouldUseStudyRetrieval({
+    mode: 'free',
+    message: 'explain that more simply',
+    history,
+    hasExplicitScope: false,
   }), true);
 });
 

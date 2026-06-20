@@ -98,8 +98,8 @@ export function compactChatHistory(history: ChatHistoryTurn[] = [], maxTurns = 8
 }
 
 export function hasStudyRetrievalSignal(content: string) {
-  return /\b(study|learn|review|explain|teach|understand|quiz|test|exam|midterm|final|homework|assignment|lecture|slide|chapter|page|pdf|txt|notes?|sources?|materials?|haskell|lambda|functions?|types?|syntax|code|programming|definitions?|concepts?|terms?|examples?)\b/i.test(content)
-    || /(学习|复习|教我|带我|讲讲|详细讲|学会|考试|要考|备考|测验|测试|题目|作业|lecture|文件|材料|来源|第\s*\d+\s*页|每一页|逐页|概念|例子|代码|语法)/i.test(content);
+  return /\b(study|learn|review|explain|teach|understand|translate|translation|simpler|quiz|test|exam|midterm|final|homework|assignment|lecture|slide|chapter|page|pdf|txt|notes?|sources?|materials?|haskell|lambda|functions?|types?|syntax|code|programming|definitions?|concepts?|terms?|examples?)\b/i.test(content)
+    || /(学习|复习|教我|带我|讲讲|详细讲|讲简单|简单点|用中文|翻译|学会|考试|要考|备考|测验|测试|题目|作业|lecture|文件|材料|来源|第\s*\d+\s*页|每一页|逐页|概念|例子|代码|语法)/i.test(content);
 }
 
 function hasConcreteStudyRetrievalSignal(turn: ChatHistoryTurn) {
@@ -112,7 +112,8 @@ function hasConcreteStudyRetrievalSignal(turn: ChatHistoryTurn) {
 }
 
 function isStudyFollowUp(content: string) {
-  return /\b(this|that|it|those|them|continue|more|again|next|quiz me|test me|summari[sz]e|explain|review)\b/i.test(content);
+  return /\b(this|that|it|those|them|continue|more|again|next|quiz me|test me|summari[sz]e|explain|review|translate|translation|simpler)\b/i.test(content)
+    || /(这个|那个|继续|下一个|翻译|用中文|讲简单|简单点|再讲|换种说法)/i.test(content);
 }
 
 export function shouldUseStudyRetrieval({
@@ -236,6 +237,7 @@ export function buildGroundedPrompt({
     '- If context coverage says the source was truncated, be honest about teaching from the included coverage and offer to continue through the remaining pages.',
     '- Cite only source-grounded claims. Do not cite general background knowledge unless it is directly supported by the package.',
     '- Use recent conversation to resolve follow-up references like "this", "that", "continue", and "quiz me on it".',
+    '- For translation or simpler explanation follow-ups, preserve the previous study scope and source meaning; translate, rephrase, or simplify instead of starting a new unrelated lesson.',
     '- Answer like ChatGPT with full tutoring ability: explain, connect concepts, provide examples, and fill in basic background when helpful.',
     '- Do not make the answer artificially short. If the student asks to learn or review a topic, provide enough substance for a real lesson.',
     '- Decide the teaching posture from the user’s intent, not from fixed keywords alone: quick answer, normal study chat, guided Teacher Mode, translation, quiz, or page-by-page lesson.',
